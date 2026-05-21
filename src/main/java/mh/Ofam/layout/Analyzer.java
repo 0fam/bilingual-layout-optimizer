@@ -107,7 +107,7 @@ public class Analyzer {
         }
         return null;
     }
-    
+
     public static void main(String[] args) throws URISyntaxException {
         // Cesty môžeme prijímať z argumentov, inak použijeme predvolené
         String korpusPath = "korpus.txt";
@@ -152,8 +152,27 @@ public class Analyzer {
             // =========================================================================
             //  KONFIGURÁCIA VÁH PRE EXPERIMENTY (Uprav si čísla podľa potreby)
             // =========================================================================
-            Weights weights = Weights.builder().sfb(1.0).sfs(3.0).stretch(5.0).alt(0.0).runs(0.0)
-                    .scissors(0.0).redirects(5.0).rollIn(0.0).rollOut(0.0)
+            Weights weights = Weights.builder()
+                    // --- KRVAVÁ TROJICA (Musia mať ROVNAKÚ a MAXIMÁLNU váhu 5.0) ---
+                    .sfb(5.0)        // TREST: Halmak a Dvorak tu okamžite zhoria za SFB > 4%.
+                    .stretch(5.0)    // TREST: Dvorak a Stronk tu zhoria za to, že ničia ukazováky.
+                    .redirects(5.0)  // TREST: Colemak a Seht tu zhoria za Pinball efekt.
+
+                    // --- SEKUNDÁRNE CHYBY (Vysoká váha 3.0) ---
+                    .maxFinger(3.0)  // TREST: Ruky musia trpieť férovo (dôležité pre dof a nstr).
+                    .sfs(3.0)        // TREST: Sendvičové preskakovanie.
+
+                    // --- MIKRO-BOLESŤ (Váha 2.0) ---
+                    .lsb(2.0)        // TREST: Bočné kríženie.
+                    .lhb(2.0)        // TREST: Ničenie malíčka a prstenníka.
+
+                    // --- OSTATNÉ (Šum - ignorujeme) ---
+                    .homeRow(1.0)    // Jemný bonus za držanie prstov na stredovom riadku.
+                    .scissors(0.0)
+                    .alt(0.0)
+                    .runs(0.0)
+                    .rollIn(0.0)
+                    .rollOut(0.0)
                     .build();
 
 // --- ZABIJACI (Hardcore tresty) ---
@@ -183,7 +202,7 @@ public class Analyzer {
 //            // Ignorujeme alternáciu a valivé behy trestáme iba jemne
 //            weights.put("ALT", 0.0);
 //            weights.put("RUNS", 0.5);
-            
+
             LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults);
 
         } catch (IOException e) {

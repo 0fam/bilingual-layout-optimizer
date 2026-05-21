@@ -6,8 +6,8 @@ import lombok.Getter;
 @Builder
 @Getter
 public class Weights {
-    double sfb = 0;
-    double sfs = 0;
+    double sfb = 0; // single finger bigrams
+    double sfs = 0; // skip finger bigrams
     double stretch = 0;
     double alt = 0;
     double runs = 0;
