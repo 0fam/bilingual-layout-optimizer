@@ -1,7 +1,5 @@
 package mh.Ofam.layout;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.List;
@@ -25,7 +23,8 @@ public class TextStats {
         // Rozdelenie na slová (odstránenie interpunkcie pre presnosť slov)
 //        String[] words = cleanText.split("[^a-zA-Z0-9/.,;'-]+"); // symboly musia prec
 //        String[] words = cleanText.split("[^a-z0-9']+"); // cisla musia prec
-        String[] words = cleanText.toLowerCase().split("[^a-z']+");
+//        String[] words = cleanText.toLowerCase().split("[^a-z']+");
+        String[] words = cleanText.toLowerCase().split("[^a-z,.']+"); // ciarka bodka nazad
 
         for (String word : words) {
             if (word.isEmpty()) continue;

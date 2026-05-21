@@ -141,12 +141,12 @@ public class Analyzer {
             System.out.println("\nSpúšťam masívnu analýzu pre " + layoutsToTest.size() + " layoutov...\n");
 
             // List na ukladanie nespracovaných DTO objektov pred ich finálnym zoradením
-            List<AnalysisResult> allResults = new ArrayList<>();
+            List<LayoutStats> allResults = new ArrayList<>();
 
             // Spustenie analýzy pre každý načítanud layout
             for (Map.Entry<String, Layout> entry : layoutsToTest.entrySet()) {
                 LayoutStats layoutStats = LayoutStats.instance(textStats, entry.getValue());
-                allResults.add(new AnalysisResult(entry.getKey(), layoutStats));
+                allResults.add(layoutStats);
             }
 
             // =========================================================================

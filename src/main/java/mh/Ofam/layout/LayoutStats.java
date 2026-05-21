@@ -1,5 +1,6 @@
 package mh.Ofam.layout;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -10,6 +11,9 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class LayoutStats {
+    @Getter
+    Layout layout;
+
     long[] rows = new long[3];
     long[] fingers = new long[10];
     long innerStretch = 0;
@@ -40,8 +44,14 @@ public class LayoutStats {
     long totalSkipgrams = 0;
     long totalTrigrams = 0;
 
+    @Getter
+    double balancedScore = 0.0;
+
     public static LayoutStats instance(TextStats textStats, Layout layout) {
         LayoutStats ls = new LayoutStats();
+        ls.layout = layout;
+
+        int errorCounter = 0;
 
         for (String word : textStats.wordFreqs.keySet()) { // pre kazde slovo
             for (int freq = 0; freq < textStats.wordFreqs.get(word); freq++) { // tolko krat, kolko krat to slovo sa vyskytuje
@@ -51,7 +61,8 @@ public class LayoutStats {
                     if (layout.charMap.containsKey(ch)) {
                         keys.add(layout.charMap.get(ch));
                     } else {
-                        log.info("Klavesa pre znak {} v layoute {} neexistuje", ch, layout.name);
+                        if (errorCounter < 100) log.warn("Klavesa pre znak {} v layoute {} neexistuje", ch, layout.name);
+                        errorCounter++;
                     }
                 }
 
@@ -267,4 +278,62 @@ public class LayoutStats {
             System.out.printf("  %2d. %-15s (%d x)\n", i + 1, entry.getKey(), entry.getValue());
         }
     }
+
+    double getSfbPct() {
+        return totalBigrams == 0 ? 0 : (sfb * 100.0) / totalBigrams;
+    }
+
+    double getSfsPct() {
+        return totalSkipgrams == 0 ? 0 : (sfs * 100.0) / totalSkipgrams;
+    }
+
+    double getInnerStretchPct() {
+        return totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms;
+    }
+
+    double getAlternationPct() {
+        return totalBigrams == 0 ? 0 : (handAlternation * 100.0) / totalBigrams;
+    }
+
+    double getHomeRowPct() {
+        return totalMonograms == 0 ? 0 : (rows[1] * 100.0) / totalMonograms;
+    }
+
+    long getLongOneHandedRuns() {
+        return longOneHandedRuns;
+    }
+
+    public double getRunsPct() {
+        return totalMonograms == 0 ? 0 : (longOneHandedRuns * 100.0) / totalMonograms;
+    }
+
+    // Nové pridané gettery pre nové metriky (predpokladá sa, že sú už implementované v LayoutStats)
+    double getScissorsPct() {
+        return totalBigrams == 0 ? 0 : (scissors * 100.0) / totalBigrams;
+    }
+
+    double getRedirectsPct() {
+        return totalTrigrams == 0 ? 0 : (redirects * 100.0) / totalTrigrams;
+    }
+
+    double getRollInPct() {
+        return totalTrigrams == 0 ? 0 : (inwardRolls * 100.0) / totalTrigrams;
+    }
+
+    double getRollOutPct() {
+        return totalTrigrams == 0 ? 0 : (outwardRolls * 100.0) / totalTrigrams;
+    }
+
+    public double getMaxFingerLoadPct() {
+        return maxFingerLoadPct;
+    }
+
+    public double getLsbPct() {
+        return totalBigrams == 0 ? 0 : (lsb * 100.0) / totalBigrams;
+    }
+
+    public double getLhbPct() {
+        return totalBigrams == 0 ? 0 : (lhb * 100.0) / totalBigrams;
+    }
+
 }
