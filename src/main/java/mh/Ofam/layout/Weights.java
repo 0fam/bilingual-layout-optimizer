@@ -15,4 +15,10 @@ public class Weights {
     double redirects = 0;
     double rollIn = 0;
     double rollOut = 0;
+
+    // Nové profi váhy
+    private double maxFinger = 0;  // Zabraňuje preťaženiu jedného prsta
+    private double lsb = 0;        // Lateral Stretch Bigram
+    private double lhb = 0;        // Lateral Hand Bigram (malíček-prstenník)
+    private double homeRow = 0;    // Odmena za to, že ruky sedia doma
 }

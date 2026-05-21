@@ -55,6 +55,19 @@ public class AnalysisResult {
         return layoutStats.totalTrigrams == 0 ? 0 : (layoutStats.outwardRolls * 100.0) / layoutStats.totalTrigrams;
     }
 
+    // Nové gettery
+    public double getMaxFingerLoadPct() {
+        return layoutStats.maxFingerLoadPct;
+    }
+
+    public double getLsbPct() {
+        return layoutStats.totalBigrams == 0 ? 0 : (layoutStats.lsb * 100.0) / layoutStats.totalBigrams;
+    }
+
+    public double getLhbPct() {
+        return layoutStats.totalBigrams == 0 ? 0 : (layoutStats.lhb * 100.0) / layoutStats.totalBigrams;
+    }
+
     double getBalancedScore() {
         return balancedScore;
     }

@@ -18,12 +18,12 @@ public class LeaderboardStats {
         allResults.sort(Comparator.comparingDouble(AnalysisResult::getBalancedScore).reversed());
 
         // Tlač záverečného sumárneho rebríčka pre rýchle globálne porovnanie
-        leaderboardStats.printLeaderboard(allResults, "Užívateľské vážené skóre");
+        leaderboardStats.printLeaderboard(allResults, "Zero Pain & Finger Protection");
 
         return leaderboardStats;
     }
 
-    // --- NOVÁ METÓDA PRE MATEMATICKÚ DYNAMICKÚ VÁHUTU (GEOMETRICKÝ PRIEMER) ---
+    // --- METÓDA PRE MATEMATICKÚ DYNAMICKÚ VÁHUTU (GEOMETRICKÝ PRIEMER) ---
     public void calculateWeightedBalancedScores(Weights weights, List<AnalysisResult> results) {
         if (results.isEmpty()) return;
 
@@ -32,11 +32,16 @@ public class LeaderboardStats {
         double minStretch = Double.MAX_VALUE, maxStretch = Double.MIN_VALUE;
         double minAlt = Double.MAX_VALUE, maxAlt = Double.MIN_VALUE;
         double minRuns = Double.MAX_VALUE, maxRuns = Double.MIN_VALUE;
-        // Nové metriky
         double minScissors = Double.MAX_VALUE, maxScissors = Double.MIN_VALUE;
         double minRedirects = Double.MAX_VALUE, maxRedirects = Double.MIN_VALUE;
         double minRollIn = Double.MAX_VALUE, maxRollIn = Double.MIN_VALUE;
         double minRollOut = Double.MAX_VALUE, maxRollOut = Double.MIN_VALUE;
+
+        // --- NOVÉ PROFI METRIKY ---
+        double minMaxFinger = Double.MAX_VALUE, maxMaxFinger = Double.MIN_VALUE;
+        double minLsb = Double.MAX_VALUE, maxLsb = Double.MIN_VALUE;
+        double minLhb = Double.MAX_VALUE, maxLhb = Double.MIN_VALUE;
+        double minHomeRow = Double.MAX_VALUE, maxHomeRow = Double.MIN_VALUE;
 
         // Vytiahneme váhy z mapy
         double totalWeight = weights.getSfb() +
@@ -47,7 +52,11 @@ public class LeaderboardStats {
                 weights.getScissors() +
                 weights.getRedirects() +
                 weights.getRollIn() +
-                weights.getRollOut();
+                weights.getRollOut() +
+                weights.getMaxFinger() +
+                weights.getLsb() +
+                weights.getLhb() +
+                weights.getHomeRow();
 
         // 1. Krok: Analýza rozsahu dát celého poolu
         for (AnalysisResult r : results) {
@@ -70,11 +79,19 @@ public class LeaderboardStats {
             minRollOut = Math.min(minRollOut, r.getRollOutPct());
             maxRollOut = Math.max(maxRollOut, r.getRollOutPct());
 
+            minMaxFinger = Math.min(minMaxFinger, r.getMaxFingerLoadPct());
+            maxMaxFinger = Math.max(maxMaxFinger, r.getMaxFingerLoadPct());
+            minLsb = Math.min(minLsb, r.getLsbPct());
+            maxLsb = Math.max(maxLsb, r.getLsbPct());
+            minLhb = Math.min(minLhb, r.getLhbPct());
+            maxLhb = Math.max(maxLhb, r.getLhbPct());
+            minHomeRow = Math.min(minHomeRow, r.getHomeRowPct());
+            maxHomeRow = Math.max(maxHomeRow, r.getHomeRowPct());
         }
 
         // 2. Krok: Škálovanie a aplikácia váženého geometrického priemeru
         for (AnalysisResult r : results) {
-            // Tresty (menšie je lepšie)
+            // --- TRESTY (Menšie reálne číslo je lepšie, t.j. bližšie k 1.0) ---
             double sfbScore = maxSfb == minSfb ? 1.0 : 0.01 + 0.99 * ((maxSfb - r.getSfbPct()) / (maxSfb - minSfb));
             double sfsScore = maxSfs == minSfs ? 1.0 : 0.01 + 0.99 * ((maxSfs - r.getSfsPct()) / (maxSfs - minSfs));
             double stretchScore = maxStretch == minStretch ? 1.0 : 0.01 + 0.99 * ((maxStretch - r.getInnerStretchPct()) / (maxStretch - minStretch));
@@ -82,12 +99,17 @@ public class LeaderboardStats {
             double scissorsScore = maxScissors == minScissors ? 1.0 : 0.01 + 0.99 * ((maxScissors - r.getScissorsPct()) / (maxScissors - minScissors));
             double redirectsScore = maxRedirects == minRedirects ? 1.0 : 0.01 + 0.99 * ((maxRedirects - r.getRedirectsPct()) / (maxRedirects - minRedirects));
 
-            // Odmeny (väčšie je lepšie -> otočená logika ako pri ALTs)
+            double maxFingerScore = maxMaxFinger == minMaxFinger ? 1.0 : 0.01 + 0.99 * ((maxMaxFinger - r.getMaxFingerLoadPct()) / (maxMaxFinger - minMaxFinger));
+            double lsbScore = maxLsb == minLsb ? 1.0 : 0.01 + 0.99 * ((maxLsb - r.getLsbPct()) / (maxLsb - minLsb));
+            double lhbScore = maxLhb == minLhb ? 1.0 : 0.01 + 0.99 * ((maxLhb - r.getLhbPct()) / (maxLhb - minLhb));
+
+            // --- ODMENY (Väčšie reálne číslo je lepšie, t.j. bližšie k 1.0) ---
             double altScore = maxAlt == minAlt ? 1.0 : 0.01 + 0.99 * ((r.getAlternationPct() - minAlt) / (maxAlt - minAlt));
             double rollInScore = maxRollIn == minRollIn ? 1.0 : 0.01 + 0.99 * ((r.getRollInPct() - minRollIn) / (maxRollIn - minRollIn));
             double rollOutScore = maxRollOut == minRollOut ? 1.0 : 0.01 + 0.99 * ((r.getRollOutPct() - minRollOut) / (maxRollOut - minRollOut));
+            double homeRowScore = maxHomeRow == minHomeRow ? 1.0 : 0.01 + 0.99 * ((r.getHomeRowPct() - minHomeRow) / (maxHomeRow - minHomeRow));
 
-            // Vážený geometrický priemer: váha funguje ako exponent (mocnina)
+            // Vážený geometrický priemer: váha funguje ako exponent
             double poweredProduct =
                     Math.pow(sfbScore, weights.getSfb()) *
                             Math.pow(sfsScore, weights.getSfs()) *
@@ -97,35 +119,42 @@ public class LeaderboardStats {
                             Math.pow(scissorsScore, weights.getScissors()) *
                             Math.pow(redirectsScore, weights.getRedirects()) *
                             Math.pow(rollInScore, weights.getRollIn()) *
-                            Math.pow(rollOutScore, weights.getRollOut());
+                            Math.pow(rollOutScore, weights.getRollOut()) *
+                            Math.pow(maxFingerScore, weights.getMaxFinger()) *
+                            Math.pow(lsbScore, weights.getLsb()) *
+                            Math.pow(lhbScore, weights.getLhb()) *
+                            Math.pow(homeRowScore, weights.getHomeRow());
 
-            r.balancedScore = Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0;
+            r.balancedScore = totalWeight == 0 ? 0 : Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0;
         }
     }
 
-    // --- NOVÁ METÓDA PRE PREHĽADNÝ SUMÁRNY LEADERBOARD ---
+    // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE NOVÉ METRIKY ---
     public void printLeaderboard(List<AnalysisResult> results, String sortedByCriteria) {
-        System.out.println("\n====================================================================================================");
+        System.out.println("\n=========================================================================================================================================");
         System.out.println("   VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: " + sortedByCriteria.toUpperCase() + ")");
-        System.out.println("====================================================================================================");
-        System.out.printf("%-5s | %-22s | %-9s | %-7s | %-7s | %-10s | %-12s | %-10s\n",
-                "Idx", "Názov layoutu", "BAL_SCORE", "SFB %", "SFS %", "InnerStr %", "Alternácia %", "Jedn. behy");
-        System.out.println("----------------------------------------------------------------------------------------------------");
+        System.out.println("=========================================================================================================================================");
+        System.out.printf("%-5s | %-22s | %-9s | %-9s | %-10s | %-8s | %-7s | %-7s | %-7s | %-7s | %-8s | %-8s | %-10s\n",
+                "Idx", "Názov layoutu", "BAL_SCORE", "MaxFing %", "InnerStr %", "Redir %", "SFB %", "SFS %", "LSB %", "LHB %", "HomeRow%", "Alt %", "Jedn. behy");
+        System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------");
 
         int i = 0;
         for (AnalysisResult res : results) {
-            System.out.printf("%-5d | %-22s | %8.2f  | %5.2f %% | %5.2f %% | %8.2f %% | %10.2f %% | %dx\n",
+            System.out.printf("%-5d | %-22s | %8.2f  | %7.2f %% | %8.2f %% | %6.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %6.2f %% | %6.2f %% | %dx\n",
                     ++i,
                     res.getLayoutName(),
                     res.getBalancedScore(),
+                    res.getMaxFingerLoadPct(),
+                    res.getInnerStretchPct(),
+                    res.getRedirectsPct(),
                     res.getSfbPct(),
                     res.getSfsPct(),
-                    res.getInnerStretchPct(),
+                    res.getLsbPct(),
+                    res.getLhbPct(),
+                    res.getHomeRowPct(),
                     res.getAlternationPct(),
                     res.getLongOneHandedRuns()
             );
         }
-        System.out.println("====================================================================================================");
-    }
-
-}
+        System.out.println("=========================================================================================================================================");
+    }}
