@@ -24,6 +24,13 @@ public class LayoutStats {
     long redirects = 0;
     long longOneHandedRuns = 0;
 
+    // --- NOVÉ METRIKY PRE PROFI ANALÝZU ---
+    long leftHandMonograms = 0;
+    long rightHandMonograms = 0;
+    long lsb = 0; // Lateral Stretch Bigrams (Kríženie so stredovým stĺpcom)
+    long lhb = 0; // Lateral Hand Bigrams (Kríženie Malíček-Prstenník)
+    double maxFingerLoadPct = 0.0;
+
     // Mapy na sledovanie konkrétnych problémových slov
     Map<String, Integer> sfbWordsMap = new HashMap<>();
     Map<String, Integer> longRunWordsMap = new HashMap<>();
@@ -59,6 +66,10 @@ public class LayoutStats {
                     ls.totalMonograms++;
                     ls.rows[k.row]++;
                     ls.fingers[k.finger.ordinal()]++;
+
+                    if (k.hand == 'L') ls.leftHandMonograms++;
+                    else ls.rightHandMonograms++;
+
                     if (k.col == 4 || k.col == 5) {
                         ls.innerStretch++;
                     }
@@ -74,14 +85,32 @@ public class LayoutStats {
                         ls.handAlternation++;
                     }
 
-                    if (k1.hand == k2.hand && k1.finger == k2.finger) {
-                        ls.sfb++;
-                        wordHadSfb = true; // Zaznačíme, že toto slovo spôsobilo SFB
-                    }
+                    if (k1.hand == k2.hand) {
+                        // SFB
+                        if (k1.finger == k2.finger) {
+                            ls.sfb++;
+                            wordHadSfb = true;
+                        }
 
-                    if (k1.hand == k2.hand && Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
-                        if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
-                            ls.scissors++;
+                        // Scissors
+                        if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
+                            if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
+                                ls.scissors++;
+                            }
+                        }
+
+                        // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
+                        boolean k1Stretch = (k1.col == 4 || k1.col == 5);
+                        boolean k2Stretch = (k2.col == 4 || k2.col == 5);
+                        if (k1Stretch != k2Stretch && k1.finger != k2.finger) {
+                            ls.lsb++;
+                        }
+
+                        // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
+                        boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
+                        boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
+                        if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
+                            ls.lhb++;
                         }
                     }
 
@@ -123,7 +152,8 @@ public class LayoutStats {
                     if (keys.get(i).hand == currentHand) {
                         currentRun++;
                     } else {
-                        if (currentRun >= 4) {
+                        // Zvýšené na 5 znakov!
+                        if (currentRun >= 5) {
                             ls.longOneHandedRuns++;
                             wordHadLongRun = true;
                         }
@@ -131,7 +161,8 @@ public class LayoutStats {
                         currentHand = keys.get(i).hand;
                     }
                 }
-                if (currentRun >= 4) {
+                // Zvýšené na 5 znakov!
+                if (currentRun >= 5) {
                     ls.longOneHandedRuns++;
                     wordHadLongRun = true;
                 }
@@ -145,6 +176,13 @@ public class LayoutStats {
                 }
             }
         }
+
+        // --- VÝPOČET ZÁŤAŽE NAJHORŠIEHO PRSTA (MAX_FINGER_LOAD) ---
+        // Spočítame skutočnú záťaž ukazovákov (základ + stretch) a porovnáme s ostatnými prstami
+        long maxL = Math.max(Math.max(ls.fingers[0], ls.fingers[1]), Math.max(ls.fingers[2], ls.fingers[3] + ls.fingers[4]));
+        long maxR = Math.max(Math.max(ls.fingers[9], ls.fingers[8]), Math.max(ls.fingers[7], ls.fingers[6] + ls.fingers[5]));
+        long absoluteMaxFinger = Math.max(maxL, maxR);
+        ls.maxFingerLoadPct = ls.totalMonograms == 0 ? 0 : (absoluteMaxFinger * 100.0) / ls.totalMonograms;
 
         ls.printLayoutReport(layout);
 
@@ -168,39 +206,46 @@ public class LayoutStats {
         System.out.printf("Spracovaných bigramov: %d | trigramov: %d\n", totalBigrams, totalTrigrams);
         System.out.println("--------------------------------------");
 
-        System.out.println("\n[1] ZÁŤAŽ RIADKOV (Row Distribution)");
+        System.out.println("\n[1] GLOBÁLNE ROZLOŽENIE ZÁŤAŽE");
+        double leftPct = totalMonograms == 0 ? 0 : (leftHandMonograms * 100.0) / totalMonograms;
+        double rightPct = totalMonograms == 0 ? 0 : (rightHandMonograms * 100.0) / totalMonograms;
+        System.out.printf("  Ľavá ruka:  %6.2f%%\n", leftPct);
+        System.out.printf("  Pravá ruka: %6.2f%%\n", rightPct);
+        System.out.println();
         System.out.printf("  Top Row:    %6.2f%%\n", totalMonograms == 0 ? 0 : (rows[0] * 100.0) / totalMonograms);
         System.out.printf("  Home Row:   %6.2f%%  (Ideál: >60%%)\n", totalMonograms == 0 ? 0 : (rows[1] * 100.0) / totalMonograms);
         System.out.printf("  Bottom Row: %6.2f%%\n", totalMonograms == 0 ? 0 : (rows[2] * 100.0) / totalMonograms);
 
-        System.out.println("\n[2] PENALIZOVANÝ BOČNÝ POHYB (Inner Index Stretch)");
-        System.out.printf("  Stredové stĺpce: %6.2f%% (Čím menej, tým lepšie)\n", totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms);
+        System.out.println("\n[2] ZÁŤAŽ PRSTOV A BOČNÝ POHYB");
+        System.out.printf("  Najviac namáhaný prst (Max Load): %6.2f%%\n", maxFingerLoadPct);
+        System.out.printf("  Stredové stĺpce (Inner Stretch):  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms);
 
-        System.out.println("\n[3] ZÁŤAŽ PRSTOV (Finger Balance)");
         String[] fNames = {"Malíček", "Prstenník", "Prostredník", "Ukazovák", "Inner Stretch"};
         System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
         for (int i = 0; i < 5; i++) {
-            double leftPct = totalMonograms == 0 ? 0 : (fingers[i] * 100.0) / totalMonograms;
-            double rightPct = totalMonograms == 0 ? 0 : (fingers[9 - i] * 100.0) / totalMonograms;
-            System.out.printf("  %-15s: %5.2f%%      |      %-15s: %5.2f%%\n", fNames[i], leftPct, fNames[i], rightPct);
+            double lPct = totalMonograms == 0 ? 0 : (fingers[i] * 100.0) / totalMonograms;
+            double rPct = totalMonograms == 0 ? 0 : (fingers[9 - i] * 100.0) / totalMonograms;
+            System.out.printf("  %-15s: %5.2f%%      |      %-15s: %5.2f%%\n", fNames[i], lPct, fNames[i], rPct);
         }
 
-        System.out.println("\n[4] RYTMUS A KRUŠNÉ MOMENTY (Bigramy & Skipgramy)");
+        System.out.println("\n[3] RYTMUS A KRUŠNÉ MOMENTY (Bigramy & Skipgramy)");
         System.out.printf("  ❌ SFB (Same Finger Bigram):       %6.2f%%  (Kritické! Chceš <1.0%%)\n", totalBigrams == 0 ? 0 : (sfb * 100.0) / totalBigrams);
         System.out.printf("  ⚠️ SFS (Skipgram - Same Finger):   %6.2f%%\n", totalSkipgrams == 0 ? 0 : (sfs * 100.0) / totalSkipgrams);
         System.out.printf("  ✂️ Scissors (Nožnicový kríž):      %6.2f%%\n", totalBigrams == 0 ? 0 : (scissors * 100.0) / totalBigrams);
+        System.out.printf("  ↔️ LSB (Bočné kríženie k stredu):  %6.2f%%\n", totalBigrams == 0 ? 0 : (lsb * 100.0) / totalBigrams);
+        System.out.printf("  🤕 LHB (Kríženie Malíček-Prstenník):%5.2f%%\n", totalBigrams == 0 ? 0 : (lhb * 100.0) / totalBigrams);
         System.out.printf("  🟩 Alternácia rúk (Rhythm):        %6.2f%%\n", totalBigrams == 0 ? 0 : (handAlternation * 100.0) / totalBigrams);
 
-        System.out.println("\n[5] POHYB V TRIGRAMOCH (Trigram Flow)");
+        System.out.println("\n[4] POHYB V TRIGRAMOCH (Trigram Flow)");
         System.out.printf("  🔄 Valivé dnu (Inward Rolls):      %6.2f%%\n", totalTrigrams == 0 ? 0 : (inwardRolls * 100.0) / totalTrigrams);
         System.out.printf("  🔄 Valivé von (Outward Rolls):     %6.2f%%\n", totalTrigrams == 0 ? 0 : (outwardRolls * 100.0) / totalTrigrams);
         System.out.printf("  ❌ Zmeny smeru (Redirects):        %6.2f%%\n", totalTrigrams == 0 ? 0 : (redirects * 100.0) / totalTrigrams);
-        System.out.printf("  🖐️ Dlhé jednoručné behy (>=4 ch):  %d x\n", longOneHandedRuns);
+        System.out.printf("  🖐️ Dlhé jednoručné behy (>=5 ch):  %d x\n", longOneHandedRuns);
 
-        System.out.println("\n[6] TOP 10 SLOV SPÔSOBUJÚCICH SFB (Kmitanie prsta)");
+        System.out.println("\n[5] TOP 10 SLOV SPÔSOBUJÚCICH SFB (Kmitanie prsta)");
         printTopWords(sfbWordsMap, 10);
 
-        System.out.println("\n[7] TOP 10 SLOV S DLHÝMI JEDNORUČNÝMI BEHMI (>=4 znaky na jednej ruke)");
+        System.out.println("\n[6] TOP 10 SLOV S DLHÝMI JEDNORUČNÝMI BEHMI (>=5 znaky na jednej ruke)");
         printTopWords(longRunWordsMap, 10);
 
         System.out.println("==================================================");

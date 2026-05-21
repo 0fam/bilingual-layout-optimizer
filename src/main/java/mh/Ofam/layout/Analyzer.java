@@ -107,110 +107,7 @@ public class Analyzer {
         }
         return null;
     }
-
-    // --- NOVÁ METÓDA PRE PREHĽADNÝ SUMÁRNY LEADERBOARD ---
-    public static void printLeaderboard(List<AnalysisResult> results, String sortedByCriteria) {
-        System.out.println("\n====================================================================================================");
-        System.out.println("   VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: " + sortedByCriteria.toUpperCase() + ")");
-        System.out.println("====================================================================================================");
-        System.out.printf("%-5s | %-22s | %-9s | %-7s | %-7s | %-10s | %-12s | %-10s\n",
-                "Idx", "Názov layoutu", "BAL_SCORE", "SFB %", "SFS %", "InnerStr %", "Alternácia %", "Jedn. behy");
-        System.out.println("----------------------------------------------------------------------------------------------------");
-
-        int i = 0;
-        for (AnalysisResult res : results) {
-            System.out.printf("%-5d | %-22s | %8.2f  | %5.2f %% | %5.2f %% | %8.2f %% | %10.2f %% | %dx\n",
-                    ++i,
-                    res.getLayoutName(),
-                    res.getBalancedScore(),
-                    res.getSfbPct(),
-                    res.getSfsPct(),
-                    res.getInnerStretchPct(),
-                    res.getAlternationPct(),
-                    res.getLongOneHandedRuns()
-            );
-        }
-        System.out.println("====================================================================================================");
-    }
-
-    // --- NOVÁ METÓDA PRE MATEMATICKÚ DYNAMICKÚ VÁHUTU (GEOMETRICKÝ PRIEMER) ---
-    public static void calculateWeightedBalancedScores(List<AnalysisResult> results, Map<String, Double> weights) {
-        if (results.isEmpty()) return;
-
-        double minSfb = Double.MAX_VALUE, maxSfb = Double.MIN_VALUE;
-        double minSfs = Double.MAX_VALUE, maxSfs = Double.MIN_VALUE;
-        double minStretch = Double.MAX_VALUE, maxStretch = Double.MIN_VALUE;
-        double minAlt = Double.MAX_VALUE, maxAlt = Double.MIN_VALUE;
-        double minRuns = Double.MAX_VALUE, maxRuns = Double.MIN_VALUE;
-        // Nové metriky
-        double minScissors = Double.MAX_VALUE, maxScissors = Double.MIN_VALUE;
-        double minRedirects = Double.MAX_VALUE, maxRedirects = Double.MIN_VALUE;
-        double minRollIn = Double.MAX_VALUE, maxRollIn = Double.MIN_VALUE;
-        double minRollOut = Double.MAX_VALUE, maxRollOut = Double.MIN_VALUE;
-
-        // Vytiahneme váhy z mapy
-        double wSfb = weights.getOrDefault("SFB", 1.0);
-        double wSfs = weights.getOrDefault("SFS", 1.0);
-        double wStretch = weights.getOrDefault("STRETCH", 1.0);
-        double wAlt = weights.getOrDefault("ALT", 1.0);
-        double wRuns = weights.getOrDefault("RUNS", 1.0);
-        double wScissors = weights.getOrDefault("SCISSORS", 1.0);
-        double wRedirects = weights.getOrDefault("REDIRECTS", 1.0);
-        double wRollIn = weights.getOrDefault("ROLL_IN", 1.0);
-        double wRollOut = weights.getOrDefault("ROLL_OUT", 1.0);
-
-        double totalWeight = wSfb + wSfs + wStretch + wAlt + wRuns + wScissors + wRedirects + wRollIn + wRollOut;
-
-        // 1. Krok: Analýza rozsahu dát celého poolu
-        for (AnalysisResult r : results) {
-            minSfb = Math.min(minSfb, r.getSfbPct());
-            maxSfb = Math.max(maxSfb, r.getSfbPct());
-            minSfs = Math.min(minSfs, r.getSfsPct());
-            maxSfs = Math.max(maxSfs, r.getSfsPct());
-            minStretch = Math.min(minStretch, r.getInnerStretchPct());
-            maxStretch = Math.max(maxStretch, r.getInnerStretchPct());
-            minAlt = Math.min(minAlt, r.getAlternationPct());
-            maxAlt = Math.max(maxAlt, r.getAlternationPct());
-            minRuns = Math.min(minRuns, r.getLongOneHandedRuns());
-            maxRuns = Math.max(maxRuns, r.getLongOneHandedRuns());
-            minScissors = Math.min(minScissors, r.getScissorsPct());
-            maxScissors = Math.max(maxScissors, r.getScissorsPct());
-            minRedirects = Math.min(minRedirects, r.getRedirectsPct());
-            maxRedirects = Math.max(maxRedirects, r.getRedirectsPct());
-            minRollIn = Math.min(minRollIn, r.getRollInPct());
-            maxRollIn = Math.max(maxRollIn, r.getRollInPct());
-            minRollOut = Math.min(minRollOut, r.getRollOutPct());
-            maxRollOut = Math.max(maxRollOut, r.getRollOutPct());
-
-        }
-
-        // 2. Krok: Škálovanie a aplikácia váženého geometrického priemeru
-        for (AnalysisResult r : results) {
-            // Tresty (menšie je lepšie)
-            double sfbScore = maxSfb == minSfb ? 1.0 : 0.01 + 0.99 * ((maxSfb - r.getSfbPct()) / (maxSfb - minSfb));
-            double sfsScore = maxSfs == minSfs ? 1.0 : 0.01 + 0.99 * ((maxSfs - r.getSfsPct()) / (maxSfs - minSfs));
-            double stretchScore = maxStretch == minStretch ? 1.0 : 0.01 + 0.99 * ((maxStretch - r.getInnerStretchPct()) / (maxStretch - minStretch));
-            double runsScore = maxRuns == minRuns ? 1.0 : 0.01 + 0.99 * ((maxRuns - r.getLongOneHandedRuns()) / (maxRuns - minRuns));
-            double scissorsScore = maxScissors == minScissors ? 1.0 : 0.01 + 0.99 * ((maxScissors - r.getScissorsPct()) / (maxScissors - minScissors));
-            double redirectsScore = maxRedirects == minRedirects ? 1.0 : 0.01 + 0.99 * ((maxRedirects - r.getRedirectsPct()) / (maxRedirects - minRedirects));
-
-            // Odmeny (väčšie je lepšie -> otočená logika ako pri ALTs)
-            double altScore = maxAlt == minAlt ? 1.0 : 0.01 + 0.99 * ((r.getAlternationPct() - minAlt) / (maxAlt - minAlt));
-            double rollInScore = maxRollIn == minRollIn ? 1.0 : 0.01 + 0.99 * ((r.getRollInPct() - minRollIn) / (maxRollIn - minRollIn));
-            double rollOutScore = maxRollOut == minRollOut ? 1.0 : 0.01 + 0.99 * ((r.getRollOutPct() - minRollOut) / (maxRollOut - minRollOut));
-
-            // Vážený geometrický priemer: váha funguje ako exponent (mocnina)
-            double poweredProduct =
-                    Math.pow(sfbScore, wSfb) * Math.pow(sfsScore, wSfs) * Math.pow(stretchScore, wStretch) * Math.pow(altScore, wAlt) * Math.pow(runsScore, wRuns) *
-                            Math.pow(scissorsScore, wScissors) *
-                            Math.pow(redirectsScore, wRedirects) *
-                            Math.pow(rollInScore, wRollIn) *
-                            Math.pow(rollOutScore, wRollOut);
-
-            r.balancedScore = Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0;
-        }
-    }
-
+    
     public static void main(String[] args) throws URISyntaxException {
         // Cesty môžeme prijímať z argumentov, inak použijeme predvolené
         String korpusPath = "korpus.txt";
@@ -246,7 +143,7 @@ public class Analyzer {
             // List na ukladanie nespracovaných DTO objektov pred ich finálnym zoradením
             List<AnalysisResult> allResults = new ArrayList<>();
 
-            // 3. Spustenie analýzy pre každý načítanud layout
+            // Spustenie analýzy pre každý načítanud layout
             for (Map.Entry<String, Layout> entry : layoutsToTest.entrySet()) {
                 LayoutStats layoutStats = LayoutStats.instance(textStats, entry.getValue());
                 allResults.add(new AnalysisResult(entry.getKey(), layoutStats));
@@ -255,22 +152,9 @@ public class Analyzer {
             // =========================================================================
             //  KONFIGURÁCIA VÁH PRE EXPERIMENTY (Uprav si čísla podľa potreby)
             // =========================================================================
-            Map<String, Double> weights = new HashMap<>();
-
-// --- TVOJA SVÄTÁ TROJICA (Absolútna priorita) ---
-            weights.put("STRETCH", 5.0);    // Extrémny trest za naťahovanie ukazovákov. Na Toteme chceme ruky v základnej pozícii.
-            weights.put("REDIRECTS", 5.0);  // Extrémny trest za "Pinball" (Zákaz lámania smeru na jednej ruke).
-            weights.put("SFS", 3.0);        // Tvrdý trest za Skipgramy (preskakovanie jedného znaku tým istým prstom).
-
-// --- DRŽÍME NA UZDE (Aby sa algoritmus nezbláznil) ---
-            weights.put("SFB", 1.0);        // Znižujeme na minimum. Len aby nám sem nepreliezol nejaký odpadový layout s 8 % SFB. Pre elitu to prestane hrať rolu.
-
-// --- IGNORUJEME (Štatistický šum a nepotrebné metriky) ---
-            weights.put("SCISSORS", 0.0);   // Presne ako hovoríš. Pod 1 % to nemá zmysel riešiť. Vypíname.
-            weights.put("ROLL_IN", 0.0);    // Vypíname, spoľahneme sa na to, že nízke Redirects automaticky zabezpečia plynulosť.
-            weights.put("ROLL_OUT", 0.0);
-            weights.put("ALT", 0.0);
-            weights.put("RUNS", 0.0);
+            Weights weights = Weights.builder().sfb(1.0).sfs(3.0).stretch(5.0).alt(0.0).runs(0.0)
+                    .scissors(0.0).redirects(5.0).rollIn(0.0).rollOut(0.0)
+                    .build();
 
 // --- ZABIJACI (Hardcore tresty) ---
 //            weights.put("SFB", 5.0);        // Absolútny kráľ bolesti. Kmitanie jedným prstom netolerujeme.
@@ -299,16 +183,12 @@ public class Analyzer {
 //            // Ignorujeme alternáciu a valivé behy trestáme iba jemne
 //            weights.put("ALT", 0.0);
 //            weights.put("RUNS", 0.5);
-
-            // Výpočet váženého skóre a zoradenie (Zostupne - najlepší všestranný stred je prvý)
-            calculateWeightedBalancedScores(allResults, weights);
-            allResults.sort(Comparator.comparingDouble(AnalysisResult::getBalancedScore).reversed());
-
-            // Tlač záverečného sumárneho rebríčka pre rýchle globálne porovnanie
-            printLeaderboard(allResults, "Užívateľské vážené skóre");
+            
+            LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults);
 
         } catch (IOException e) {
             System.err.println("Chyba pri čítaní korpusu '" + korpusPath + "'. Detaily: " + e.getMessage());
         }
     }
+
 }

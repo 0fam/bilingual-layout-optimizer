@@ -11,7 +11,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class LayoutAnalyzer {
+public class LayoutAnalyzerOldMonolit {
 
     enum Finger {
         L_PINKY(0), L_RING(1), L_MIDDLE(2), L_INDEX(3), L_INNER(4),

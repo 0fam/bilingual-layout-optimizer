@@ -1,6 +1,6 @@
 package mh.Ofam.layout;
 
-class AnalysisResult {
+public class AnalysisResult {
     String layoutName;
     LayoutStats layoutStats;
     double balancedScore = 0.0;
