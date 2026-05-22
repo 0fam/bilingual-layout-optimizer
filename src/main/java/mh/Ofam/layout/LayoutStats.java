@@ -97,8 +97,9 @@ public class LayoutStats {
                     }
 
                     if (k1.hand == k2.hand) {
-                        // SFB
-                        if (k1.finger == k2.finger) {
+                        // SFB (Same Finger Bigram)
+                        // OPRAVA: Pridané k1 != k2, aby sme netrestali dvojité stlačenie toho istého klávesu (SKB)
+                        if (k1.finger == k2.finger && k1 != k2) {
                             ls.sfb++;
                             wordHadSfb = true;
                         }
@@ -307,7 +308,6 @@ public class LayoutStats {
         return totalMonograms == 0 ? 0 : (longOneHandedRuns * 100.0) / totalMonograms;
     }
 
-    // Nové pridané gettery pre nové metriky (predpokladá sa, že sú už implementované v LayoutStats)
     double getScissorsPct() {
         return totalBigrams == 0 ? 0 : (scissors * 100.0) / totalBigrams;
     }

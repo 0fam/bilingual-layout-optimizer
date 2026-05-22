@@ -153,21 +153,23 @@ public class Analyzer {
             //  KONFIGURÁCIA VÁH PRE EXPERIMENTY (Uprav si čísla podľa potreby)
             // =========================================================================
             Weights weights = Weights.builder()
-                    // --- KRVAVÁ TROJICA (Musia mať ROVNAKÚ a MAXIMÁLNU váhu 5.0) ---
-                    .sfb(5.0)        // TREST: Halmak a Dvorak tu okamžite zhoria za SFB > 4%.
-                    .stretch(5.0)    // TREST: Dvorak a Stronk tu zhoria za to, že ničia ukazováky.
-                    .redirects(5.0)  // TREST: Colemak a Seht tu zhoria za Pinball efekt.
+                    // --- KRVAVÁ TROJICA (Toto je fyziológia, tu sa neustupuje, váha 5.0) ---
+                    .sfb(5.0)        // TREST: Kmitanie rovnakého prsta (SFB) je smrť.
+                    .stretch(5.0)    // TREST: Ničenie ukazovákov naťahovaním do stredu.
+                    .redirects(4.0)  // TREST: Zmeny smeru a kŕče v ruke (Pinball efekt).
 
-                    // --- SEKUNDÁRNE CHYBY (Vysoká váha 3.0) ---
-                    .maxFinger(3.0)  // TREST: Ruky musia trpieť férovo (dôležité pre dof a nstr).
-                    .sfs(3.0)        // TREST: Sendvičové preskakovanie.
+                    // --- SEKUNDÁRNE CHYBY ---
+                    .sfs(3.0)        // TREST: Sendvičové preskakovanie prstov (stále dôležité).
 
-                    // --- MIKRO-BOLESŤ (Váha 2.0) ---
+                    // --- MIKRO-BOLESŤ ---
                     .lsb(2.0)        // TREST: Bočné kríženie.
                     .lhb(2.0)        // TREST: Ničenie malíčka a prstenníka.
 
+                    // --- UVOĽNENÉ METRIKY (Tu sme znížili váhu) ---
+                    .maxFinger(1.0)  // ZNÍŽENÉ z 3.0: Dovoľujeme dominantnej ruke prevziať záťaž!
+                    .homeRow(1.0)    // Jemný bonus za stredový riadok.
+
                     // --- OSTATNÉ (Šum - ignorujeme) ---
-                    .homeRow(1.0)    // Jemný bonus za držanie prstov na stredovom riadku.
                     .scissors(0.0)
                     .alt(0.0)
                     .runs(0.0)
