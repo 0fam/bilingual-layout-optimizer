@@ -14,14 +14,18 @@ public class GeminiJsonParser {
     private static final Pattern UNICODE_PATTERN = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
 
     public static void main(String[] args) {
+        // PREPÍNAČE KONFIGURÁCIE
+        boolean zobratIbaPrvyRiadokOtazky = true; // ak je true, zoberie iba text po prvý výskyt \n
+        boolean generovatOdpovede = false;        // ak je false, súbor s odpoveďami sa nevytvorí
+
         // VSTUP: Tvoj surový JSON
         String directory = "C:/home/project-personal/korpus/gemini/";
-        String fileName = "mh";
+        String fileName = "hh";
         String fileType = ".json";
         Path jsonPath = Paths.get(directory + fileName + fileType);
 
         // VÝSTUPY: Dva samostatné surové korpusy
-        Path outputPathOtazky = Paths.get(directory + fileName + "_Q" + ".txt");
+        Path outputPathOtazky = Paths.get(directory + fileName + "_Q" + (zobratIbaPrvyRiadokOtazky? "1" : "") + ".txt");
         Path outputPathOdpovede = Paths.get(directory + fileName + "_A" + ".txt");
 
         System.out.println("Spracovávam JSON a rozdeľujem otázky a odpovede...");
@@ -32,7 +36,7 @@ public class GeminiJsonParser {
 
         try (BufferedReader reader = Files.newBufferedReader(jsonPath, StandardCharsets.UTF_8);
              BufferedWriter writerOtazky = Files.newBufferedWriter(outputPathOtazky, StandardCharsets.UTF_8);
-             BufferedWriter writerOdpovede = Paths.get(outputPathOdpovede.toUri()) != null ? Files.newBufferedWriter(outputPathOdpovede, StandardCharsets.UTF_8) : null) {
+             BufferedWriter writerOdpovede = generovatOdpovede ? Files.newBufferedWriter(outputPathOdpovede, StandardCharsets.UTF_8) : null) {
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -52,6 +56,14 @@ public class GeminiJsonParser {
                         // Dekódovanie JSON a Unicode (\\u00xx) escape znakov
                         String cistaOtazka = decodeJsonAndUnicode(pamatanaOtazka);
                         String cistaOdpoved = decodeJsonAndUnicode(value);
+
+                        // Ak chceme iba prvý riadok otázky, rozrežeme ju podľa reálneho enteru
+                        if (zobratIbaPrvyRiadokOtazky) {
+                            int enterIdx = cistaOtazka.indexOf("\n");
+                            if (enterIdx != -1) {
+                                cistaOtazka = cistaOtazka.substring(0, enterIdx);
+                            }
+                        }
 
                         // Odstránenie HTML balastu z odpovede
                         cistaOdpoved = cistaOdpoved.replaceAll("<[^>]+>", " ");
@@ -77,7 +89,11 @@ public class GeminiJsonParser {
             System.out.printf(" Spracovaných riadkov celkom: %d\n", riadkovSpracovanych);
             System.out.printf(" Vytiahnutých čistých dvojíc: %d\n", spracovanychParov);
             System.out.printf(" Surové Otázky:  %s\n", outputPathOtazky.toAbsolutePath());
-            System.out.printf(" Surové Odpovede: %s\n", outputPathOdpovede.toAbsolutePath());
+            if (generovatOdpovede) {
+                System.out.printf(" Surové Odpovede: %s\n", outputPathOdpovede.toAbsolutePath());
+            } else {
+                System.out.println(" Surové Odpovede: GENEROVANIE VYPNUTÉ");
+            }
 
         } catch (IOException e) {
             System.err.println("Chyba pri prúdovom zápise: " + e.getMessage());
