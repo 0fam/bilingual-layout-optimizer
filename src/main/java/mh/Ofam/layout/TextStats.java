@@ -54,6 +54,10 @@ public class TextStats {
     public void printTextReport() {
         System.out.printf("Celkovy pocet slov: %d\n", wordsTotal);
 
+        System.out.printf("Pocet unikatnych slov: %d\n", wordFreqs.size());
+
+        printWords(200);
+
         System.out.printf("Celkovy pocet pismen: %d\n", charsTotal);
 
         System.out.println("\n FREKVENCIA JEDNOTLIVÝCH ZNAKOV (Od najpoužívanejšieho)");
@@ -76,6 +80,35 @@ public class TextStats {
         }
         if (count % 2 != 0) System.out.println();
 
+    }
+
+    private void printWords(int size) {
+        System.out.println("\n TOP " + size + " NAJČASTEJŠÍCH SLOV");
+        System.out.println("--------------------------------------------------------------------------------");
+
+        List<Map.Entry<String, Long>> sortedWords = wordFreqs.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(size)
+                .toList();
+
+// Vypíšeme top rebricek slov v 2 stĺpcoch pre maximálnu prehľadnosť
+        for (int i = 0; i < sortedWords.size(); i += 2) {
+            Map.Entry<String, Long> e1 = sortedWords.get(i);
+            double pct1 = (e1.getValue() * 100.0) / wordsTotal;
+            String word1 = "'" + e1.getKey() + "'";
+            String col1 = String.format("  %3d. %-15s : %5.2f%% (%d x)", (i + 1), word1, pct1, e1.getValue());
+
+            String col2 = "";
+            if (i + 1 < sortedWords.size()) {
+                Map.Entry<String, Long> e2 = sortedWords.get(i + 1);
+                double pct2 = (e2.getValue() * 100.0) / wordsTotal;
+                String word2 = "'" + e2.getKey() + "'";
+                col2 = String.format("    |    %3d. %-15s : %5.2f%% (%d x)", (i + 2), word2, pct2, e2.getValue());
+            }
+
+            System.out.println(col1 + col2);
+        }
+        System.out.println("--------------------------------------------------------------------------------");
     }
 
 }

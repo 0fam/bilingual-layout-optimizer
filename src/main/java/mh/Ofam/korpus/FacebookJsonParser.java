@@ -21,7 +21,7 @@ public class FacebookJsonParser {
 
         // VSTUPY A VÝSTUPY (Presne podľa teba)
         String directory = "C:/home/project-personal/korpus/fb/";
-        String fileName = "message_2";
+        String fileName = "message_6";
         String fileType = ".json";
         Path jsonPath = Paths.get(directory + fileName + fileType);
 
