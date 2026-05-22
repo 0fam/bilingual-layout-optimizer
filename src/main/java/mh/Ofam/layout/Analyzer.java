@@ -154,20 +154,20 @@ public class Analyzer {
             // =========================================================================
             Weights weights = Weights.builder()
                     // --- KRVAVÁ TROJICA (Toto je fyziológia, tu sa neustupuje, váha 5.0) ---
-                    .sfb(5.0)        // TREST: Kmitanie rovnakého prsta (SFB) je smrť.
-                    .stretch(5.0)    // TREST: Ničenie ukazovákov naťahovaním do stredu.
-                    .redirects(4.0)  // TREST: Zmeny smeru a kŕče v ruke (Pinball efekt).
+                    .sfb(3.0)        // TREST: Kmitanie rovnakého prsta (SFB) je smrť.
+                    .stretch(3.0)    // TREST: Ničenie ukazovákov naťahovaním do stredu.
+                    .redirects(2.5)  // TREST: Zmeny smeru a kŕče v ruke (Pinball efekt).
 
                     // --- SEKUNDÁRNE CHYBY ---
-                    .sfs(3.0)        // TREST: Sendvičové preskakovanie prstov (stále dôležité).
+                    .sfs(2.0)        // TREST: Sendvičové preskakovanie prstov (stále dôležité).
 
                     // --- MIKRO-BOLESŤ ---
-                    .lsb(2.0)        // TREST: Bočné kríženie.
-                    .lhb(2.0)        // TREST: Ničenie malíčka a prstenníka.
+                    .lsb(1.5)        // TREST: Bočné kríženie.
+                    .lhb(1.5)        // TREST: Ničenie malíčka a prstenníka.
 
                     // --- UVOĽNENÉ METRIKY (Tu sme znížili váhu) ---
                     .maxFinger(1.0)  // ZNÍŽENÉ z 3.0: Dovoľujeme dominantnej ruke prevziať záťaž!
-                    .homeRow(1.0)    // Jemný bonus za stredový riadok.
+                    .homeRow(0.5)    // Jemný bonus za stredový riadok.
 
                     // --- OSTATNÉ (Šum - ignorujeme) ---
                     .scissors(0.0)
