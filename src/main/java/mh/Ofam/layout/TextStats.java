@@ -56,10 +56,14 @@ public class TextStats {
 
         System.out.printf("Pocet unikatnych slov: %d\n", wordFreqs.size());
 
-        printWords(200);
-
         System.out.printf("Celkovy pocet pismen: %d\n", charsTotal);
 
+        printCharsStats();
+
+        printWordsStats(200);
+    }
+
+    private void printCharsStats() {
         System.out.println("\n FREKVENCIA JEDNOTLIVÝCH ZNAKOV (Od najpoužívanejšieho)");
         List<Map.Entry<Character, Long>> sortedChars = charFreqs.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
@@ -82,7 +86,7 @@ public class TextStats {
 
     }
 
-    private void printWords(int size) {
+    private void printWordsStats(int size) {
         System.out.println("\n TOP " + size + " NAJČASTEJŠÍCH SLOV");
         System.out.println("--------------------------------------------------------------------------------");
 
