@@ -57,19 +57,29 @@ public class LeaderboardStats {
             double rMiddle = (r.fingers[7] * 100.0) / total;
             double rIndex = ((r.fingers[6] + r.fingers[5]) * 100.0) / total;
 
-            // TRESTY ZA PREŤAŽENIE (Overload) - Mantinely nastavíme anatomicky
-            // Malíček by nemal ísť cez 8%, prstenník cez 14%, atď.
-            double lPinkyScore = getAbsoluteScore(lPinky, 4.0, 5.0, 7.0, 8.0);
-            double rPinkyScore = getAbsoluteScore(rPinky, 4.0, 5.0, 7.0, 8.0);
-            double lRingScore = getAbsoluteScore(lRing, 8.0, 10.0, 14, 16.0);
-            double rRingScore = getAbsoluteScore(rRing, 8.0, 10.0, 14, 16.0);
-            double lMiddleScore = getAbsoluteScore(lMiddle, 14.0, 16.0, 22.0, 24.0);
-            double rMiddleScore = getAbsoluteScore(rMiddle, 14.0, 16.0, 22.0, 24.0);
-            double lIndexScore = getAbsoluteScore(lIndex, 14.0, 18.0, 26.0, 30.0);
-            double rIndexScore = getAbsoluteScore(rIndex, 14.0, 18.0, 26.0, 30.0);
+            // TRESTY ZA PREŤAŽENIE A FLÁKANIE SA (Lichobežníková tolerancia)
+            // Parametre: (hodnota, lowWorst, lowBest, highBest, highWorst)
 
-            // Celkové skóre prstov je určené najslabším anatomickým článkom layoutu
-            double maxFingerScore = lPinkyScore*rPinkyScore*lRingScore*rRingScore*lMiddleScore*rMiddleScore*lIndexScore*rIndexScore;
+            // Malíčky: Dovolíme im flákať sa, ale prísne trestáme preťaženie (>9%)
+            double lPinkyScore = getAbsoluteScore(lPinky, 0.0, 1.0, 9.0, 12.0);
+            double rPinkyScore = getAbsoluteScore(rPinky, 0.0, 1.0, 9.0, 12.0);
+
+            // Prstenníky: Široká zóna tolerancie (5% - 20%)
+            double lRingScore = getAbsoluteScore(lRing, 2.0, 5.0, 20.0, 24.0);
+            double rRingScore = getAbsoluteScore(rRing, 2.0, 5.0, 20.0, 24.0);
+
+            // Prostredníky: Stredná pracovná sila (8% - 22%)
+            double lMiddleScore = getAbsoluteScore(lMiddle, 5.0, 8.0, 22.0, 26.0);
+            double rMiddleScore = getAbsoluteScore(rMiddle, 5.0, 8.0, 22.0, 26.0);
+
+            // Ukazováky: Najsilnejšie prsty. MUSIA urobiť aspoň 12%, inak layout plytvá ich potenciálom!
+            double lIndexScore = getAbsoluteScore(lIndex, 9.0, 12.0, 26.0, 30.0);
+            double rIndexScore = getAbsoluteScore(rIndex, 9.0, 12.0, 26.0, 30.0);
+
+            // Zlúčenie násobením: Väčšina prstov bude 1.0.
+            // Ak nejaký prst vybočí, skóre klesne. Ak vybočia viaceré, tresty sa tvrdo zosobášia.
+            double maxFingerScore = lPinkyScore * rPinkyScore * lRingScore * rRingScore * lMiddleScore * rMiddleScore * lIndexScore * rIndexScore;
+            r.fingerScore = maxFingerScore;
 
             double lsbScore = getAbsoluteScore(r.getLsbPct(), 1.0, 6.0);
             double lhbScore = getAbsoluteScore(r.getLhbPct(), 1.0, 5.0);
@@ -134,17 +144,18 @@ public class LeaderboardStats {
         System.out.println("\n=========================================================================================================================================");
         System.out.println("   VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: " + sortedByCriteria.toUpperCase() + ")");
         System.out.println("=========================================================================================================================================");
-        System.out.printf("%-5s | %-22s | %-9s | %-9s | %-10s | %-8s | %-7s | %-7s | %-7s | %-7s | %-8s | %-8s | %-10s\n",
-                "Idx", "Názov layoutu", "BAL_SCORE", "MaxFing %", "InnerStr %", "Redir %", "SFB %", "SFS %", "LSB %", "LHB %", "HomeRow%", "Alt %", "Jednoruké runs %");
+        System.out.printf("%-5s | %-22s | %-9s | %-8s | %-10s | %-8s | %-7s | %-7s | %-7s | %-7s | %-8s | %-8s | %-10s\n",
+                "Idx", "Názov layoutu", "BAL_SCORE", "Fing_AVG", "InnerStr %", "Redir %", "SFB %", "SFS %", "LSB %", "LHB %", "HomeRow%", "Alt %", "Jednoruké runs %");
         System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------");
 
         int i = 0;
         for (LayoutStats res : results) {
-            System.out.printf("%-5d | %-22s | %8.2f  | %7.2f %% | %8.2f %% | %6.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %6.2f %% | %6.2f %% | %6.2f\n",
+            System.out.printf("%-5d | %-22s | %8.2f  | %7.2f | %8.2f %% | %6.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %6.2f %% | %6.2f %% | %6.2f\n",
                     ++i,
                     res.getLayout().name,
                     res.getBalancedScore(),
-                    res.getMaxFingerLoadPct(),
+//                    res.getMaxFingerLoadPct(),
+                    res.fingerScore,
                     res.getInnerStretchPct(),
                     res.getRedirectsPct(),
                     res.getSfbPct(),

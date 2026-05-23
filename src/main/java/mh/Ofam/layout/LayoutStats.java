@@ -46,6 +46,8 @@ public class LayoutStats {
 
     @Getter
     double balancedScore = 0.0;
+    @Getter
+    double fingerScore = 0.0;
 
     public static LayoutStats instance(TextStats textStats, Layout layout) {
         LayoutStats ls = new LayoutStats();
