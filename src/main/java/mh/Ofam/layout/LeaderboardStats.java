@@ -44,9 +44,36 @@ public class LeaderboardStats {
             double scissorsScore = getAbsoluteScore(r.getScissorsPct(), 0.5, 3.0);
             double redirectsScore = getAbsoluteScore(r.getRedirectsPct(), 3.0, 12.0); // Pod 3% je luxus, nad 12% je pinball (Colemak)
 
-            double maxFingerScore = getAbsoluteScore(r.getMaxFingerLoadPct(), 16.0, 22.0); // Fér záťaž prstov
+            // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
+            double total = r.totalMonograms == 0 ? 1 : (double) r.totalMonograms;
+
+            double lPinky = (r.fingers[0] * 100.0) / total;
+            double lRing = (r.fingers[1] * 100.0) / total;
+            double lMiddle = (r.fingers[2] * 100.0) / total;
+            double lIndex = ((r.fingers[3] + r.fingers[4]) * 100.0) / total;
+
+            double rPinky = (r.fingers[9] * 100.0) / total;
+            double rRing = (r.fingers[8] * 100.0) / total;
+            double rMiddle = (r.fingers[7] * 100.0) / total;
+            double rIndex = ((r.fingers[6] + r.fingers[5]) * 100.0) / total;
+
+            // TRESTY ZA PREŤAŽENIE (Overload) - Mantinely nastavíme anatomicky
+            // Malíček by nemal ísť cez 8%, prstenník cez 14%, atď.
+            double lPinkyScore = getAbsoluteScore(lPinky, 4.0, 5.0, 7.0, 8.0);
+            double rPinkyScore = getAbsoluteScore(rPinky, 4.0, 5.0, 7.0, 8.0);
+            double lRingScore = getAbsoluteScore(lRing, 8.0, 10.0, 14, 16.0);
+            double rRingScore = getAbsoluteScore(rRing, 8.0, 10.0, 14, 16.0);
+            double lMiddleScore = getAbsoluteScore(lMiddle, 14.0, 16.0, 22.0, 24.0);
+            double rMiddleScore = getAbsoluteScore(rMiddle, 14.0, 16.0, 22.0, 24.0);
+            double lIndexScore = getAbsoluteScore(lIndex, 14.0, 18.0, 26.0, 30.0);
+            double rIndexScore = getAbsoluteScore(rIndex, 14.0, 18.0, 26.0, 30.0);
+
+            // Celkové skóre prstov je určené najslabším anatomickým článkom layoutu
+            double maxFingerScore = lPinkyScore*rPinkyScore*lRingScore*rRingScore*lMiddleScore*rMiddleScore*lIndexScore*rIndexScore;
+
             double lsbScore = getAbsoluteScore(r.getLsbPct(), 1.0, 6.0);
             double lhbScore = getAbsoluteScore(r.getLhbPct(), 1.0, 5.0);
+
             // Ideál je pod 0,15 % úderov, odpad je všetko nad 1,2 %
             double runsScore = getAbsoluteScore(r.getRunsPct(), 0.15, 1.20);
 
@@ -90,6 +117,18 @@ public class LeaderboardStats {
             return 0.01 + 0.99 * ((value - worst) / (best - worst));
         }
     }
+
+    private double getAbsoluteScore(double value, double lowWorst, double lowBest, double highBest, double highWorst) {
+        // priklad lw 1, lb 2, hb 3, hw 4
+        if (value <= lowWorst) return 0.01; // <= 1
+        if (value >= lowWorst && value <= lowBest) return 0.01 + 0.99 * ((value - lowWorst) / (lowBest - lowWorst)); // 1 az 2
+        if (value >= lowBest && value <= highBest) return 1.0; // 2 az 3
+        if (value >= highBest && value <= highWorst) return 0.01 + 0.99 * ((highWorst - value) / (highWorst - highBest)); // 3 az 4
+        if (value >= highWorst) return 0.01; // >= 4
+        // should not happen
+        return 1000000000;
+    }
+
     // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE NOVÉ METRIKY ---
     public void printLeaderboard(List<LayoutStats> results, String sortedByCriteria) {
         System.out.println("\n=========================================================================================================================================");
@@ -118,4 +157,5 @@ public class LeaderboardStats {
             );
         }
         System.out.println("=========================================================================================================================================");
-    }}
+    }
+}
