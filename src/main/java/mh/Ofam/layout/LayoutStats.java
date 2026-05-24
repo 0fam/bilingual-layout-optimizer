@@ -61,8 +61,10 @@ public class LayoutStats {
     double balancedScore = 0.0;
     @Getter
     double fingerPainScore = 0.0;
+    @Getter
+    double eliteScore = 0.0;
 
-    public static LayoutStats instance(TextStats textStats, Layout layout) {
+    public static LayoutStats instance(TextStats textStats, Layout layout, Weights weights) {
         LayoutStats ls = new LayoutStats();
         ls.layout = layout;
 
@@ -217,6 +219,8 @@ public class LayoutStats {
             ls.rIndex = ((ls.fingers[6] + ls.fingers[5]) * 100.0) / total;
         }
 
+        ls.computeGlobalEliteScore(weights); // Vypočítame skóre, aby sme ho mohli zobraziť v reporte
+
         ls.printLayoutReport(layout);
 
         return ls;
@@ -355,6 +359,121 @@ public class LayoutStats {
 
     public double getLhbPct() {
         return totalBigrams == 0 ? 0 : (lhb * 100.0) / totalBigrams;
+    }
+
+    // --- ELITNÁ ŠKÁLOVACIA FUNKCIA S MIKRO-BONUSOM ---
+    // Parametre: hodnota, ideál (0.0 alebo 100.0), bezpečná zóna (skóre 1.0), gilotína (skóre 0.01)
+    private double getEliteScore(double value, double absoluteIdeal, double safeLimit, double deathLimit) {
+        double maxBonus = 1.10; // Bonus +0.1 (10%) za teoretickú dokonalosť
+
+        if (absoluteIdeal < deathLimit) {
+            // TRESTNÉ METRIKY (Čím menej, tým lepšie - napr. SFB, Stretch)
+            if (value >= deathLimit) return 0.01; // Gilotína
+            if (value <= absoluteIdeal) return maxBonus; // Plná odmena za dokonalosť
+
+            if (value <= safeLimit) {
+                // Zóna Elity: Lineárny bonus od 1.00 do 1.10
+                return 1.00 + (maxBonus - 1.00) * ((safeLimit - value) / (safeLimit - absoluteIdeal));
+            } else {
+                // Zóna Kompromisu: Voľný pád z 1.00 na 0.01
+                return 0.01 + 0.99 * ((deathLimit - value) / (deathLimit - safeLimit));
+            }
+        } else {
+            // ODMENOVÉ METRIKY (Čím viac, tým lepšie - napr. Alternácia, HomeRow)
+            if (value <= deathLimit) return 0.01; // Gilotína
+            if (value >= absoluteIdeal) return maxBonus; // Plná odmena
+
+            if (value >= safeLimit) {
+                // Zóna Elity: Lineárny bonus od 1.00 do 1.10
+                return 1.00 + (maxBonus - 1.00) * ((value - safeLimit) / (absoluteIdeal - safeLimit));
+            } else {
+                // Zóna Kompromisu: Voľný pád z 1.00 na 0.01
+                return 0.01 + 0.99 * ((value - deathLimit) / (safeLimit - deathLimit));
+            }
+        }
+    }
+
+    public double computeGlobalEliteScore(Weights weights) {
+        // Zisťujeme celkovú váhu pre geometrický priemer
+        double totalWeight = weights.totalWeight();
+// Ochrana pred delením nulou (ak by si náhodou vypol úplne všetky váhy na 0.0)
+
+        // --- TRESTY (hodnota, IDEÁL, SAFE_LIMIT, SMRŤ) ---
+// SFB: Do 1.5% je super elitné, nad 5.0% je kŕč
+        double sfbScore = getEliteScore(getSfbPct(), 0.0, 1.5, 5.0);
+// SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
+        double sfsScore = getEliteScore(getSfsPct(), 0.0, 4.0, 9.0);
+// Stretch: Na Toteme je stredový stĺpec blízko, do 6.0% je to bez námahy, nad 15.0% ťa už bude bolieť zápästie
+        double stretchScore = getEliteScore(getInnerStretchPct(), 0.0, 6.0, 15.0);
+// Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
+        double scissorsScore = getEliteScore(getScissorsPct(), 0.0, 0.5, 3.0);
+// Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
+        double redirectsScore = getEliteScore(getRedirectsPct(), 0.0, 4.0, 15.0);
+
+// --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Čisté stropy, preťažený prst zhodí layout) ---
+        double total = totalMonograms == 0 ? 1 : (double) totalMonograms;
+
+        double lPinky = (fingers[0] * 100.0) / total;
+        double lRing = (fingers[1] * 100.0) / total;
+        double lMiddle = (fingers[2] * 100.0) / total;
+        double lIndex = ((fingers[3] + fingers[4]) * 100.0) / total;
+
+        double rPinky = (fingers[9] * 100.0) / total;
+        double rRing = (fingers[8] * 100.0) / total;
+        double rMiddle = (fingers[7] * 100.0) / total;
+        double rIndex = ((fingers[6] + fingers[5]) * 100.0) / total;
+
+// Malíčky: Ideál 0%, bezpečné do 9%, nad 12% je to invalidita
+        double lPinkyScore = getEliteScore(lPinky, 0.0, 9.0, 12.0);
+        double rPinkyScore = getEliteScore(rPinky, 0.0, 9.0, 12.0);
+
+// Prstenníky: Naložené kvôli slovenčine. Safe do 20%, smrť na 24%
+        double lRingScore = getEliteScore(lRing, 0.0, 20.0, 24.0);
+        double rRingScore = getEliteScore(rRing, 0.0, 20.0, 24.0);
+
+// Prostredníky: Stabilné piliere. Safe do 22%, smrť na 26%
+        double lMiddleScore = getEliteScore(lMiddle, 0.0, 22.0, 26.0);
+        double rMiddleScore = getEliteScore(rMiddle, 0.0, 22.0, 26.0);
+
+// Ukazováky: Najsilnejšie, ale majú aj stredové stĺpce. Safe do 26%, smrť na 30%
+        double lIndexScore = getEliteScore(lIndex, 0.0, 26.0, 30.0);
+        double rIndexScore = getEliteScore(rIndex, 0.0, 26.0, 30.0);
+
+// Najslabší článok: Layout zlyháva na svojom najviac zničenom prste
+        double maxFingerScore = Math.min(
+                Math.min(Math.min(lPinkyScore, rPinkyScore), Math.min(lRingScore, rRingScore)),
+                Math.min(Math.min(lMiddleScore, rMiddleScore), Math.min(lIndexScore, rIndexScore))
+        );
+        fingerScore = maxFingerScore;
+
+        double lsbScore = getEliteScore(getLsbPct(), 0.0, 1.0, 6.0);
+        double lhbScore = getEliteScore(getLhbPct(), 0.0, 1.0, 5.0);
+        double runsScore = getEliteScore(getRunsPct(), 0.0, 0.15, 1.20);
+
+// --- ODMENY (Ideál je vždy 100.0, toto bude tvoja "Farba", ktorú môžeš vypnúť váhou 0.0) ---
+        double altScore = getEliteScore(getAlternationPct(), 100.0, 60.0, 40.0);
+        double rollInScore = getEliteScore(getRollInPct(), 100.0, 20.0, 0.0);
+        double rollOutScore = getEliteScore(getRollOutPct(), 100.0, 15.0, 0.0);
+        double homeRowScore = getEliteScore(getHomeRowPct(), 100.0, 65.0, 45.0);
+
+// --- FINÁLNY VÝPOČET ---
+        double poweredProduct =
+                Math.pow(sfbScore, weights.getSfb()) *
+                        Math.pow(sfsScore, weights.getSfs()) *
+                        Math.pow(stretchScore, weights.getStretch()) *
+                        Math.pow(altScore, weights.getAlt()) *
+                        Math.pow(runsScore, weights.getRuns()) *
+                        Math.pow(scissorsScore, weights.getScissors()) *
+                        Math.pow(redirectsScore, weights.getRedirects()) *
+                        Math.pow(rollInScore, weights.getRollIn()) *
+                        Math.pow(rollOutScore, weights.getRollOut()) *
+                        Math.pow(maxFingerScore, weights.getMaxFinger()) * Math.pow(lsbScore, weights.getLsb()) *
+                        Math.pow(lhbScore, weights.getLhb()) *
+                        Math.pow(homeRowScore, weights.getHomeRow());
+
+        eliteScore = Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0;
+
+        return eliteScore;
     }
 
 }

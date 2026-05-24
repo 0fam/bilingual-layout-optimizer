@@ -193,37 +193,6 @@ public class LeaderboardStats {
         return 1000000000;
     }
 
-    // --- ELITNÁ ŠKÁLOVACIA FUNKCIA (ŠIKMÁ STRECHA) ---
-    private double getEliteScore(double value, double absoluteIdeal, double safeLimit, double deathLimit) {
-        double maxBonus = 1.10; // O koľko percent môžeš odmeniť čistú dokonalosť (10%)
-
-        if (absoluteIdeal < deathLimit) {
-            // TRESTNÉ METRIKY (Čím menej, tým lepšie - napr. SFB, Stretch)
-            if (value >= deathLimit) return 0.01; // Gilotína
-            if (value <= absoluteIdeal) return maxBonus; // Plná odmena za dokonalosť
-
-            if (value <= safeLimit) {
-                // ZÓNA ELITY: Získava mikro-bonus od 1.00 do 1.10
-                return 1.00 + (maxBonus - 1.00) * ((safeLimit - value) / (safeLimit - absoluteIdeal));
-            } else {
-                // ZÓNA KOMPROMISU: Padá od 1.00 k 0.01
-                return 0.01 + 0.99 * ((deathLimit - value) / (deathLimit - safeLimit));
-            }
-        } else {
-            // ODMENOVÉ METRIKY (Čím viac, tým lepšie - napr. Alternácia, HomeRow)
-            if (value <= deathLimit) return 0.01; // Gilotína
-            if (value >= absoluteIdeal) return maxBonus; // Plná odmena
-
-            if (value >= safeLimit) {
-                // ZÓNA ELITY: Mikro-bonus od 1.00 do 1.10
-                return 1.00 + (maxBonus - 1.00) * ((value - safeLimit) / (absoluteIdeal - safeLimit));
-            } else {
-                // ZÓNA KOMPROMISU: Padá od 1.00 k 0.01
-                return 0.01 + 0.99 * ((value - deathLimit) / (safeLimit - deathLimit));
-            }
-        }
-    }
-
     // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE NOVÉ METRIKY ---
     public void printLeaderboard(List<LayoutStats> results, String sortedByCriteria) {
         System.out.println("\n=========================================================================================================================================");
