@@ -207,13 +207,24 @@ public class LeaderboardStats {
         System.out.println("   VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: " + sortedByCriteria.toUpperCase() + ")");
         System.out.println("=====================================================================================================================================================================================================================================");
 
-        // Hlavička tabuľky (Pridané: Scis%, RollI%, RollO%)
-        System.out.printf("%-4s | %-20s | %-6s | %-6s | %-6s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-6s | %-6s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\n",
-                "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
-        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+        // Formátovací string pre hlavičku (vytiahnutý von, aby sme ho nemuseli duplikovať v kóde)
+        String headerFormat = "%-4s | %-20s | %-6s | %-6s | %-6s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-6s | %-6s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\n";
+        String lineSeparator = "-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+
+        // Prvá inicializačná hlavička
+        System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
+        System.out.println(lineSeparator);
 
         int i = 0;
         for (LayoutStats res : results) {
+
+            // OPRAVA PRE SKROLOVANIE: Každých 10 riadkov znova vytlačíme hlavičku
+            if (i > 0 && i % 10 == 0) {
+                System.out.println(lineSeparator);
+                System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
+                System.out.println(lineSeparator);
+            }
+
             System.out.printf("%-4d | %-20s | %6.4f | %6.2f | %6.2f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %6.2f | %6.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %6.2f | %6.2f | %5.2f\n",
                     ++i,
                     res.getLayout().name,
@@ -232,13 +243,13 @@ public class LeaderboardStats {
                     res.getRedirectsPct(),
                     res.getSfbPct(),
                     res.getSfsPct(),
-                    res.getScissorsPct(),         // DOPLNENÉ
+                    res.getScissorsPct(),
                     res.getLsbPct(),
                     res.getLhbPct(),
                     res.getHomeRowPct(),
                     res.getAlternationPct(),
-                    res.getRollInPct(),           // DOPLNENÉ
-                    res.getRollOutPct(),          // DOPLNENÉ
+                    res.getRollInPct(),
+                    res.getRollOutPct(),
                     res.getRunsPct()
             );
         }
