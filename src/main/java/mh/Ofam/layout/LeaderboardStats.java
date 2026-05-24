@@ -10,12 +10,18 @@ import java.util.Map;
 @Slf4j
 public class LeaderboardStats {
 
-    public static LeaderboardStats instance(Weights weights, List<LayoutStats> allResults) {
+    public static LeaderboardStats instance(Weights weights, List<LayoutStats> allResults, boolean sortByFingerPain) {
+
         LeaderboardStats leaderboardStats = new LeaderboardStats();
 
         // Výpočet váženého skóre a zoradenie (Zostupne - najlepší všestranný stred je prvý)
         leaderboardStats.calculateWeightedBalancedScores(weights, allResults);
-        allResults.sort(Comparator.comparingDouble(LayoutStats::getBalancedScore).reversed());
+        leaderboardStats.calculatePainScore(weights, allResults);
+        if (sortByFingerPain) {
+            allResults.sort(Comparator.comparingDouble(LayoutStats::getFingerPainScore));
+        } else {
+            allResults.sort(Comparator.comparingDouble(LayoutStats::getBalancedScore).reversed());
+        }
 
         // Tlač záverečného sumárneho rebríčka pre rýchle globálne porovnanie
         leaderboardStats.printLeaderboard(allResults, "Zero Pain & Finger Protection");
@@ -27,11 +33,7 @@ public class LeaderboardStats {
     public void calculateWeightedBalancedScores(Weights weights, List<LayoutStats> results) {
         if (results.isEmpty()) return;
 
-        double totalWeight = weights.getSfb() + weights.getSfs() + weights.getStretch() +
-                weights.getAlt() + weights.getRuns() + weights.getScissors() +
-                weights.getRedirects() + weights.getRollIn() + weights.getRollOut() +
-                weights.getMaxFinger() + weights.getLsb() + weights.getLhb() + weights.getHomeRow();
-
+        double totalWeight = weights.totalWeight();
         if (totalWeight == 0) return;
 
         for (LayoutStats r : results) {
@@ -44,37 +46,24 @@ public class LeaderboardStats {
             double scissorsScore = getAbsoluteScore(r.getScissorsPct(), 0.5, 3.0);
             double redirectsScore = getAbsoluteScore(r.getRedirectsPct(), 3.0, 12.0); // Pod 3% je luxus, nad 12% je pinball (Colemak)
 
-            // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
-            double total = r.totalMonograms == 0 ? 1 : (double) r.totalMonograms;
-
-            double lPinky = (r.fingers[0] * 100.0) / total;
-            double lRing = (r.fingers[1] * 100.0) / total;
-            double lMiddle = (r.fingers[2] * 100.0) / total;
-            double lIndex = ((r.fingers[3] + r.fingers[4]) * 100.0) / total;
-
-            double rPinky = (r.fingers[9] * 100.0) / total;
-            double rRing = (r.fingers[8] * 100.0) / total;
-            double rMiddle = (r.fingers[7] * 100.0) / total;
-            double rIndex = ((r.fingers[6] + r.fingers[5]) * 100.0) / total;
-
             // TRESTY ZA PREŤAŽENIE A FLÁKANIE SA (Lichobežníková tolerancia)
             // Parametre: (hodnota, lowWorst, lowBest, highBest, highWorst)
 
             // Malíčky: Dovolíme im flákať sa, ale prísne trestáme preťaženie (>9%)
-            double lPinkyScore = getAbsoluteScore(lPinky, 0.0, 1.0, 9.0, 12.0);
-            double rPinkyScore = getAbsoluteScore(rPinky, 0.0, 1.0, 9.0, 12.0);
+            double lPinkyScore = getAbsoluteScore(r.lPinky, 0.0, 1.0, 9.0, 12.0);
+            double rPinkyScore = getAbsoluteScore(r.rPinky, 0.0, 1.0, 9.0, 12.0);
 
             // Prstenníky: Široká zóna tolerancie (5% - 20%)
-            double lRingScore = getAbsoluteScore(lRing, 2.0, 5.0, 20.0, 24.0);
-            double rRingScore = getAbsoluteScore(rRing, 2.0, 5.0, 20.0, 24.0);
+            double lRingScore = getAbsoluteScore(r.lRing, 2.0, 5.0, 20.0, 24.0);
+            double rRingScore = getAbsoluteScore(r.rRing, 2.0, 5.0, 20.0, 24.0);
 
             // Prostredníky: Stredná pracovná sila (8% - 22%)
-            double lMiddleScore = getAbsoluteScore(lMiddle, 5.0, 8.0, 22.0, 26.0);
-            double rMiddleScore = getAbsoluteScore(rMiddle, 5.0, 8.0, 22.0, 26.0);
+            double lMiddleScore = getAbsoluteScore(r.lMiddle, 5.0, 8.0, 22.0, 26.0);
+            double rMiddleScore = getAbsoluteScore(r.rMiddle, 5.0, 8.0, 22.0, 26.0);
 
             // Ukazováky: Najsilnejšie prsty. MUSIA urobiť aspoň 12%, inak layout plytvá ich potenciálom!
-            double lIndexScore = getAbsoluteScore(lIndex, 9.0, 12.0, 26.0, 30.0);
-            double rIndexScore = getAbsoluteScore(rIndex, 9.0, 12.0, 26.0, 30.0);
+            double lIndexScore = getAbsoluteScore(r.lIndex, 9.0, 12.0, 26.0, 30.0);
+            double rIndexScore = getAbsoluteScore(r.rIndex, 9.0, 12.0, 26.0, 30.0);
 
             // Zlúčenie násobením: Väčšina prstov bude 1.0.
             // Ak nejaký prst vybočí, skóre klesne. Ak vybočia viaceré, tresty sa tvrdo zosobášia.
@@ -113,6 +102,67 @@ public class LeaderboardStats {
         }
     }
 
+    public void calculatePainScore(Weights weights, List<LayoutStats> results) {
+        if (results.isEmpty()) return;
+
+        double totalWeight = weights.totalWeight();
+        if (totalWeight == 0) return;
+
+        for (LayoutStats r : results) {
+            // --- VÝPOČET INDEXU BOLESTI (WEIGHTED PENALTY SUM) ---
+// Čím nižšie číslo, tým lepší layout! (0 = bezbolestná dokonalosť)
+
+            double painScore = 0.0;
+
+// 1. KRVAVÉ CHYBY (Priama penalizácia z percent)
+            painScore += r.getSfbPct() * weights.getSfb();
+            painScore += r.getRedirectsPct() * weights.getRedirects();
+            painScore += r.getLhbPct() * weights.getLhb();
+
+// 2. SEKUNDÁRNE CHYBY
+            painScore += r.getSfsPct() * weights.getSfs();
+            painScore += r.getLsbPct() * weights.getLsb();
+            painScore += r.getInnerStretchPct() * weights.getStretch();
+
+// 3. ANATOMICKÉ TRESTY PRE KAŽDÝ PRST OSOBITNE (OVERLOAD)
+// (Biológia je pevná, váha trestu je dynamická)
+
+// Malíčky (limit 9%)
+            painScore += Math.max(0, r.lPinky - 9.0) * weights.getPinkyPenalty();
+            painScore += Math.max(0, r.rPinky - 9.0) * weights.getPinkyPenalty();
+
+// Prstenníky (limit 18%)
+            painScore += Math.max(0, r.lRing - 18.0) * weights.getRingPenalty();
+            painScore += Math.max(0, r.rRing - 18.0) * weights.getRingPenalty();
+
+// Prostredníky (limit 24%)
+            painScore += Math.max(0, r.lMiddle - 24.0) * weights.getMiddlePenalty();
+            painScore += Math.max(0, r.rMiddle - 24.0) * weights.getMiddlePenalty();
+
+// Ukazováky (limit 28% pre preťaženie)
+            painScore += Math.max(0, r.lIndex - 28.0) * weights.getIndexPenalty();
+            painScore += Math.max(0, r.rIndex - 28.0) * weights.getIndexPenalty();
+
+// 4. FLÁKANIE SA UKAZOVÁKOV (UNDERLOAD)
+// Každý ukazovák OSOBITNE musí urobiť aspoň 12%. Ak nie, dostane trest.
+            painScore += Math.max(0, 12.0 - r.lIndex) * weights.getIndexUnderloadPenalty();
+            painScore += Math.max(0, 12.0 - r.rIndex) * weights.getIndexUnderloadPenalty();
+// Flákanie sa prostredníkov (Musia urobiť aspoň 8%)
+            painScore += Math.max(0, 8.0 - r.lMiddle) * weights.getMiddleUnderloadPenalty();
+            painScore += Math.max(0, 8.0 - r.rMiddle) * weights.getMiddleUnderloadPenalty();
+
+// 5. ODMENY (Znižujú výsledné skóre)
+            painScore -= r.getAlternationPct() * weights.getAlt();
+            painScore -= r.getHomeRowPct() * weights.getHomeRow();
+
+            r.fingerPainScore = painScore;
+        }
+    }
+
+    public double calculateEliteScore(Weights weights, List<LayoutStats> results) {
+        return 0.0;
+    }
+
     // --- UNIVERZÁLNA POMOCNÁ METÓDA NA PEVNÉ ŠKÁLOVANIE ---
     private double getAbsoluteScore(double value, double best, double worst) {
         if (best < worst) {
@@ -129,14 +179,49 @@ public class LeaderboardStats {
     }
 
     private double getAbsoluteScore(double value, double lowWorst, double lowBest, double highBest, double highWorst) {
+        final double LOW_COEF = 0.1;
+        final double HIGH_COEF = 1 - LOW_COEF;
         // priklad lw 1, lb 2, hb 3, hw 4
-        if (value <= lowWorst) return 0.01; // <= 1
-        if (value >= lowWorst && value <= lowBest) return 0.01 + 0.99 * ((value - lowWorst) / (lowBest - lowWorst)); // 1 az 2
-        if (value >= lowBest && value <= highBest) return 1.0; // 2 az 3
-        if (value >= highBest && value <= highWorst) return 0.01 + 0.99 * ((highWorst - value) / (highWorst - highBest)); // 3 az 4
-        if (value >= highWorst) return 0.01; // >= 4
+        if (value <= lowWorst) return LOW_COEF; // <= 1
+        if (value >= lowWorst && value <= lowBest)
+            return LOW_COEF + HIGH_COEF * ((value - lowWorst) / (lowBest - lowWorst)); // 1 az 2
+        if (value >= lowBest && value <= highBest) return LOW_COEF + HIGH_COEF; // 2 az 3
+        if (value >= highBest && value <= highWorst)
+            return LOW_COEF + HIGH_COEF * ((highWorst - value) / (highWorst - highBest)); // 3 az 4
+        if (value >= highWorst) return LOW_COEF; // >= 4
         // should not happen
         return 1000000000;
+    }
+
+    // --- ELITNÁ ŠKÁLOVACIA FUNKCIA (ŠIKMÁ STRECHA) ---
+    private double getEliteScore(double value, double absoluteIdeal, double safeLimit, double deathLimit) {
+        double maxBonus = 1.10; // O koľko percent môžeš odmeniť čistú dokonalosť (10%)
+
+        if (absoluteIdeal < deathLimit) {
+            // TRESTNÉ METRIKY (Čím menej, tým lepšie - napr. SFB, Stretch)
+            if (value >= deathLimit) return 0.01; // Gilotína
+            if (value <= absoluteIdeal) return maxBonus; // Plná odmena za dokonalosť
+
+            if (value <= safeLimit) {
+                // ZÓNA ELITY: Získava mikro-bonus od 1.00 do 1.10
+                return 1.00 + (maxBonus - 1.00) * ((safeLimit - value) / (safeLimit - absoluteIdeal));
+            } else {
+                // ZÓNA KOMPROMISU: Padá od 1.00 k 0.01
+                return 0.01 + 0.99 * ((deathLimit - value) / (deathLimit - safeLimit));
+            }
+        } else {
+            // ODMENOVÉ METRIKY (Čím viac, tým lepšie - napr. Alternácia, HomeRow)
+            if (value <= deathLimit) return 0.01; // Gilotína
+            if (value >= absoluteIdeal) return maxBonus; // Plná odmena
+
+            if (value >= safeLimit) {
+                // ZÓNA ELITY: Mikro-bonus od 1.00 do 1.10
+                return 1.00 + (maxBonus - 1.00) * ((value - safeLimit) / (absoluteIdeal - safeLimit));
+            } else {
+                // ZÓNA KOMPROMISU: Padá od 1.00 k 0.01
+                return 0.01 + 0.99 * ((value - deathLimit) / (safeLimit - deathLimit));
+            }
+        }
     }
 
     // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE NOVÉ METRIKY ---
@@ -155,7 +240,7 @@ public class LeaderboardStats {
                     res.getLayout().name,
                     res.getBalancedScore(),
 //                    res.getMaxFingerLoadPct(),
-                    res.fingerScore,
+                    res.fingerPainScore,
                     res.getInnerStretchPct(),
                     res.getRedirectsPct(),
                     res.getSfbPct(),

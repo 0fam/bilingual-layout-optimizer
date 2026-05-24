@@ -166,7 +166,7 @@ public class Analyzer {
                     .lhb(1.5)        // TREST: Ničenie malíčka a prstenníka.
 
                     // --- UVOĽNENÉ METRIKY (Tu sme znížili váhu) ---
-                    .maxFinger(1.0)  // ZNÍŽENÉ z 3.0: Dovoľujeme dominantnej ruke prevziať záťaž!
+                    .maxFinger(0.0)  // ZNÍŽENÉ z 3.0: Dovoľujeme dominantnej ruke prevziať záťaž!
                     .homeRow(0.5)    // Jemný bonus za stredový riadok.
 
                     // --- OSTATNÉ (Šum - ignorujeme) ---
@@ -175,6 +175,14 @@ public class Analyzer {
                     .runs(0.0)
                     .rollIn(0.0)
                     .rollOut(0.0)
+
+                    // prsty zatazenie
+                    .pinkyPenalty(5.0) // najtvrdší trest
+                    .ringPenalty(3.0)
+                    .middlePenalty(2.0)
+                    .indexPenalty(1.0) // ukazovák zvládne preťaženie celkom dobre
+                    .indexUnderloadPenalty(6.0) // ak sa fláka najsilnejší prst, musíme ho potrestať tvrdo, inak rozbije celú ruku
+                    .middleUnderloadPenalty(4.0) // středníček je druhý nejsilnější, ale když se fláká, musí být trest dostatečný, aby ho to odradilo
                     .build();
 
 // --- ZABIJACI (Hardcore tresty) ---
@@ -205,7 +213,7 @@ public class Analyzer {
 //            weights.put("ALT", 0.0);
 //            weights.put("RUNS", 0.5);
 
-            LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults);
+            LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults, true);
 
         } catch (IOException e) {
             System.err.println("Chyba pri čítaní korpusu '" + korpusPath + "'. Detaily: " + e.getMessage());

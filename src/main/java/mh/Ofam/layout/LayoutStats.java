@@ -33,7 +33,20 @@ public class LayoutStats {
     long rightHandMonograms = 0;
     long lsb = 0; // Lateral Stretch Bigrams (Kríženie so stredovým stĺpcom)
     long lhb = 0; // Lateral Hand Bigrams (Kríženie Malíček-Prstenník)
-    double maxFingerLoadPct = 0.0;
+
+    // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
+    double lPinky = 0;
+    double lRing = 0;
+    double lMiddle = 0;
+    double lIndex = 0;
+
+    double rPinky = 0;
+    double rRing = 0;
+    double rMiddle = 0;
+    double rIndex = 0;
+
+    @Deprecated
+    double fingerScore = 0.0;
 
     // Mapy na sledovanie konkrétnych problémových slov
     Map<String, Integer> sfbWordsMap = new HashMap<>();
@@ -47,7 +60,7 @@ public class LayoutStats {
     @Getter
     double balancedScore = 0.0;
     @Getter
-    double fingerScore = 0.0;
+    double fingerPainScore = 0.0;
 
     public static LayoutStats instance(TextStats textStats, Layout layout) {
         LayoutStats ls = new LayoutStats();
@@ -189,14 +202,20 @@ public class LayoutStats {
                     ls.longRunWordsMap.put(word, ls.longRunWordsMap.getOrDefault(word, 0) + 1);
                 }
             }
-        }
 
-        // --- VÝPOČET ZÁŤAŽE NAJHORŠIEHO PRSTA (MAX_FINGER_LOAD) ---
-        // Spočítame skutočnú záťaž ukazovákov (základ + stretch) a porovnáme s ostatnými prstami
-        long maxL = Math.max(Math.max(ls.fingers[0], ls.fingers[1]), Math.max(ls.fingers[2], ls.fingers[3] + ls.fingers[4]));
-        long maxR = Math.max(Math.max(ls.fingers[9], ls.fingers[8]), Math.max(ls.fingers[7], ls.fingers[6] + ls.fingers[5]));
-        long absoluteMaxFinger = Math.max(maxL, maxR);
-        ls.maxFingerLoadPct = ls.totalMonograms == 0 ? 0 : (absoluteMaxFinger * 100.0) / ls.totalMonograms;
+            // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
+            double total = ls.totalMonograms == 0 ? 1 : (double) ls.totalMonograms;
+
+            ls.lPinky = (ls.fingers[0] * 100.0) / total;
+            ls.lRing = (ls.fingers[1] * 100.0) / total;
+            ls.lMiddle = (ls.fingers[2] * 100.0) / total;
+            ls.lIndex = ((ls.fingers[3] + ls.fingers[4]) * 100.0) / total;
+
+            ls.rPinky = (ls.fingers[9] * 100.0) / total;
+            ls.rRing = (ls.fingers[8] * 100.0) / total;
+            ls.rMiddle = (ls.fingers[7] * 100.0) / total;
+            ls.rIndex = ((ls.fingers[6] + ls.fingers[5]) * 100.0) / total;
+        }
 
         ls.printLayoutReport(layout);
 
@@ -231,8 +250,12 @@ public class LayoutStats {
         System.out.printf("  Bottom Row: %6.2f%%\n", totalMonograms == 0 ? 0 : (rows[2] * 100.0) / totalMonograms);
 
         System.out.println("\n[2] ZÁŤAŽ PRSTOV A BOČNÝ POHYB");
-        System.out.printf("  Najviac namáhaný prst (Max Load): %6.2f%%\n", maxFingerLoadPct);
         System.out.printf("  Stredové stĺpce (Inner Stretch):  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms);
+        System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
+        System.out.printf("  Malíček      : %5.2f%%      |      Malíček      : %5.2f%%\n", lPinky, rPinky);
+        System.out.printf("  Prstenník    : %5.2f%%      |      Prstenník    : %5.2f%%\n", lRing, rRing);
+        System.out.printf("  Prostredník  : %5.2f%%      |      Prostredník  : %5.2f%%\n", lMiddle, rMiddle);
+        System.out.printf("  Ukazovák     : %5.2f%%      |      Ukazovák     : %5.2f%%\n", lIndex, rIndex);
 
         String[] fNames = {"Malíček", "Prstenník", "Prostredník", "Ukazovák", "Inner Stretch"};
         System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
@@ -324,10 +347,6 @@ public class LayoutStats {
 
     double getRollOutPct() {
         return totalTrigrams == 0 ? 0 : (outwardRolls * 100.0) / totalTrigrams;
-    }
-
-    public double getMaxFingerLoadPct() {
-        return maxFingerLoadPct;
     }
 
     public double getLsbPct() {
