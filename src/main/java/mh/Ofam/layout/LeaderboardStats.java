@@ -3,24 +3,36 @@ package mh.Ofam.layout;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 public class LeaderboardStats {
 
-    public static LeaderboardStats instance(Weights weights, List<LayoutStats> allResults, boolean sortByFingerPain) {
+    public static enum SCORE_METRIC {
+        GEOMETRIC_AVERAGE,
+        PAIN_SCORE,
+        ELITE_SCORE
+    }
+
+    public static LeaderboardStats instance(Weights weights, List<LayoutStats> allResults, SCORE_METRIC metric) {
 
         LeaderboardStats leaderboardStats = new LeaderboardStats();
 
         // Výpočet váženého skóre a zoradenie (Zostupne - najlepší všestranný stred je prvý)
         leaderboardStats.calculateWeightedBalancedScores(weights, allResults);
         leaderboardStats.calculatePainScore(weights, allResults);
-        if (sortByFingerPain) {
-            allResults.sort(Comparator.comparingDouble(LayoutStats::getFingerPainScore));
-        } else {
-            allResults.sort(Comparator.comparingDouble(LayoutStats::getBalancedScore).reversed());
+        switch (metric) {
+            case GEOMETRIC_AVERAGE -> {
+                // Už máme vypočítané balancedScore, takže len zoradíme podľa toho
+                allResults.sort(Comparator.comparingDouble(LayoutStats::getBalancedScore).reversed());
+            }
+            case PAIN_SCORE -> {
+                // Už máme vypočítané fingerPainScore, takže len zoradíme podle toho
+                allResults.sort(Comparator.comparingDouble(LayoutStats::getFingerPainScore));
+            }
+            case ELITE_SCORE -> {
+                allResults.sort(Comparator.comparingDouble(LayoutStats::getEliteScore).reversed());
+            }
         }
 
         // Tlač záverečného sumárneho rebríčka pre rýchle globálne porovnanie
@@ -93,7 +105,7 @@ public class LeaderboardStats {
                             Math.pow(redirectsScore, weights.getRedirects()) *
                             Math.pow(rollInScore, weights.getRollIn()) *
                             Math.pow(rollOutScore, weights.getRollOut()) *
-                            Math.pow(maxFingerScore, weights.getMaxFinger()) *
+                            Math.pow(maxFingerScore, weights.getFingerStats()) *
                             Math.pow(lsbScore, weights.getLsb()) *
                             Math.pow(lhbScore, weights.getLhb()) *
                             Math.pow(homeRowScore, weights.getHomeRow());
@@ -159,10 +171,6 @@ public class LeaderboardStats {
         }
     }
 
-    public double calculateEliteScore(Weights weights, List<LayoutStats> results) {
-        return 0.0;
-    }
-
     // --- UNIVERZÁLNA POMOCNÁ METÓDA NA PEVNÉ ŠKÁLOVANIE ---
     private double getAbsoluteScore(double value, double best, double worst) {
         if (best < worst) {
@@ -193,34 +201,48 @@ public class LeaderboardStats {
         return 1000000000;
     }
 
-    // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE NOVÉ METRIKY ---
+    // --- PREHĽADNÝ SUMÁRNY LEADERBOARD PRE VŠETKY METRIKY ---
     public void printLeaderboard(List<LayoutStats> results, String sortedByCriteria) {
-        System.out.println("\n=========================================================================================================================================");
+        System.out.println("\n=====================================================================================================================================================================================================================================");
         System.out.println("   VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: " + sortedByCriteria.toUpperCase() + ")");
-        System.out.println("=========================================================================================================================================");
-        System.out.printf("%-5s | %-22s | %-9s | %-8s | %-10s | %-8s | %-7s | %-7s | %-7s | %-7s | %-8s | %-8s | %-10s\n",
-                "Idx", "Názov layoutu", "BAL_SCORE", "Fing_AVG", "InnerStr %", "Redir %", "SFB %", "SFS %", "LSB %", "LHB %", "HomeRow%", "Alt %", "Jednoruké runs %");
-        System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------");
+        System.out.println("=====================================================================================================================================================================================================================================");
+
+        // Hlavička tabuľky (Pridané: Scis%, RollI%, RollO%)
+        System.out.printf("%-4s | %-20s | %-6s | %-6s | %-6s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-4s | %-6s | %-6s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\n",
+                "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
+        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
         int i = 0;
         for (LayoutStats res : results) {
-            System.out.printf("%-5d | %-22s | %8.2f  | %7.2f | %8.2f %% | %6.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %5.2f %% | %6.2f %% | %6.2f %% | %6.2f\n",
+            System.out.printf("%-4d | %-20s | %6.4f | %6.2f | %6.2f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %6.2f | %6.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %6.2f | %6.2f | %5.2f\n",
                     ++i,
                     res.getLayout().name,
+                    res.getEliteScore(),
                     res.getBalancedScore(),
-//                    res.getMaxFingerLoadPct(),
-                    res.fingerPainScore,
+                    res.getFingerPainScore(),
+                    res.lPinky,
+                    res.lRing,
+                    res.lMiddle,
+                    res.lIndex,
+                    res.rIndex,
+                    res.rMiddle,
+                    res.rRing,
+                    res.rPinky,
                     res.getInnerStretchPct(),
                     res.getRedirectsPct(),
                     res.getSfbPct(),
                     res.getSfsPct(),
+                    res.getScissorsPct(),         // DOPLNENÉ
                     res.getLsbPct(),
                     res.getLhbPct(),
                     res.getHomeRowPct(),
                     res.getAlternationPct(),
+                    res.getRollInPct(),           // DOPLNENÉ
+                    res.getRollOutPct(),          // DOPLNENÉ
                     res.getRunsPct()
             );
         }
-        System.out.println("=========================================================================================================================================");
+        System.out.println("=====================================================================================================================================================================================================================================");
     }
+
 }

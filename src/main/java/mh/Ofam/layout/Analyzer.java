@@ -143,77 +143,47 @@ public class Analyzer {
             // List na ukladanie nespracovaných DTO objektov pred ich finálnym zoradením
             List<LayoutStats> allResults = new ArrayList<>();
 
-            // Spustenie analýzy pre každý načítanud layout
-            for (Map.Entry<String, Layout> entry : layoutsToTest.entrySet()) {
-                LayoutStats layoutStats = LayoutStats.instance(textStats, entry.getValue());
-                allResults.add(layoutStats);
-            }
-
             // =========================================================================
             //  KONFIGURÁCIA VÁH PRE EXPERIMENTY (Uprav si čísla podľa potreby)
             // =========================================================================
             Weights weights = Weights.builder()
-                    // --- KRVAVÁ TROJICA (Toto je fyziológia, tu sa neustupuje, váha 5.0) ---
-                    .sfb(3.0)        // TREST: Kmitanie rovnakého prsta (SFB) je smrť.
-                    .stretch(3.0)    // TREST: Ničenie ukazovákov naťahovaním do stredu.
-                    .redirects(2.5)  // TREST: Zmeny smeru a kŕče v ruke (Pinball efekt).
+                    // --- KRVAVÁ TROJICA (Toto je fyziológia, tu sa neustupuje) ---
+                    .sfb(1.0)        // TREST: Kmitanie rovnakého prsta (SFB) je smrť.
+                    .stretch(1.0)    // TREST: Ničenie ukazovákov naťahovaním do stredu.
+                    .redirects(1.0)  // TREST: Zmeny smeru a kŕče v ruke (Pinball efekt).
 
                     // --- SEKUNDÁRNE CHYBY ---
-                    .sfs(2.0)        // TREST: Sendvičové preskakovanie prstov (stále dôležité).
+                    .sfs(1.0)        // TREST: Sendvičové preskakovanie prstov (stále dôležité).
 
                     // --- MIKRO-BOLESŤ ---
-                    .lsb(1.5)        // TREST: Bočné kríženie.
-                    .lhb(1.5)        // TREST: Ničenie malíčka a prstenníka.
+                    .lsb(1.0)        // TREST: Bočné kríženie.
+                    .lhb(1.0)        // TREST: Ničenie malíčka a prstenníka.
 
                     // --- UVOĽNENÉ METRIKY (Tu sme znížili váhu) ---
-                    .maxFinger(0.0)  // ZNÍŽENÉ z 3.0: Dovoľujeme dominantnej ruke prevziať záťaž!
-                    .homeRow(0.5)    // Jemný bonus za stredový riadok.
+                    .fingerStats(0.0)  // ZNÍŽENÉ: Dovoľujeme dominantnej ruke prevziať záťaž!
+                    .homeRow(1.0)    // Jemný bonus za stredový riadok.
+                    .scissors(1.0)
 
-                    // --- OSTATNÉ (Šum - ignorujeme) ---
-                    .scissors(0.0)
+                    // --- OSTATNÉ (len pozorujeme) ---
                     .alt(0.0)
                     .runs(0.0)
                     .rollIn(0.0)
                     .rollOut(0.0)
 
                     // prsty zatazenie
-                    .pinkyPenalty(5.0) // najtvrdší trest
-                    .ringPenalty(3.0)
-                    .middlePenalty(2.0)
+                    .pinkyPenalty(1.0) // najtvrdší trest
+                    .ringPenalty(1.0)
+                    .middlePenalty(1.0)
                     .indexPenalty(1.0) // ukazovák zvládne preťaženie celkom dobre
-                    .indexUnderloadPenalty(6.0) // ak sa fláka najsilnejší prst, musíme ho potrestať tvrdo, inak rozbije celú ruku
-                    .middleUnderloadPenalty(4.0) // středníček je druhý nejsilnější, ale když se fláká, musí být trest dostatečný, aby ho to odradilo
                     .build();
 
-// --- ZABIJACI (Hardcore tresty) ---
-//            weights.put("SFB", 5.0);        // Absolútny kráľ bolesti. Kmitanie jedným prstom netolerujeme.
-//            weights.put("SCISSORS", 3.0);   // Kríženie prstov medzi riadkami je ergonomické peklo.
-//            weights.put("REDIRECTS", 3.0);  // Zvýšená váha z 2.0 na 3.0! Keďže už neriešime "pekné" rolly, musíme o to tvrdšie trestať "pinball" (sekanie smeru), inak nám ruka na jednej strane umrie.
-//            weights.put("STRETCH", 2.0);    // Strážca Totemu. Ukazováky zostanú doma.
-//            weights.put("SFS", 1.0);        // Skipgramy nechávame ako jemný filter proti sendvičovému kmitaniu.
-//
-//// --- VYPNUTÝ ŠUM (Všetko na nulu) ---
-//            weights.put("ROLL_IN", 0.0);
-//            weights.put("ROLL_OUT", 0.0);
-//            weights.put("ALT", 0.0);
-//            weights.put("RUNS", 0.0);
+            // Spustenie analýzy pre každý načítanud layout
+            for (Map.Entry<String, Layout> entry : layoutsToTest.entrySet()) {
+                LayoutStats layoutStats = LayoutStats.instance(textStats, entry.getValue(), weights);
+                allResults.add(layoutStats);
+            }
 
-            // --- PROFIL: PURE FLOW & TENDON HEALTH ---
-//            weights.put("SFB", 5.0);
-//            weights.put("SCISSORS", 3.0);
-//            weights.put("STRETCH", 2.0);
-//            weights.put("REDIRECTS", 2.0);
-//            weights.put("SFS", 1.0);
-//
-//            // Odmeny musia mať kladné váhy, pretože logika odmeňovania je už preklopená pri výpočte skóre
-//            weights.put("ROLL_IN", 1.0);
-//            weights.put("ROLL_OUT", 0.5);
-//
-//            // Ignorujeme alternáciu a valivé behy trestáme iba jemne
-//            weights.put("ALT", 0.0);
-//            weights.put("RUNS", 0.5);
-
-            LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults, true);
+            LeaderboardStats leaderboardStats = LeaderboardStats.instance(weights, allResults, LeaderboardStats.SCORE_METRIC.ELITE_SCORE);
 
         } catch (IOException e) {
             System.err.println("Chyba pri čítaní korpusu '" + korpusPath + "'. Detaily: " + e.getMessage());
