@@ -83,7 +83,7 @@ public class Analyzer {
 
                 // Spustenie analýzy pre každý načítanud layout
                 for (Map.Entry<String, Layout> entry : layoutsToTest.entrySet()) {
-                    LayoutStats layoutStats = LayoutStats.instance(textStats, entry.getValue(), weights, false);
+                    LayoutStats layoutStats = LayoutStats.instance(textStats.fastCorpus, entry.getValue(), weights, false);
                     allResults.add(layoutStats);
                 }
 

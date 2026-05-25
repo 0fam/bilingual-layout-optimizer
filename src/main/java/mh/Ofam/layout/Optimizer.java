@@ -9,6 +9,7 @@ public class Optimizer {
     private final Random random = new Random();
 
     public void optimize(Layout initialLayout, TextStats skStats, TextStats enStats) {
+
         Layout bestLayout = initialLayout.clone();
         Weights weights = new Weights();
         Map<String, Double> evaluatedCache = new HashMap<>();
@@ -32,11 +33,11 @@ public class Optimizer {
             }
 
             // 3. Ohodnoť nový layout tvojou vlastnou 80/20 funkciou
-            long startEval = System.nanoTime();
+//            long startEval = System.nanoTime();
             double newScore = calculateWeightedScore(mutated, weights, skStats, enStats);
-            long endEval = System.nanoTime();
+//            long endEval = System.nanoTime();
             // Vypíše čas evaluácie v milisekundách
-            System.out.println("Jedna evaluácia trvala: " + (endEval - startEval) / 1_000_000.0 + " ms");
+//            System.out.println("Jedna evaluácia trvala: " + (endEval - startEval) / 1_000_000.0 + " ms");
 
             // 4. Ak je nový layout lepší, prepíš ten starý
             if (newScore > bestScore) {
@@ -58,7 +59,7 @@ public class Optimizer {
 
     private double calculateWeightedScore(Layout layout, Weights weights, TextStats sk, TextStats en) {
         // Tvoja existujúca funkcia, ktorá preženie layout tvojím analyzátorom
-        double skScore = LayoutStats.instance(sk, layout, weights, true).eliteScore;
+        double skScore = LayoutStats.instance(sk.fastCorpus, layout, weights, true).eliteScore;
 //        double enScore = MyAnalyzer.evaluate(layout, en);
 
         // Tvoja vysnívaná váha 80/20 bez rizika zhltnutia dát

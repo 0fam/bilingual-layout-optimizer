@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class LayoutStats {
     @Getter
     Layout layout;
@@ -50,9 +49,9 @@ public class LayoutStats {
     double fingerScore = 0.0;
 
     // Mapy na sledovanie konkrétnych problémových slov
-    Map<String, Long> sfbWordsMap = new HashMap<>();
-    Map<String, Long> longRunWordsMap = new HashMap<>();
-    Map<String, Long> innerStretchWordsMap = new HashMap<>();
+    Map<String, Long> sfbWordsMap;
+    Map<String, Long> longRunWordsMap;
+    Map<String, Long> innerStretchWordsMap;
 
     long totalMonograms = 0;
     long totalBigrams = 0;
@@ -66,73 +65,95 @@ public class LayoutStats {
     @Getter
     double eliteScore = 0.0;
 
-    public static LayoutStats instance(TextStats textStats, Layout layout, Weights weights, boolean silent) {
+    public static LayoutStats instance(FastWord[] fastCorpus, Layout layout, Weights weights, boolean silent) {
         LayoutStats ls = new LayoutStats();
         ls.layout = layout;
 
-        int errorCounter = 0;
+        if (!silent) {
+            ls.sfbWordsMap = new HashMap<>();
+            ls.longRunWordsMap = new HashMap<>();
+            ls.innerStretchWordsMap = new HashMap<>();
+        }
 
-        for (Map.Entry<String, Long> entry : textStats.wordFreqs.entrySet()) {
-            String word = entry.getKey();
-            long freq = entry.getValue(); // Frekvencia slova (ako násobiteľ)
+        // --- MAGICKÝ TRIK: O(1) Lookup namiesto HashMapy ---
+        // ASCII a bežné znaky sa zmestia do indexu 1024 (pre istotu)
+        KeyInfo[] fastLookup = new KeyInfo[1024];
+        for (Map.Entry<Character, KeyInfo> entry : layout.charMap.entrySet()) {
+            char ch = entry.getKey();
+            if (ch < fastLookup.length) {
+                fastLookup[ch] = entry.getValue();
+            }
+        }
 
-            List<KeyInfo> keys = new ArrayList<>();
-            for (char ch : word.toCharArray()) {
-                if (layout.charMap.containsKey(ch)) {
-                    keys.add(layout.charMap.get(ch));
+        // Vyrobíme si jedno pole, ktoré budeme neustále recyklovať. Žiadne 'new' v cykle!
+        KeyInfo[] keys = new KeyInfo[100]; // 100 znakov stačí na akékoľvek slovo
+
+        for (FastWord fw : fastCorpus) {
+            if (fw.len == 0 || fw.len > 100) continue;
+
+            boolean validWord = true;
+
+            for (int i = 0; i < fw.len; i++) {
+                char ch = fw.chars[i];
+
+                // Žiadne .get(ch), len priamy skok do pamäte!
+                KeyInfo info = ch < fastLookup.length ? fastLookup[ch] : null;
+
+                if (info != null) {
+                    keys[i] = info;
                 } else {
-                    if (errorCounter < 100) log.warn("Klavesa pre znak {} v layoute {} neexistuje", ch, layout.name);
-                    errorCounter++;
+                    validWord = false;
+                    break; // Ak nepozná znak, preskočí slovo (bez logovania v hot path)
                 }
             }
-
-            int len = keys.size();
-            if (len == 0) continue;
+            if (!validWord) continue;
 
             boolean wordHadSfb = false;
             boolean wordHadLongRun = false;
             boolean hasInnerStretch = false;
 
             // --- 1. ÚROVEŇ: MONOGRAMY ---
-            for (KeyInfo k : keys) {
-                ls.totalMonograms += freq;
-                ls.rows[k.row] += freq;
-                ls.fingers[k.finger.ordinal()] += freq;
+            // OPRAVA: Používame fw.len a fw.freq
+            for (int i = 0; i < fw.len; i++) {
+                KeyInfo k = keys[i];
 
-                if (k.hand == 'L') ls.leftHandMonograms += freq;
-                else ls.rightHandMonograms += freq;
+                ls.totalMonograms += fw.freq;
+                ls.rows[k.row] += fw.freq;
+                ls.fingers[k.finger.ordinal()] += fw.freq;
+
+                if (k.hand == 'L') ls.leftHandMonograms += fw.freq;
+                else ls.rightHandMonograms += fw.freq;
 
                 if (k.col == 4) {
-                    ls.innerStretchL += freq;
+                    ls.innerStretchL += fw.freq;
                     hasInnerStretch = true;
                 } else if (k.col == 5) {
-                    ls.innerStretchR += freq;
+                    ls.innerStretchR += fw.freq;
                     hasInnerStretch = true;
                 }
             }
 
             // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
-            for (int i = 0; i < len - 1; i++) {
-                KeyInfo k1 = keys.get(i);
-                KeyInfo k2 = keys.get(i + 1);
-                ls.totalBigrams += freq;
+            for (int i = 0; i < fw.len - 1; i++) {
+                KeyInfo k1 = keys[i];
+                KeyInfo k2 = keys[i + 1];
+                ls.totalBigrams += fw.freq;
 
                 if (k1.hand != k2.hand) {
-                    ls.handAlternation += freq;
+                    ls.handAlternation += fw.freq;
                 }
 
                 if (k1.hand == k2.hand) {
                     // SFB (Same Finger Bigram)
-                    // OPRAVA: Pridané k1 != k2, aby sme netrestali dvojité stlačenie toho istého klávesu (SKB)
                     if (k1.finger == k2.finger && k1 != k2) {
-                        ls.sfb += freq;
+                        ls.sfb += fw.freq;
                         wordHadSfb = true;
                     }
 
                     // Scissors
                     if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
                         if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
-                            ls.scissors += freq;
+                            ls.scissors += fw.freq;
                         }
                     }
 
@@ -140,32 +161,32 @@ public class LayoutStats {
                     boolean k1Stretch = (k1.col == 4 || k1.col == 5);
                     boolean k2Stretch = (k2.col == 4 || k2.col == 5);
                     if (k1Stretch != k2Stretch && k1.finger != k2.finger) {
-                        ls.lsb += freq;
+                        ls.lsb += fw.freq;
                     }
 
                     // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
                     boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
                     boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
                     if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
-                        ls.lhb += freq;
+                        ls.lhb += fw.freq;
                     }
                 }
 
-                if (i < len - 2) {
-                    KeyInfo k3 = keys.get(i + 2);
-                    ls.totalSkipgrams += freq;
+                if (i < fw.len - 2) {
+                    KeyInfo k3 = keys[i + 2];
+                    ls.totalSkipgrams += fw.freq;
                     if (k1.hand == k3.hand && k1.finger == k3.finger && k1 != k3) {
-                        ls.sfs += freq;
+                        ls.sfs += fw.freq;
                     }
                 }
             }
 
             // --- 3. ÚROVEŇ: TRIGRAMY ---
-            for (int i = 0; i < len - 2; i++) {
-                KeyInfo k1 = keys.get(i);
-                KeyInfo k2 = keys.get(i + 1);
-                KeyInfo k3 = keys.get(i + 2);
-                ls.totalTrigrams += freq;
+            for (int i = 0; i < fw.len - 2; i++) {
+                KeyInfo k1 = keys[i];
+                KeyInfo k2 = keys[i + 1];
+                KeyInfo k3 = keys[i + 2];
+                ls.totalTrigrams += fw.freq;
 
                 if (k1.hand == k2.hand && k2.hand == k3.hand) {
                     int r1 = k1.finger.rank;
@@ -173,41 +194,44 @@ public class LayoutStats {
                     int r3 = k3.finger.rank;
 
                     if (r1 < r2 && r2 < r3) {
-                        ls.inwardRolls += freq;
+                        ls.inwardRolls += fw.freq;
                     } else if (r1 > r2 && r2 > r3) {
-                        ls.outwardRolls += freq;
+                        ls.outwardRolls += fw.freq;
                     } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
-                        ls.redirects += freq;
+                        ls.redirects += fw.freq;
                     }
                 }
             }
 
             // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
             int currentRun = 1;
-            char currentHand = keys.get(0).hand;
-            for (int i = 1; i < len; i++) {
-                if (keys.get(i).hand == currentHand) {
+            char currentHand = keys[0].hand;
+            for (int i = 1; i < fw.len; i++) {
+                if (keys[i].hand == currentHand) {
                     currentRun++;
                 } else {
-                    // Zvýšené na 5 znakov zo 4
                     if (currentRun >= 5) {
-                        ls.longOneHandedRuns += freq;
+                        ls.longOneHandedRuns += fw.freq;
                         wordHadLongRun = true;
                     }
                     currentRun = 1;
-                    currentHand = keys.get(i).hand;
+                    currentHand = keys[i].hand;
                 }
             }
             if (currentRun >= 5) {
-                ls.longOneHandedRuns += freq;
+                ls.longOneHandedRuns += fw.freq;
                 wordHadLongRun = true;
             }
 
             // --- MAPY PRE TOP 10 SLOV ---
+            // OPRAVA: Tu vytvárame String z poľa chars len vtedy, ak potrebujeme logovať
             if (!silent) {
-                if (wordHadSfb) ls.sfbWordsMap.put(word, freq); // Rovno zapíšeme celú frekvenciu
-                if (wordHadLongRun) ls.longRunWordsMap.put(word, freq);
-                if (hasInnerStretch) ls.innerStretchWordsMap.put(word, freq);
+                String wordStr = new String(fw.chars);
+                // Pretypovanie fw.freq na int, keďže mapa akceptuje <String, Integer>
+                long mapFreq = fw.freq;
+                if (wordHadSfb) ls.sfbWordsMap.put(wordStr, mapFreq);
+                if (wordHadLongRun) ls.longRunWordsMap.put(wordStr, mapFreq);
+                if (hasInnerStretch) ls.innerStretchWordsMap.put(wordStr, mapFreq);
             }
         }
 

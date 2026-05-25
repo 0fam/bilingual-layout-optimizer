@@ -50,7 +50,7 @@ public class Layout {
         StringBuilder result = new StringBuilder(a.length * 2);
         for (int i = 0; i < a.length; i++) {
             result.append(" ").append(a[i]);
-            if (i % 10 == 0) result.append("\n");
+            if (i % 10 - 1 == 0) result.append("\n");
         }
         return result.toString();
     }

@@ -13,6 +13,7 @@ public class TextStats {
     long charsTotal = 0;
     Map<String, Long> wordFreqs = new HashMap<>();
     Map<Character, Long> charFreqs = new HashMap<>();
+    FastWord[] fastCorpus;
 
     public static TextStats instance(String text) {
         TextStats textStats = new TextStats();
@@ -40,6 +41,10 @@ public class TextStats {
         }
 
         textStats.printTextReport();
+
+        textStats.fastCorpus = textStats.wordFreqs.entrySet().stream()
+                .map(e -> new FastWord(e.getKey(), e.getValue()))
+                .toArray(FastWord[]::new);
 
         return textStats;
     }
