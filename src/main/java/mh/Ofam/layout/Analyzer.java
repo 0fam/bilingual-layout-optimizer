@@ -14,7 +14,7 @@ public class Analyzer {
 
     public static void main(String[] args) throws URISyntaxException {
         // Cesty môžeme prijímať z argumentov, inak použijeme predvolené
-        String korpusPath = "korpus.txt";
+        String korpusPath = "korpus_en.txt";
         String layoutsDir = "layouts"; // Tvoj adresár s .json súbormi
         boolean optimize = false;
 

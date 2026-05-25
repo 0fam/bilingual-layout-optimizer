@@ -1,0 +1,12 @@
+{
+    "name": "dof52",
+    "board": "ortho",
+    "layers": {
+        "main": [
+            "y,hu;qpcs.",
+            "ioeawmktnl",
+            "gjfx'bvdzr"
+        ]
+    },
+    "fingering": "traditional"
+}

@@ -79,18 +79,22 @@ public class LayoutOptimizerMultiThreadHeating {
                 // ==========================================
                 // 🔥 DYNAMICKÉ NASTAVENIE SIMULOVANÉHO ŽÍHANIA
                 // ==========================================
-                double temp = 10.0;         // Štartovacia teplota chaosu
+                // 💥 OPRAVA: Jadro-0 stráži dofX a nezažíva teplotný šok. Ostatné idú divokú tavbu.
+                double temp = (workerId == 0) ? 0.001 : 10.0;
                 double finalTemp = 0.001;    // Cieľová teplota zmrazenia (Hill Climber)
 
                 // 💥 ZMENA: Výpočet chladenia presne na mieru podľa zadaných iterácií
                 double coolingRate = Math.pow(finalTemp / temp, 1.0 / iterations);
                 // ==========================================
 
+// ==================================================
+// NOVÁ, SVALNATÁ SLUČKA PRE TVOJ MULTITHREAD
+// ==================================================
                 long workerStartTime = System.currentTimeMillis();
 
                 for (long i = 0; i < iterations; i++) {
 
-                    // Priebežný živý odhad rýchlosti pre každé jadro osobitne na 10 000 krokov
+                    // Priebežný živý odhad rýchlosti (každých 10 000 krokov)
                     if (i % 10_000 == 0 && i > 0) {
                         long currentNow = System.currentTimeMillis();
                         double elapsedSec = (currentNow - workerStartTime) / 1000.0;
@@ -99,40 +103,24 @@ public class LayoutOptimizerMultiThreadHeating {
                                 workerName, i, iterations, currentIps, bestScore, temp);
                     }
 
+                    // Čistá, slobodná mutácia dvoch náhodných pozícií
                     int pos1 = random.nextInt(30);
                     int pos2 = random.nextInt(30);
-
-                    // 🔥 Pravidlo 4: SMART SWAPPING (80% času prehadzujeme klávesy len v rámci tej istej ruky)
-                    if (random.nextDouble() < 0.80) {
-                        int hand1 = KeyboardTopology.POS_TO_HAND[pos1];
-                        while (pos1 == pos2 || KeyboardTopology.POS_TO_HAND[pos2] != hand1) {
-                            pos2 = random.nextInt(30);
-                        }
-                    } else {
-                        while (pos1 == pos2) pos2 = random.nextInt(30);
+                    while (pos1 == pos2) {
+                        pos2 = random.nextInt(30);
                     }
 
-                    char c1 = currentLayout.matrix[pos1];
-                    char c2 = currentLayout.matrix[pos2];
-
-                    // 🔥 DETERMINISTICKÝ GUARD: Ak výmena porušuje anatomické podmienky, okamžite ju preskočíme.
-                    // Ušetríme tým kompletný drahý výpočet trigramov vo FastEvaluatore.
-                    if (!isValidTarget(c1, pos2) || !isValidTarget(c2, pos1)) {
-                        temp *= coolingRate; // Teplota musí chladnúť synchrónne s krokom slučky i
-                        continue;
-                    }
-
-                    // MUTÁCIA: Prehodíme klávesy priamo v layoute
+                    // MUTÁCIA: Prehodíme klávesy bez akéhokoľvek diktátu a predsudkov
                     currentLayout.swap(pos1, pos2);
 
+                    // EVALUÁCIA: Nech o kvalite rozhodne čistá matematika tvojho FastEvaluatora
                     FastLayoutStats newSk = FastEvaluator.evaluate(currentLayout, skStats, weights);
                     double newGlobalScore = newSk.eliteScore;
 
                     // Matematická delta žíhania
                     double delta = newGlobalScore - bestScore;
 
-                    // HLAVNÁ PODMIENKA ŽÍHANIA:
-                    // Ak je layout lepší, berieme ho vždy. Ak je horší, prejde cez teplotnú lotériu
+                    // PODMIENKA ŽÍHANIA (Lotéria chaosu pri vysokej teplote)
                     if (delta > 0 || (temp > 0.001 && random.nextDouble() < Math.exp(delta / temp))) {
                         bestScore = newGlobalScore;
 
@@ -143,16 +131,18 @@ public class LayoutOptimizerMultiThreadHeating {
                         currentLayout.swap(pos1, pos2); // rollback
                     }
 
-                    // Ochladzujeme vzduch prepočítanou rýchlosťou
+                    // Plynulé chladnutie po každom jednom poctivom kroku
                     temp *= coolingRate;
                 }
+
                 return new OptimizationResult(currentLayout.matrix, bestScore);
             }));
         }
 
         // 3. ZBER VÝSLEDKOV Z JADIER
-        char[] absoluteBestMatrix = null;
-        double absoluteBestScore = -1.0;
+        // 💥 OPRAVA: Počítadlo inicializujeme pôvodným stavom. Ak nič neprekoná latku, vyhráva originál.
+        char[] absoluteBestMatrix = startLayout.matrix.clone();
+        double absoluteBestScore = startSk.eliteScore;
 
         try {
             for (Future<OptimizationResult> future : futures) {

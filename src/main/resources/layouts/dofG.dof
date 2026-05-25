@@ -1,0 +1,12 @@
+{
+    "name": "dofGemini",
+    "board": "ortho",
+    "layers": {
+        "main": [
+            "q  w  f  p  g      j  l  u  y  '",
+            "d  t  r  s  n      c  a  e  o  i",
+            "z  x  m  k  b      v  h  ,  .  ;"
+        ]
+    },
+    "fingering": "traditional"
+}
