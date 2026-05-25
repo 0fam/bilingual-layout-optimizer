@@ -50,9 +50,9 @@ public class LayoutStats {
     double fingerScore = 0.0;
 
     // Mapy na sledovanie konkrétnych problémových slov
-    Map<String, Integer> sfbWordsMap = new HashMap<>();
-    Map<String, Integer> longRunWordsMap = new HashMap<>();
-    Map<String, Integer> innerStretchWordsMap = new HashMap<>();
+    Map<String, Long> sfbWordsMap = new HashMap<>();
+    Map<String, Long> longRunWordsMap = new HashMap<>();
+    Map<String, Long> innerStretchWordsMap = new HashMap<>();
 
     long totalMonograms = 0;
     long totalBigrams = 0;
@@ -72,165 +72,157 @@ public class LayoutStats {
 
         int errorCounter = 0;
 
-        for (String word : textStats.wordFreqs.keySet()) { // pre kazde slovo
-            for (int freq = 0; freq < textStats.wordFreqs.get(word); freq++) { // tolko krat, kolko krat to slovo sa vyskytuje
+        for (Map.Entry<String, Long> entry : textStats.wordFreqs.entrySet()) {
+            String word = entry.getKey();
+            long freq = entry.getValue(); // Frekvencia slova (ako násobiteľ)
 
-                List<KeyInfo> keys = new ArrayList<>();
-                for (char ch : word.toCharArray()) {
-                    if (layout.charMap.containsKey(ch)) {
-                        keys.add(layout.charMap.get(ch));
-                    } else {
-                        if (errorCounter < 100) log.warn("Klavesa pre znak {} v layoute {} neexistuje", ch, layout.name);
-                        errorCounter++;
-                    }
-                }
-
-                int len = keys.size();
-                if (len == 0) continue;
-
-                boolean wordHadSfb = false;
-                boolean wordHadLongRun = false;
-                boolean hasInnerStretch = false;
-
-                // --- 1. ÚROVEŇ: MONOGRAMY ---
-                for (KeyInfo k : keys) {
-                    ls.totalMonograms++;
-                    ls.rows[k.row]++;
-                    ls.fingers[k.finger.ordinal()]++;
-
-                    if (k.hand == 'L') ls.leftHandMonograms++;
-                    else ls.rightHandMonograms++;
-
-                    if (k.col == 4) {
-                        ls.innerStretchL++;
-                        hasInnerStretch = true;
-                    } else if (k.col == 5) {
-                        ls.innerStretchR++;
-                        hasInnerStretch = true;
-                    }
-                }
-
-                // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
-                for (int i = 0; i < len - 1; i++) {
-                    KeyInfo k1 = keys.get(i);
-                    KeyInfo k2 = keys.get(i + 1);
-                    ls.totalBigrams++;
-
-                    if (k1.hand != k2.hand) {
-                        ls.handAlternation++;
-                    }
-
-                    if (k1.hand == k2.hand) {
-                        // SFB (Same Finger Bigram)
-                        // OPRAVA: Pridané k1 != k2, aby sme netrestali dvojité stlačenie toho istého klávesu (SKB)
-                        if (k1.finger == k2.finger && k1 != k2) {
-                            ls.sfb++;
-                            wordHadSfb = true;
-                        }
-
-                        // Scissors
-                        if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
-                            if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
-                                ls.scissors++;
-                            }
-                        }
-
-                        // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
-                        boolean k1Stretch = (k1.col == 4 || k1.col == 5);
-                        boolean k2Stretch = (k2.col == 4 || k2.col == 5);
-                        if (k1Stretch != k2Stretch && k1.finger != k2.finger) {
-                            ls.lsb++;
-                        }
-
-                        // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
-                        boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
-                        boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
-                        if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
-                            ls.lhb++;
-                        }
-                    }
-
-                    if (i < len - 2) {
-                        KeyInfo k3 = keys.get(i + 2);
-                        ls.totalSkipgrams++;
-                        if (k1.hand == k3.hand && k1.finger == k3.finger && k1 != k3) {
-                            ls.sfs++;
-                        }
-                    }
-                }
-
-                // --- 3. ÚROVEŇ: TRIGRAMY ---
-                for (int i = 0; i < len - 2; i++) {
-                    KeyInfo k1 = keys.get(i);
-                    KeyInfo k2 = keys.get(i + 1);
-                    KeyInfo k3 = keys.get(i + 2);
-                    ls.totalTrigrams++;
-
-                    if (k1.hand == k2.hand && k2.hand == k3.hand) {
-                        int r1 = k1.finger.rank;
-                        int r2 = k2.finger.rank;
-                        int r3 = k3.finger.rank;
-
-                        if (r1 < r2 && r2 < r3) {
-                            ls.inwardRolls++;
-                        } else if (r1 > r2 && r2 > r3) {
-                            ls.outwardRolls++;
-                        } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
-                            ls.redirects++;
-                        }
-                    }
-                }
-
-                // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
-                int currentRun = 1;
-                char currentHand = keys.get(0).hand;
-                for (int i = 1; i < len; i++) {
-                    if (keys.get(i).hand == currentHand) {
-                        currentRun++;
-                    } else {
-                        // Zvýšené na 5 znakov!
-                        if (currentRun >= 5) {
-                            ls.longOneHandedRuns++;
-                            wordHadLongRun = true;
-                        }
-                        currentRun = 1;
-                        currentHand = keys.get(i).hand;
-                    }
-                }
-                // Zvýšené na 5 znakov!
-                if (currentRun >= 5) {
-                    ls.longOneHandedRuns++;
-                    wordHadLongRun = true;
-                }
-
-                // Uložíme problémové slová do štatistiky
-                if (wordHadSfb) {
-                    ls.sfbWordsMap.put(word, ls.sfbWordsMap.getOrDefault(word, 0) + 1);
-                }
-                if (wordHadLongRun) {
-                    ls.longRunWordsMap.put(word, ls.longRunWordsMap.getOrDefault(word, 0) + 1);
-                }
-                if (hasInnerStretch) {
-                    ls.innerStretchWordsMap.put(word, ls.innerStretchWordsMap.getOrDefault(word, 0) + 1);
+            List<KeyInfo> keys = new ArrayList<>();
+            for (char ch : word.toCharArray()) {
+                if (layout.charMap.containsKey(ch)) {
+                    keys.add(layout.charMap.get(ch));
+                } else {
+                    if (errorCounter < 100) log.warn("Klavesa pre znak {} v layoute {} neexistuje", ch, layout.name);
+                    errorCounter++;
                 }
             }
 
-            // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
-            double total = ls.totalMonograms == 0 ? 1 : (double) ls.totalMonograms;
+            int len = keys.size();
+            if (len == 0) continue;
 
-            ls.lPinky = (ls.fingers[0] * 100.0) / total;
-            ls.lRing = (ls.fingers[1] * 100.0) / total;
-            ls.lMiddle = (ls.fingers[2] * 100.0) / total;
-            ls.lIndex = ((ls.fingers[3] + ls.fingers[4]) * 100.0) / total;
+            boolean wordHadSfb = false;
+            boolean wordHadLongRun = false;
+            boolean hasInnerStretch = false;
 
-            ls.rPinky = (ls.fingers[9] * 100.0) / total;
-            ls.rRing = (ls.fingers[8] * 100.0) / total;
-            ls.rMiddle = (ls.fingers[7] * 100.0) / total;
-            ls.rIndex = ((ls.fingers[6] + ls.fingers[5]) * 100.0) / total;
+            // --- 1. ÚROVEŇ: MONOGRAMY ---
+            for (KeyInfo k : keys) {
+                ls.totalMonograms += freq;
+                ls.rows[k.row] += freq;
+                ls.fingers[k.finger.ordinal()] += freq;
+
+                if (k.hand == 'L') ls.leftHandMonograms += freq;
+                else ls.rightHandMonograms += freq;
+
+                if (k.col == 4) {
+                    ls.innerStretchL += freq;
+                    hasInnerStretch = true;
+                } else if (k.col == 5) {
+                    ls.innerStretchR += freq;
+                    hasInnerStretch = true;
+                }
+            }
+
+            // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
+            for (int i = 0; i < len - 1; i++) {
+                KeyInfo k1 = keys.get(i);
+                KeyInfo k2 = keys.get(i + 1);
+                ls.totalBigrams += freq;
+
+                if (k1.hand != k2.hand) {
+                    ls.handAlternation += freq;
+                }
+
+                if (k1.hand == k2.hand) {
+                    // SFB (Same Finger Bigram)
+                    // OPRAVA: Pridané k1 != k2, aby sme netrestali dvojité stlačenie toho istého klávesu (SKB)
+                    if (k1.finger == k2.finger && k1 != k2) {
+                        ls.sfb += freq;
+                        wordHadSfb = true;
+                    }
+
+                    // Scissors
+                    if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
+                        if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
+                            ls.scissors += freq;
+                        }
+                    }
+
+                    // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
+                    boolean k1Stretch = (k1.col == 4 || k1.col == 5);
+                    boolean k2Stretch = (k2.col == 4 || k2.col == 5);
+                    if (k1Stretch != k2Stretch && k1.finger != k2.finger) {
+                        ls.lsb += freq;
+                    }
+
+                    // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
+                    boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
+                    boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
+                    if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
+                        ls.lhb += freq;
+                    }
+                }
+
+                if (i < len - 2) {
+                    KeyInfo k3 = keys.get(i + 2);
+                    ls.totalSkipgrams += freq;
+                    if (k1.hand == k3.hand && k1.finger == k3.finger && k1 != k3) {
+                        ls.sfs += freq;
+                    }
+                }
+            }
+
+            // --- 3. ÚROVEŇ: TRIGRAMY ---
+            for (int i = 0; i < len - 2; i++) {
+                KeyInfo k1 = keys.get(i);
+                KeyInfo k2 = keys.get(i + 1);
+                KeyInfo k3 = keys.get(i + 2);
+                ls.totalTrigrams += freq;
+
+                if (k1.hand == k2.hand && k2.hand == k3.hand) {
+                    int r1 = k1.finger.rank;
+                    int r2 = k2.finger.rank;
+                    int r3 = k3.finger.rank;
+
+                    if (r1 < r2 && r2 < r3) {
+                        ls.inwardRolls += freq;
+                    } else if (r1 > r2 && r2 > r3) {
+                        ls.outwardRolls += freq;
+                    } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
+                        ls.redirects += freq;
+                    }
+                }
+            }
+
+            // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
+            int currentRun = 1;
+            char currentHand = keys.get(0).hand;
+            for (int i = 1; i < len; i++) {
+                if (keys.get(i).hand == currentHand) {
+                    currentRun++;
+                } else {
+                    // Zvýšené na 5 znakov zo 4
+                    if (currentRun >= 5) {
+                        ls.longOneHandedRuns += freq;
+                        wordHadLongRun = true;
+                    }
+                    currentRun = 1;
+                    currentHand = keys.get(i).hand;
+                }
+            }
+            if (currentRun >= 5) {
+                ls.longOneHandedRuns += freq;
+                wordHadLongRun = true;
+            }
+
+            // --- MAPY PRE TOP 10 SLOV ---
+            if (!silent) {
+                if (wordHadSfb) ls.sfbWordsMap.put(word, freq); // Rovno zapíšeme celú frekvenciu
+                if (wordHadLongRun) ls.longRunWordsMap.put(word, freq);
+                if (hasInnerStretch) ls.innerStretchWordsMap.put(word, freq);
+            }
         }
 
-        ls.computeGlobalEliteScore(weights); // Vypočítame skóre, aby sme ho mohli zobraziť v reporte
+        // Výpočet percent (ostal nezmenený)
+        double total = ls.totalMonograms == 0 ? 1 : (double) ls.totalMonograms;
+        ls.lPinky = (ls.fingers[0] * 100.0) / total;
+        ls.lRing = (ls.fingers[1] * 100.0) / total;
+        ls.lMiddle = (ls.fingers[2] * 100.0) / total;
+        ls.lIndex = ((ls.fingers[3] + ls.fingers[4]) * 100.0) / total;
+        ls.rPinky = (ls.fingers[9] * 100.0) / total;
+        ls.rRing = (ls.fingers[8] * 100.0) / total;
+        ls.rMiddle = (ls.fingers[7] * 100.0) / total;
+        ls.rIndex = ((ls.fingers[6] + ls.fingers[5]) * 100.0) / total;
 
+        ls.computeGlobalEliteScore(weights);
         if (!silent) ls.printLayoutReport(layout);
 
         return ls;
@@ -299,8 +291,8 @@ public class LayoutStats {
         System.out.println("==================================================");
     }
 
-    private static void printTopWords(Map<String, Integer> map, int limit) {
-        List<Map.Entry<String, Integer>> sorted = map.entrySet().stream()
+    private static void printTopWords(Map<String, Long> map, int limit) {
+        List<Map.Entry<String, Long>> sorted = map.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .limit(limit)
                 .collect(Collectors.toList());
@@ -311,7 +303,7 @@ public class LayoutStats {
         }
 
         for (int i = 0; i < sorted.size(); i++) {
-            Map.Entry<String, Integer> entry = sorted.get(i);
+            Map.Entry<String, Long> entry = sorted.get(i);
             System.out.printf("  %2d. %-15s (%d x)\n", i + 1, entry.getKey(), entry.getValue());
         }
     }

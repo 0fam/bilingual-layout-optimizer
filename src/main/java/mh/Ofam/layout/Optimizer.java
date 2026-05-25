@@ -1,5 +1,7 @@
 package mh.Ofam.layout;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class Optimizer {
@@ -9,7 +11,9 @@ public class Optimizer {
     public void optimize(Layout initialLayout, TextStats skStats, TextStats enStats) {
         Layout bestLayout = initialLayout.clone();
         Weights weights = new Weights();
+        Map<String, Double> evaluatedCache = new HashMap<>();
         double bestScore = calculateWeightedScore(bestLayout, weights, skStats, enStats);
+        evaluatedCache.put(String.valueOf(bestLayout.matrix), bestScore);
 
         System.out.println("Štartovacie skóre: " + bestScore);
 
@@ -23,8 +27,16 @@ public class Optimizer {
             // POZOR: Prehadzuj len alfabetu (písmená), palce alebo pevné znaky vynechaj
             mutateLayout(mutated);
 
+            if (evaluatedCache.containsKey(String.valueOf(mutated.matrix))) {
+                continue; // Už sme tento layout hodnotili, preskočíme ho
+            }
+
             // 3. Ohodnoť nový layout tvojou vlastnou 80/20 funkciou
+            long startEval = System.nanoTime();
             double newScore = calculateWeightedScore(mutated, weights, skStats, enStats);
+            long endEval = System.nanoTime();
+            // Vypíše čas evaluácie v milisekundách
+            System.out.println("Jedna evaluácia trvala: " + (endEval - startEval) / 1_000_000.0 + " ms");
 
             // 4. Ak je nový layout lepší, prepíš ten starý
             if (newScore > bestScore) {
