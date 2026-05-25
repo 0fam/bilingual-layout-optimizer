@@ -32,7 +32,7 @@ public class Main {
 
         // 3. Odpal energetické jadro
         LayoutOptimizer optimizer = new LayoutOptimizer();
-        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 4);
+        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 5);
     }
 
     private static Map<String, Long> loadYourExistingSlovakMap() throws URISyntaxException, IOException {

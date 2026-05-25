@@ -16,7 +16,7 @@ public class Analyzer {
         // Cesty môžeme prijímať z argumentov, inak použijeme predvolené
         String korpusPath = "korpus.txt";
         String layoutsDir = "layouts"; // Tvoj adresár s .json súbormi
-        boolean optimize = true;
+        boolean optimize = false;
 
         if (args.length >= 1) korpusPath = args[0];
         if (args.length >= 2) layoutsDir = args[1];
