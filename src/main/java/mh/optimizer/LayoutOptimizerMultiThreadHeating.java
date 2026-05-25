@@ -13,6 +13,26 @@ public class LayoutOptimizerMultiThreadHeating {
     private final Object globalLock = new Object();
     private double globalBestScore = -1.0;
 
+    // 🔥 NOVINKA: Deterministické anatomické pravidlá na brutálne orezanie vyhľadávacieho priestoru
+    private static boolean isValidTarget(char ch, int pos) {
+        // Pravidlo 1: Samohlásky striktne len na pravú ruku (Dvorakov princíp striedania rúk)
+        if (ch == 'a' || ch == 'e' || ch == 'i' || ch == 'o' || ch == 'u' || ch == 'y') {
+            if (KeyboardTopology.POS_TO_HAND[pos] != 1) return false;
+        }
+
+        // Pravidlo 2: Elita korpusu nesmie nikdy opustiť stredný domovský riadok
+        if (ch == 'e' || ch == 'a' || ch == 'o' || ch == 'i' || ch == 't' || ch == 'r' || ch == 's') {
+            if (KeyboardTopology.POS_TO_ROW[pos] != 1) return false;
+        }
+
+        // Pravidlo 3: Vzácny odpad (q, x, w) nesmie parazitovať na najpohodlnejšom strednom riadku
+        if (ch == 'q' || ch == 'x' || ch == 'w') {
+            if (KeyboardTopology.POS_TO_ROW[pos] == 1) return false;
+        }
+
+        return true;
+    }
+
     public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, long iterations, int maxN) {
         // 1. JEDNORAZOVÉ PREDSPRACOVANIE
         NGramStats skStats = CorpusProcessor.process(skRawWords, maxN);
@@ -20,7 +40,7 @@ public class LayoutOptimizerMultiThreadHeating {
         Weights weights = Weights.builder().build();
 
         // Zistíme počet jadier procesora (u teba 8)
-        int threadsCount = 6; // Runtime.getRuntime().availableProcessors() / 2;
+        int threadsCount = 7; // Runtime.getRuntime().availableProcessors() / 2;
         if (threadsCount < 1) threadsCount = 1;
 
         // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout
@@ -48,7 +68,7 @@ public class LayoutOptimizerMultiThreadHeating {
 
                 // MALÝ TRIK: Prvých pár sekúnd rozhádžeme klávesy náhodne
                 if (workerId > 0) {
-                    for (int s = 0; s < 50; s++) {
+                    for (int s = 0; s < 500; s++) {
                         currentLayout.swap(random.nextInt(30), random.nextInt(30));
                     }
                 }
@@ -81,7 +101,26 @@ public class LayoutOptimizerMultiThreadHeating {
 
                     int pos1 = random.nextInt(30);
                     int pos2 = random.nextInt(30);
-                    while (pos1 == pos2) pos2 = random.nextInt(30);
+
+                    // 🔥 Pravidlo 4: SMART SWAPPING (80% času prehadzujeme klávesy len v rámci tej istej ruky)
+                    if (random.nextDouble() < 0.80) {
+                        int hand1 = KeyboardTopology.POS_TO_HAND[pos1];
+                        while (pos1 == pos2 || KeyboardTopology.POS_TO_HAND[pos2] != hand1) {
+                            pos2 = random.nextInt(30);
+                        }
+                    } else {
+                        while (pos1 == pos2) pos2 = random.nextInt(30);
+                    }
+
+                    char c1 = currentLayout.matrix[pos1];
+                    char c2 = currentLayout.matrix[pos2];
+
+                    // 🔥 DETERMINISTICKÝ GUARD: Ak výmena porušuje anatomické podmienky, okamžite ju preskočíme.
+                    // Ušetríme tým kompletný drahý výpočet trigramov vo FastEvaluatore.
+                    if (!isValidTarget(c1, pos2) || !isValidTarget(c2, pos1)) {
+                        temp *= coolingRate; // Teplota musí chladnúť synchrónne s krokom slučky i
+                        continue;
+                    }
 
                     // MUTÁCIA: Prehodíme klávesy priamo v layoute
                     currentLayout.swap(pos1, pos2);

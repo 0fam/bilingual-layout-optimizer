@@ -30,13 +30,14 @@ public class Main {
 //        String initialLayoutStr = "zdjbg'ukoxntrmv.seaifclp,qhw;y"; //dof2770
 //        String initialLayoutStr = "zdjbg',koxntrvmuseaifclp.qhw;y"; //dof2
 //        String initialLayoutStr = "vdnkg;j.'wmtrsc,oeaifplbxqzhuy"; //dof4
-        String initialLayoutStr = "qxwh;.,lcboaeiyvsntmgukj'fzrdp"; //dof5
+//        String initialLayoutStr = "qxwh;.,lcboaeiyvsntmgukj'fzrdp"; //dof5
 //        y,hu;qvcs. / ioeawmktnl / fjgx'bpdzr
 //        y,hu;qpcs. / ioeawmktnl / gjfx'bvdzr
 //        y,hu'qvcs. / ioeawmktnl / gjfx;bpdzr
 //        y,hu;qpcsl / ioeawmktnr / gjfx'bvdz.
 //        y,hu;qvcsl / ioeawmktnr / gjfx'bpdz.
-//        gjfx;qvcsl / ioeawmktnr / y,hu'bpdz.
+        String initialLayoutStr = "gjfx;qvcslioeawmktnry,hu'bpdz."; // dof6
+//        String initialLayoutStr = "qwfpgjluy'dtrsncaeoizxmkbvh,.;"; //gemini starting layout pre zihanie s pravidlami
 
 
         // 3. Odpal energetické jadro
