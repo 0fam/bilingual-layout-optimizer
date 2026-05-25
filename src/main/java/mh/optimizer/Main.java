@@ -27,7 +27,8 @@ public class Main {
         // DÔLEŽITÉ: Uisti sa, že tento string obsahuje PRESNE tie isté znaky (vrátane diakritiky),
         // aké sa nachádzajú vo tvojich wordFreqs mapách, inak ich evaluátor preskočí.
 //        String initialLayoutStr = "qdhgvwcuoyntrsm,peaibzlkf.j;'x"; //dof
-        String initialLayoutStr = "zdjbg'ukoxntrmv.seaifclp,qhw;y"; //dof2770
+//        String initialLayoutStr = "zdjbg'ukoxntrmv.seaifclp,qhw;y"; //dof2770
+        String initialLayoutStr = "zdjbg',koxntrvmuseaifclp.qhw;y"; //dof2
 
 
         // 3. Odpal energetické jadro
