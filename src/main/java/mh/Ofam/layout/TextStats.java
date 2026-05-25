@@ -1,5 +1,7 @@
 package mh.Ofam.layout;
 
+import lombok.Getter;
+
 import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +13,7 @@ public class TextStats {
 
     long wordsTotal = 0;
     long charsTotal = 0;
+    @Getter
     Map<String, Long> wordFreqs = new HashMap<>();
     Map<Character, Long> charFreqs = new HashMap<>();
     FastWord[] fastCorpus;

@@ -134,6 +134,38 @@ public class FastEvaluator {
             }
         }
 
+        // TOTO PRIDÁME DO FastEvaluatora PRE UNIVERZÁLNU ANALÝZU DLHÝCH BEHOV:
+        long longOneHandedRuns = 0;
+
+        for (CompactNGram ngram : stats.longNGrams) {
+            int nLen = ngram.seq.length;
+            if (nLen == 0) continue;
+
+            // Vytiahneme ruku prvého znaku priamo z lookup tabuľky layoutu
+            int targetHand = layout.charToHand[ngram.seq[0] & 0xFF];
+            if (targetHand == -1) continue; // Neplatný znak
+
+            boolean isSingleHanded = true;
+
+            // Dynamicky skontrolujeme, či sú VŠETKY ostatné znaky na tej istej ruke
+            for (int i = 1; i < nLen; i++) {
+                int currentHand = layout.charToHand[ngram.seq[i] & 0xFF];
+                if (currentHand != targetHand) {
+                    isSingleHanded = false;
+                    break; // Ruka sa zmenila, prerušujeme kontrolu
+                }
+            }
+
+            // Ak celá sekvencia prebehla na jednej ruke, vyhodnotíme metriku
+            if (isSingleHanded) {
+                if (nLen == 5) {
+                    longOneHandedRuns += ngram.freq; // Našli sme tvoj 5-písmenový beh!
+                } else if (nLen == 4) {
+                    longOneHandedRuns += ngram.freq;
+                }
+            }
+        }
+
         // --- 4. PREPOČET PERCENTILOV ---
         double denomM = totalMonograms == 0 ? 1.0 : totalMonograms;
         double denomB = totalBigrams == 0 ? 1.0 : totalBigrams;
@@ -151,6 +183,7 @@ public class FastEvaluator {
         ls.homeRowPct = (rows[1] * 100.0) / denomM;
         ls.rollInPct = (inwardRolls * 100.0) / denomT;
         ls.rollOutPct = (outwardRolls * 100.0) / denomT;
+        ls.runsPct = (longOneHandedRuns * 100.0) / denomM;
 
         for (int i = 0; i < 8; i++) {
             ls.fingerLoads[i] = (fingers[i] * 100.0) / denomM;
@@ -197,15 +230,18 @@ public class FastEvaluator {
         double rollOutScore = getEliteScore(ls.rollOutPct, 10.0, 0.0);
         double homeRowScore = getEliteScore(ls.homeRowPct, 65.0, 45.0);
 
-        // Limity pre prsty (Indexy: 0=ĽM, 1=ĽP, 2=ĽPr, 3=ĽU, 4=PU, 5=PPr, 6=PP, 7=PM)
-        double f0 = getEliteScore(ls.fingerLoads[0], 9.0, 12.0); // Ľ Malíček
-        double f1 = getEliteScore(ls.fingerLoads[1], 20.0, 24.0); // Ľ Prstenník
-        double f2 = getEliteScore(ls.fingerLoads[2], 22.0, 26.0); // Ľ Prostredník
-        double f3 = getEliteScore(ls.fingerLoads[3], 26.0, 30.0); // Ľ Ukazovák
-        double f4 = getEliteScore(ls.fingerLoads[4], 26.0, 30.0); // P Ukazovák
-        double f5 = getEliteScore(ls.fingerLoads[5], 22.0, 26.0); // P Prostredník
-        double f6 = getEliteScore(ls.fingerLoads[6], 20.0, 24.0); // P Prstenník
-        double f7 = getEliteScore(ls.fingerLoads[7], 9.0, 12.0);  // P Malíček
+        // 🔥 NOVINKA: Výpočet skóre pre jednoručné behy
+        double runsScore = getEliteScore(ls.runsPct, 0.15, 1.20);
+
+        // Limity pre prsty
+        double f0 = getEliteScore(ls.fingerLoads[0], 9.0, 12.0);
+        double f1 = getEliteScore(ls.fingerLoads[1], 20.0, 24.0);
+        double f2 = getEliteScore(ls.fingerLoads[2], 22.0, 26.0);
+        double f3 = getEliteScore(ls.fingerLoads[3], 26.0, 30.0);
+        double f4 = getEliteScore(ls.fingerLoads[4], 26.0, 30.0);
+        double f5 = getEliteScore(ls.fingerLoads[5], 22.0, 26.0);
+        double f6 = getEliteScore(ls.fingerLoads[6], 20.0, 24.0);
+        double f7 = getEliteScore(ls.fingerLoads[7], 9.0, 12.0);
 
         double maxFingerScore = Math.min(Math.min(Math.min(f0, f1), Math.min(f2, f3)), Math.min(Math.min(f4, f5), Math.min(f6, f7)));
 
@@ -223,9 +259,10 @@ public class FastEvaluator {
                         Math.pow(rollOutScore, weights.getRollOut()) *
                         Math.pow(maxFingerScore, weights.getFingerStats()) * Math.pow(lsbScore, weights.getLsb()) *
                         Math.pow(lhbScore, weights.getLhb()) *
-                        Math.pow(homeRowScore, weights.getHomeRow());
+                        Math.pow(homeRowScore, weights.getHomeRow()) *
+                        Math.pow(runsScore, weights.getRuns()); // 🔥 OPRAVA: Pridané do finálneho násobenia telesa
 
-        // Matematicky čistý geometrický priemer (strana n-rozmerného telesa)
         ls.eliteScore = Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0;
     }
+
 }

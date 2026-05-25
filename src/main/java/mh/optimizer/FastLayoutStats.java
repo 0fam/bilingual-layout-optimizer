@@ -7,7 +7,7 @@ public class FastLayoutStats {
 
     // Surové percentá pre finálnu tabuľku
     public double sfbPct, sfsPct, stretchPct, scissorsPct, redirectsPct;
-    public double lsbPct, lhbPct, altPct, homeRowPct, rollInPct, rollOutPct;
+    public double lsbPct, lhbPct, altPct, homeRowPct, rollInPct, rollOutPct, runsPct;
 
     public double[] fingerLoads = new double[8]; // Záťaž 8 prstov
 }

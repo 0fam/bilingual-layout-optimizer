@@ -1,6 +1,6 @@
 package mh.optimizer;
 
-public static class CompactNGram {
+public class CompactNGram {
     public final byte[] seq; // Dynamická sekvencia znakov (dĺžka určuje či je to 4-gram, 5-gram atď.)
     public final long freq;  // Frekvencia výskytu v celom korpuse
 
