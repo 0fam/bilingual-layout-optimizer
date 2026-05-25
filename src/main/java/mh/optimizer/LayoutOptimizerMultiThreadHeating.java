@@ -20,10 +20,10 @@ public class LayoutOptimizerMultiThreadHeating {
         Weights weights = Weights.builder().build();
 
         // Zistíme počet jadier procesora (u teba 8)
-        int threadsCount = 4; // Runtime.getRuntime().availableProcessors() / 2;
+        int threadsCount = 6; // Runtime.getRuntime().availableProcessors() / 2;
         if (threadsCount < 1) threadsCount = 1;
 
-        // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout, nech hneď od štartu filtrujeme balast
+        // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout
         FastLayout startLayout = new FastLayout("StartCheck", initialLayoutStr);
         FastLayoutStats startSk = FastEvaluator.evaluate(startLayout, skStats, weights);
         this.globalBestScore = startSk.eliteScore;
@@ -46,8 +46,7 @@ public class LayoutOptimizerMultiThreadHeating {
                 // Každé vlákno začne s východiskovým layoutom
                 FastLayout currentLayout = new FastLayout(workerName, initialLayoutStr);
 
-                // MALÝ TRIK: Prvých pár sekúnd rozhádžeme klávesy náhodne,
-                // aby každé jadro hľadalo v úplne inej časti matematického vesmíru
+                // MALÝ TRIK: Prvých pár sekúnd rozhádžeme klávesy náhodne
                 if (workerId > 0) {
                     for (int s = 0; s < 50; s++) {
                         currentLayout.swap(random.nextInt(30), random.nextInt(30));
@@ -55,22 +54,26 @@ public class LayoutOptimizerMultiThreadHeating {
                 }
 
                 FastLayoutStats skS = FastEvaluator.evaluate(currentLayout, skStats, weights);
-//                FastLayoutStats enS = FastEvaluator.evaluate(currentLayout, enStats, weights);
-//                double bestScore = (0.8 * skS.eliteScore) + (0.2 * enS.eliteScore);
                 double bestScore = skS.eliteScore;
 
-                // Sledovanie času štartu tohto konkrétneho jadra pre presný prepočet rýchlosti
+                // ==========================================
+                // 🔥 NASTAVENIE SIMULOVANÉHO ŽÍHANIA (Pre 50 000 krokov)
+                // ==========================================
+                double temp = 10.0;                 // Štartovacia teplota chaosu
+                double coolingRate = 0.9998157;     // Ochladenie presne pre 50k krokov na nulu
+                // ==========================================
+
                 long workerStartTime = System.currentTimeMillis();
 
                 for (long i = 0; i < iterations; i++) {
 
-                    // 🔥 NOVINKA: Priebežný živý odhad rýchlosti pre každé jadro osobitne na 10 000 krokov
+                    // Priebežný živý odhad rýchlosti pre každé jadro osobitne na 10 000 krokov
                     if (i % 10_000 == 0 && i > 0) {
                         long currentNow = System.currentTimeMillis();
                         double elapsedSec = (currentNow - workerStartTime) / 1000.0;
                         double currentIps = elapsedSec > 0 ? (i / elapsedSec) : 0;
-                        System.out.printf("   [%s] Spracované: %6d iterácií | Živá rýchlosť: %.0f it/s (Max: %.4f)\n",
-                                workerName, i, currentIps, bestScore);
+                        System.out.printf("   [%s] Priebeh: %6d / %d | Rýchlosť: %.0f it/s (Aktuálne: %.4f) | Teplota: %.2f\n",
+                                workerName, i, iterations, currentIps, bestScore, temp);
                     }
 
                     int pos1 = random.nextInt(30);
@@ -81,20 +84,25 @@ public class LayoutOptimizerMultiThreadHeating {
                     currentLayout.swap(pos1, pos2);
 
                     FastLayoutStats newSk = FastEvaluator.evaluate(currentLayout, skStats, weights);
-//                    FastLayoutStats newEn = FastEvaluator.evaluate(currentLayout, enStats, weights);
-//                    double newGlobalScore = (0.8 * newSk.eliteScore) + (0.2 * newEn.eliteScore);
                     double newGlobalScore = newSk.eliteScore;
 
-                    if (newGlobalScore > bestScore) {
+                    // Matematická delta žíhania
+                    double delta = newGlobalScore - bestScore;
+
+                    // HLAVNÁ PODMIENKA ŽÍHANIA:
+                    // Ak je layout lepší, berieme ho vždy. Ak je horší, prejde cez teplotnú lotériu
+                    if (delta > 0 || (temp > 0.001 && random.nextDouble() < Math.exp(delta / temp))) {
                         bestScore = newGlobalScore;
 
                         // Kontrola a nahlásenie absolútneho rekordu
                         char[] matrixCopy = currentLayout.matrix.clone();
                         checkAndReportGlobalImprovement(workerName, matrixCopy, bestScore, i);
-
                     } else {
                         currentLayout.swap(pos1, pos2); // rollback
                     }
+
+                    // Ochladzujeme vzduch
+                    temp *= coolingRate;
                 }
                 return new OptimizationResult(currentLayout.matrix, bestScore);
             }));
@@ -107,7 +115,7 @@ public class LayoutOptimizerMultiThreadHeating {
         try {
             for (Future<OptimizationResult> future : futures) {
                 OptimizationResult res = future.get(); // Čaká na dokončenie konkrétneho jadra
-                System.out.printf("Jadro dokončilo prácu. Najlepšie nájdené skóre na tomto jadre: %.4f\n", res.score);
+                System.out.printf("📢 [%s] dokončilo prácu. Najlepšie dosiahnuté skóre: %.4f\n", Thread.currentThread().getName(), res.score);
                 if (res.score > absoluteBestScore) {
                     absoluteBestScore = res.score;
                     absoluteBestMatrix = res.matrix;
@@ -132,7 +140,7 @@ public class LayoutOptimizerMultiThreadHeating {
 
         printMatrixBeautifully(absoluteBestMatrix);
 
-        // 🔥 NOVINKA: Porovnanie s pôvodným stavom, nech okamžite vidíš zmeny
+        // Zobrazenie výsledného porovnania zmien oproti počiatočnému stavu
         printLayoutDiff(initialLayoutStr, absoluteBestMatrix);
     }
 

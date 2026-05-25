@@ -28,12 +28,14 @@ public class Main {
         // aké sa nachádzajú vo tvojich wordFreqs mapách, inak ich evaluátor preskočí.
 //        String initialLayoutStr = "qdhgvwcuoyntrsm,peaibzlkf.j;'x"; //dof
 //        String initialLayoutStr = "zdjbg'ukoxntrmv.seaifclp,qhw;y"; //dof2770
-        String initialLayoutStr = "zdjbg',koxntrvmuseaifclp.qhw;y"; //dof2
+//        String initialLayoutStr = "zdjbg',koxntrvmuseaifclp.qhw;y"; //dof2
+//        String initialLayoutStr = "vdnkg;j.'wmtrsc,oeaifplbxqzhuy"; //dof4
+        String initialLayoutStr = "qxwh;.,lcboaeiyvsntmgukj'fzrdp"; //dof5
 
 
         // 3. Odpal energetické jadro
-        LayoutOptimizerMultiThread optimizer = new LayoutOptimizerMultiThread();
-        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 5);
+        LayoutOptimizerMultiThreadHeating optimizer = new LayoutOptimizerMultiThreadHeating();
+        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 50_000, 5);
     }
 
     private static Map<String, Long> loadYourExistingSlovakMap() throws URISyntaxException, IOException {
