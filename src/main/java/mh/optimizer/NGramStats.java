@@ -6,7 +6,6 @@ import java.util.List;
 public class NGramStats {
     public final long totalMonograms;
     public final long[] monograms = new long[256];
-
     // 🔥 ZMENA: Polia sploštené do 1D pre bleskový prístup v L3 cache
     public final long[] bigrams = new long[256 * 256];
     public final long[] skipgrams = new long[256 * 256];
@@ -14,7 +13,12 @@ public class NGramStats {
     public final long[] trigrams = new long[256 * 256 * 256];
 
     // --- NOVINKA: Univerzálny zoznam pre dlhé reálne N-gramy (Sparsity) ---
-    public final List<CompactNGram> longNGrams = new ArrayList<>();
+    // 🔥 ZMENA: Objektový ArrayList nahradený plochými primitívnymi poliami pre bleskový prelet v cache
+    public int longNGramsCount = 0;
+    public long[] longNGramsFreqs;
+    public int[] longNGramsLengths;
+    public int[] longNGramsOffsets;
+    public byte[] longNGramsConcat;
 
     public NGramStats(long totalMonograms) {
         this.totalMonograms = totalMonograms;

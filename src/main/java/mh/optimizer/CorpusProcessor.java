@@ -85,17 +85,39 @@ public class CorpusProcessor {
         System.arraycopy(stats.skipgrams, 0, finalStats.skipgrams, 0, 256 * 256);
         System.arraycopy(stats.trigrams, 0, finalStats.trigrams, 0, 256 * 256 * 256);
 
-        // Prevod z mapy do úsporného zoznamu
+        // 🔥 ZMENA: Prevod z dočasnej mapy do super-rýchlych plochých 1D polí
+        int numLongs = aggregatedLongs.size();
+        finalStats.longNGramsCount = numLongs;
+        finalStats.longNGramsFreqs = new long[numLongs];
+        finalStats.longNGramsLengths = new int[numLongs];
+        finalStats.longNGramsOffsets = new int[numLongs];
+
+        // Zistíme presnú celkovú dĺžku v bajtoch pre jedno ploché pole
+        int totalBytes = 0;
+        for (String seqStr : aggregatedLongs.keySet()) {
+            totalBytes += seqStr.length();
+        }
+        finalStats.longNGramsConcat = new byte[totalBytes];
+
+        int idx = 0;
+        int currentOffset = 0;
         for (Map.Entry<String, Long> e : aggregatedLongs.entrySet()) {
             String seqStr = e.getKey();
-            byte[] bytes = new byte[seqStr.length()];
-            for (int i = 0; i < seqStr.length(); i++) {
-                bytes[i] = (byte) seqStr.charAt(i);
+            int len = seqStr.length();
+
+            finalStats.longNGramsFreqs[idx] = e.getValue();
+            finalStats.longNGramsLengths[idx] = len;
+            finalStats.longNGramsOffsets[idx] = currentOffset;
+
+            // Nasypeme znaky za sebou do jedného flat poľa
+            for (int i = 0; i < len; i++) {
+                finalStats.longNGramsConcat[currentOffset + i] = (byte) seqStr.charAt(i);
             }
-            finalStats.longNGrams.add(new CompactNGram(bytes, e.getValue()));
+            currentOffset += len;
+            idx++;
         }
 
-        System.out.println("Kompresia úspešná. Unikátnych dlhých N-gramov po zlúčení: " + finalStats.longNGrams.size());
+        System.out.println("Kompresia úspešná. Unikátnych dlhých N-gramov po zlúčení: " + finalStats.longNGramsCount);
         return finalStats;
     }
 
