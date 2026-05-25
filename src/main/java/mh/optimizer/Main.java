@@ -32,7 +32,7 @@ public class Main {
 
 
         // 3. Odpal energetické jadro
-        LayoutOptimizer optimizer = new LayoutOptimizer();
+        LayoutOptimizerMultiThread optimizer = new LayoutOptimizerMultiThread();
         optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 5);
     }
 
