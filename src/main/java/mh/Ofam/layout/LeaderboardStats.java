@@ -54,7 +54,7 @@ public class LeaderboardStats {
             // --- TRESTY (Menšie je lepšie) ---
             double sfbScore = getAbsoluteScore(r.getSfbPct(), 1.0, 5.0);        // <1% je dokonalé, >5% je odpad
             double sfsScore = getAbsoluteScore(r.getSfsPct(), 4.0, 9.0);
-            double stretchScore = getAbsoluteScore(r.getInnerStretchPct(), 5.0, 16.0); // Na Toteme chceme stretch pod 5%
+            double stretchScore = getAbsoluteScore(r.getInnerStretchPctL() + r.getInnerStretchPctR(), 5.0, 16.0); // Na Toteme chceme stretch pod 5%
             double scissorsScore = getAbsoluteScore(r.getScissorsPct(), 0.5, 3.0);
             double redirectsScore = getAbsoluteScore(r.getRedirectsPct(), 3.0, 12.0); // Pod 3% je luxus, nad 12% je pinball (Colemak)
 
@@ -134,7 +134,7 @@ public class LeaderboardStats {
 // 2. SEKUNDÁRNE CHYBY
             painScore += r.getSfsPct() * weights.getSfs();
             painScore += r.getLsbPct() * weights.getLsb();
-            painScore += r.getInnerStretchPct() * weights.getStretch();
+            painScore += (r.getInnerStretchPctL() + r.getInnerStretchPctR()) * weights.getStretch();
 
 // 3. ANATOMICKÉ TRESTY PRE KAŽDÝ PRST OSOBITNE (OVERLOAD)
 // (Biológia je pevná, váha trestu je dynamická)
@@ -212,7 +212,7 @@ public class LeaderboardStats {
         String lineSeparator = "-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
 
         // Prvá inicializačná hlavička
-        System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
+        System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStrL%", "InStrR%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
         System.out.println(lineSeparator);
 
         int i = 0;
@@ -221,11 +221,11 @@ public class LeaderboardStats {
             // OPRAVA PRE SKROLOVANIE: Každých 10 riadkov znova vytlačíme hlavičku
             if (i > 0 && i % 10 == 0) {
                 System.out.println(lineSeparator);
-                System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStr%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
+                System.out.printf(headerFormat, "Idx", "Názov layoutu", "ELITE", "BAL_S", "PAIN_S", "LP%", "LR%", "LM%", "LI%", "RI%", "RM%", "RR%", "RP%", "InStrL%", "InStrR%", "Redir%", "SFB%", "SFS%", "Scis%", "LSB%", "LHB%", "Home%", "Alt%", "RollI%", "RollO%", "Runs%");
                 System.out.println(lineSeparator);
             }
 
-            System.out.printf("%-4d | %-20s | %6.4f | %6.2f | %6.2f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %6.2f | %6.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %6.2f | %6.2f | %5.2f\n",
+            System.out.printf("%-4d | %-20s | %6.4f | %6.2f | %6.2f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %6.2f | %6.2f | %6.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %6.2f | %6.2f | %5.2f\n",
                     ++i,
                     res.getLayout().name,
                     res.getEliteScore(),
@@ -239,7 +239,8 @@ public class LeaderboardStats {
                     res.rMiddle,
                     res.rRing,
                     res.rPinky,
-                    res.getInnerStretchPct(),
+                    res.getInnerStretchPctL(),
+                    res.getInnerStretchPctR(),
                     res.getRedirectsPct(),
                     res.getSfbPct(),
                     res.getSfsPct(),

@@ -16,7 +16,8 @@ public class LayoutStats {
 
     long[] rows = new long[3];
     long[] fingers = new long[10];
-    long innerStretch = 0;
+    long innerStretchL = 0;
+    long innerStretchR = 0;
 
     long sfb = 0;
     long sfs = 0;
@@ -51,6 +52,7 @@ public class LayoutStats {
     // Mapy na sledovanie konkrétnych problémových slov
     Map<String, Integer> sfbWordsMap = new HashMap<>();
     Map<String, Integer> longRunWordsMap = new HashMap<>();
+    Map<String, Integer> innerStretchWordsMap = new HashMap<>();
 
     long totalMonograms = 0;
     long totalBigrams = 0;
@@ -64,7 +66,7 @@ public class LayoutStats {
     @Getter
     double eliteScore = 0.0;
 
-    public static LayoutStats instance(TextStats textStats, Layout layout, Weights weights) {
+    public static LayoutStats instance(TextStats textStats, Layout layout, Weights weights, boolean silent) {
         LayoutStats ls = new LayoutStats();
         ls.layout = layout;
 
@@ -88,6 +90,7 @@ public class LayoutStats {
 
                 boolean wordHadSfb = false;
                 boolean wordHadLongRun = false;
+                boolean hasInnerStretch = false;
 
                 // --- 1. ÚROVEŇ: MONOGRAMY ---
                 for (KeyInfo k : keys) {
@@ -98,8 +101,12 @@ public class LayoutStats {
                     if (k.hand == 'L') ls.leftHandMonograms++;
                     else ls.rightHandMonograms++;
 
-                    if (k.col == 4 || k.col == 5) {
-                        ls.innerStretch++;
+                    if (k.col == 4) {
+                        ls.innerStretchL++;
+                        hasInnerStretch = true;
+                    } else if (k.col == 5) {
+                        ls.innerStretchR++;
+                        hasInnerStretch = true;
                     }
                 }
 
@@ -203,6 +210,9 @@ public class LayoutStats {
                 if (wordHadLongRun) {
                     ls.longRunWordsMap.put(word, ls.longRunWordsMap.getOrDefault(word, 0) + 1);
                 }
+                if (hasInnerStretch) {
+                    ls.innerStretchWordsMap.put(word, ls.innerStretchWordsMap.getOrDefault(word, 0) + 1);
+                }
             }
 
             // --- ZÁŤAŽ INDIVIDUÁLNYCH PRSTOV (Anatomické limity) ---
@@ -221,7 +231,7 @@ public class LayoutStats {
 
         ls.computeGlobalEliteScore(weights); // Vypočítame skóre, aby sme ho mohli zobraziť v reporte
 
-        ls.printLayoutReport(layout);
+        if (!silent) ls.printLayoutReport(layout);
 
         return ls;
     }
@@ -235,9 +245,7 @@ public class LayoutStats {
         System.out.println("======================================");
         System.out.println("   LAYOUT: " + layout.name.toUpperCase());
         System.out.println("======================================");
-        System.out.println(layout.rows[0]);
-        System.out.println(layout.rows[1]);
-        System.out.println(layout.rows[2]);
+        layout.print();
         System.out.println();
         System.out.printf("Spracovaných platných znakov: %d\n", totalMonograms);
         System.out.printf("Spracovaných bigramov: %d | trigramov: %d\n", totalBigrams, totalTrigrams);
@@ -254,12 +262,8 @@ public class LayoutStats {
         System.out.printf("  Bottom Row: %6.2f%%\n", totalMonograms == 0 ? 0 : (rows[2] * 100.0) / totalMonograms);
 
         System.out.println("\n[2] ZÁŤAŽ PRSTOV A BOČNÝ POHYB");
-        System.out.printf("  Stredové stĺpce (Inner Stretch):  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms);
-        System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
-        System.out.printf("  Malíček      : %5.2f%%      |      Malíček      : %5.2f%%\n", lPinky, rPinky);
-        System.out.printf("  Prstenník    : %5.2f%%      |      Prstenník    : %5.2f%%\n", lRing, rRing);
-        System.out.printf("  Prostredník  : %5.2f%%      |      Prostredník  : %5.2f%%\n", lMiddle, rMiddle);
-        System.out.printf("  Ukazovák     : %5.2f%%      |      Ukazovák     : %5.2f%%\n", lIndex, rIndex);
+        System.out.printf("  Inner Stretch Left :  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretchL * 100.0) / totalMonograms);
+        System.out.printf("  Inner Stretch Right:  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretchR * 100.0) / totalMonograms);
 
         String[] fNames = {"Malíček", "Prstenník", "Prostredník", "Ukazovák", "Inner Stretch"};
         System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
@@ -289,6 +293,9 @@ public class LayoutStats {
         System.out.println("\n[6] TOP 10 SLOV S DLHÝMI JEDNORUČNÝMI BEHMI (>=5 znaky na jednej ruke)");
         printTopWords(longRunWordsMap, 10);
 
+        System.out.println("\n[7] TOP 10 SLOV SO StretchOM (Použitie stredových stĺpcov)");
+        printTopWords(innerStretchWordsMap, 10);
+
         System.out.println("==================================================");
     }
 
@@ -317,8 +324,12 @@ public class LayoutStats {
         return totalSkipgrams == 0 ? 0 : (sfs * 100.0) / totalSkipgrams;
     }
 
-    double getInnerStretchPct() {
-        return totalMonograms == 0 ? 0 : (innerStretch * 100.0) / totalMonograms;
+    double getInnerStretchPctL() {
+        return totalMonograms == 0 ? 0 : (innerStretchL * 100.0) / totalMonograms;
+    }
+
+    double getInnerStretchPctR() {
+        return totalMonograms == 0 ? 0 : (innerStretchR * 100.0) / totalMonograms;
     }
 
     double getAlternationPct() {
@@ -409,7 +420,7 @@ public class LayoutStats {
         // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
         double sfsScore       = getEliteScore(getSfsPct(), 4.0, 9.0);
         // Stretch: Na Toteme je stredový stĺpec blízko, do 6.0% je to bez námahy, nad 15.0% ťa už bude bolieť zápästie
-        double stretchScore   = getEliteScore(getInnerStretchPct(), 6.0, 15.0);
+        double stretchScore   = getEliteScore(getInnerStretchPctL() + getInnerStretchPctR(), 6.0, 15.0);
         // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
         double scissorsScore  = getEliteScore(getScissorsPct(), 0.5, 3.0);
         // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
