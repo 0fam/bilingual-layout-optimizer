@@ -134,8 +134,8 @@ public class LayoutStats {
                     hasInnerStretch = true;
                 } else if (k.col == 5) {
                     double weight = 0.1; // Home stretch
-                    if (k.row == 0) weight = 3.0;      // Top stretch = SMRŤ
-                    else if (k.row == 2) weight = 1.2; // Bottom stretch
+                    if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
+                    else if (k.row == 2) weight = 1.0; // Bottom stretch
 
                     ls.innerStretchR += fw.freq * weight;
                     hasInnerStretch = true;

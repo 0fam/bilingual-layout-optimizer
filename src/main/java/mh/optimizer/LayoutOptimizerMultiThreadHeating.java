@@ -40,7 +40,7 @@ public class LayoutOptimizerMultiThreadHeating {
         Weights weights = Weights.builder().build();
 
         // Zistíme počet jadier procesora (u teba 8)
-        int threadsCount = 7; // Runtime.getRuntime().availableProcessors() / 2;
+        int threadsCount = 5; // Runtime.getRuntime().availableProcessors() / 2;
         if (threadsCount < 1) threadsCount = 1;
 
         // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout
@@ -68,7 +68,7 @@ public class LayoutOptimizerMultiThreadHeating {
 
                 // MALÝ TRIK: Prvých pár sekúnd rozhádžeme klávesy náhodne
                 if (workerId > 0) {
-                    for (int s = 0; s < 500; s++) {
+                    for (int s = 0; s < 50; s++) {
                         currentLayout.swap(random.nextInt(30), random.nextInt(30));
                     }
                 }
@@ -180,14 +180,26 @@ public class LayoutOptimizerMultiThreadHeating {
         synchronized (globalLock) {
             if (score > globalBestScore) {
                 globalBestScore = score;
+
+                // 1. Klasický výpis do konzoly, ako doteraz
                 System.out.printf("\n🚀 [%s] Iterácia %6d: !!! NOVÝ ABSOLÚTNY REKORD -> %.4f !!!\n  Layout: ",
                         workerName, iteration, score);
 
+                StringBuilder layoutSb = new StringBuilder();
                 for (int i = 0; i < 30; i++) {
-                    System.out.print(matrix[i]);
-                    if (i == 9 || i == 19) System.out.print(" / ");
+                    layoutSb.append(matrix[i]);
+                    if (i == 9 || i == 19) layoutSb.append(" / ");
                 }
-                System.out.println("\n");
+                System.out.println(layoutSb.toString() + "\n");
+
+                // 🔥 2. ZÁCHRANNÁ ČIERNA SKRINKA: Okamžitý zápis na disk
+                try (java.io.FileWriter fw = new java.io.FileWriter("totem_rekordy.txt", true);
+                     java.io.PrintWriter pw = new java.io.PrintWriter(fw)) {
+                    pw.printf("[%s] Iteracia: %d | SKORE: %.4f | Layout: %s\n",
+                            workerName, iteration, score, layoutSb.toString());
+                } catch (java.io.IOException e) {
+                    // Ak zápis zlyhá, nechceme, aby nám to zhodilo celú optimalizáciu
+                }
             }
         }
     }

@@ -132,9 +132,9 @@ public class FastEvaluator {
                     if (h1 == h2 && h2 == h3) {
                         // Valivé a zmeny smeru posudzujeme podľa ID prstov (0-7 zľava doprava)
                         if (f1 < f2 && f2 < f3) {
-                            if (h1 == 0) outwardRolls += tFreq; else inwardRolls += tFreq;
+                            if (h1 == 0) inwardRolls += tFreq; else outwardRolls += tFreq; // Ľavá ruka dnu, pravá von
                         } else if (f1 > f2 && f2 > f3) {
-                            if (h1 == 0) inwardRolls += tFreq; else outwardRolls += tFreq;
+                            if (h1 == 0) outwardRolls += tFreq; else inwardRolls += tFreq; // Ľavá ruka von, pravá dnu
                         } else if ((f2 > f1 && f2 > f3) || (f2 < f1 && f2 < f3)) {
                             redirects += tFreq;
                         }
@@ -174,12 +174,8 @@ public class FastEvaluator {
             }
 
             // Ak celá sekvencia prebehla na jednej ruke, vyhodnotíme metriku
-            if (isSingleHanded) {
-                if (nLen == 5) {
-                    longOneHandedRuns += lFreqs[i]; // Našli sme tvoj 5-písmenový beh!
-                } else if (nLen == 4) {
-                    longOneHandedRuns += lFreqs[i];
-                }
+            if (isSingleHanded && nLen == 5) {
+                longOneHandedRuns += lFreqs[i]; // Našli sme tvoj 5-písmenový beh!
             }
         }
 
