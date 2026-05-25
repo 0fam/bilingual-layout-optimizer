@@ -20,7 +20,7 @@ public class LayoutOptimizerMultiThread {
         Weights weights = Weights.builder().build();
 
         // Zistíme počet jadier procesora (u teba 8)
-        int threadsCount = Runtime.getRuntime().availableProcessors() / 2;
+        int threadsCount = 4; // Runtime.getRuntime().availableProcessors() / 2;
         if (threadsCount < 1) threadsCount = 1;
 
         // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout, nech hneď od štartu filtrujeme balast
@@ -131,6 +131,9 @@ public class LayoutOptimizerMultiThread {
         System.out.println("==================================================");
 
         printMatrixBeautifully(absoluteBestMatrix);
+
+        // 🔥 NOVINKA: Porovnanie s pôvodným stavom, nech okamžite vidíš zmeny
+        printLayoutDiff(initialLayoutStr, absoluteBestMatrix);
     }
 
     private void checkAndReportGlobalImprovement(String workerName, char[] matrix, double score, long iteration) {
@@ -157,6 +160,26 @@ public class LayoutOptimizerMultiThread {
             if ((i + 1) % 10 == 0) System.out.println();
         }
         System.out.println();
+    }
+
+    // 🔥 NOVINKA: Analýza zmien oproti počiatočnému stringu
+    private void printLayoutDiff(String initialStr, char[] finalMatrix) {
+        System.out.println("🔄 POROVNANIE ZMIEN OPROTI ŠTARTOVACIEMU LAYOUTU:");
+        int changesCount = 0;
+        for (int i = 0; i < 30; i++) {
+            char oldChar = initialStr.charAt(i);
+            char newChar = finalMatrix[i];
+            if (oldChar != newChar) {
+                System.out.printf("   [Pozícia %2d]  %c  ->  %c\n", i, oldChar, newChar);
+                changesCount++;
+            }
+        }
+        if (changesCount == 0) {
+            System.out.println("   Layout zostal navlas rovnaký (100% zhodný s počiatočným).");
+        } else {
+            System.out.printf("   Celkovo sa prehadzovalo: %d klávesov.\n", changesCount);
+        }
+        System.out.println("==================================================\n");
     }
 
     // Malá interná pomocná štruktúra na prenos výsledkov z jadier
