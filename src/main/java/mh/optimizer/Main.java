@@ -17,7 +17,7 @@ public class Main {
         Map<String, Long> skWordFreqs = loadYourExistingSlovakMap();
         Map<String, Long> enWordFreqs = loadYourExistingEnglishMap();
 
-        if (skWordFreqs.isEmpty()){ // || enWordFreqs.isEmpty()) {
+        if (skWordFreqs.isEmpty()) { // || enWordFreqs.isEmpty()) {
             System.out.println("⚠️ POZOR: Mapy korpusov sú prázdne. Nezabudni sem prepojiť svoj reálny parser!");
             return;
         }
@@ -26,11 +26,13 @@ public class Main {
         // Predstavuje 3 riadky po 10 klávesov zľava doprava.
         // DÔLEŽITÉ: Uisti sa, že tento string obsahuje PRESNE tie isté znaky (vrátane diakritiky),
         // aké sa nachádzajú vo tvojich wordFreqs mapách, inak ich evaluátor preskočí.
-        String initialLayoutStr = "qdhgvwcuoyntrsm,peaibzlkf.j;'x";
+//        String initialLayoutStr = "qdhgvwcuoyntrsm,peaibzlkf.j;'x"; //dof
+        String initialLayoutStr = "zdjbg'ukoxntrmv.seaifclp,qhw;y"; //dof2770
+
 
         // 3. Odpal energetické jadro
         LayoutOptimizer optimizer = new LayoutOptimizer();
-        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 5);
+        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 4);
     }
 
     private static Map<String, Long> loadYourExistingSlovakMap() throws URISyntaxException, IOException {

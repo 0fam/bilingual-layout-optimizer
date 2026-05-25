@@ -1,5 +1,6 @@
 package mh.optimizer;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class CorpusProcessor {
@@ -9,7 +10,10 @@ public class CorpusProcessor {
         long totalMonograms = 0;
         NGramStats stats = new NGramStats(0);
 
-        System.out.println("Spúšťam N-gramovú kompresiu korpusu (Max N = " + maxN + ")...");
+        System.out.println("Spúšťam inteligentnú N-gramovú kompresiu korpusu (Max N = " + maxN + ")...");
+
+        // Dočasná mapa na agregáciu dlhých N-gramov, aby sme nemali duplicity
+        Map<String, Long> aggregatedLongs = new HashMap<>();
 
         for (Map.Entry<String, Long> entry : wordFreqs.entrySet()) {
             String word = entry.getKey();
@@ -27,14 +31,14 @@ public class CorpusProcessor {
             }
             if (!valid) continue;
 
-            // 1. FIXED MONOGRAMY
+            // 1. MONOGRAMY
             for (int i = 0; i < len; i++) {
                 char c = word.charAt(i);
                 stats.monograms[c] += freq;
                 totalMonograms += freq;
             }
 
-            // 2. FIXED BIGRAMY a SKIPGRAMY
+            // 2. BIGRAMY a SKIPGRAMY
             for (int i = 0; i < len - 1; i++) {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);
@@ -46,7 +50,7 @@ public class CorpusProcessor {
                 }
             }
 
-            // 3. FIXED TRIGRAMY
+            // 3. TRIGRAMY
             for (int i = 0; i < len - 2; i++) {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);
@@ -54,35 +58,19 @@ public class CorpusProcessor {
                 stats.trigrams[c1][c2][c3] += freq;
             }
 
-            // 4. DYNAMICKÁ NADSTAVBA (Spustí sa, len ak požaduješ N >= 4)
+            // 4. DYNAMICKÁ NADSTAVBA (Zlučujeme rovnaké 4 a 5-gramy)
             if (maxN >= 4) {
-                int minN = 4;
-                for (int n = minN; n <= maxN; n++) {
+                for (int n = 4; n <= maxN; n++) {
                     for (int i = 0; i <= len - n; i++) {
-                        byte[] seq = new byte[n];
-                        boolean validSeq = true;
-
-                        for (int j = 0; j < n; j++) {
-                            char ch = word.charAt(i + j);
-                            if (ch >= 256) { validSeq = false; break; }
-                            seq[j] = (byte) ch;
-                        }
-
-                        if (validSeq) {
-                            stats.longNGrams.add(new CompactNGram(seq, freq));
-                        }
+                        String sub = word.substring(i, i + n);
+                        aggregatedLongs.put(sub, aggregatedLongs.getOrDefault(sub, 0L) + freq);
                     }
                 }
             }
         }
 
-        System.out.println("Kompresia úspešná. Celkovo monogramov: " + totalMonograms);
-        System.out.println("Počet vyextrahovaných dlhých N-gramov: " + stats.longNGrams.size());
-
-        // Inicializácia finálneho objektu
+        // Preklopenie agregovaných dát do finálneho objektu
         NGramStats finalStats = new NGramStats(totalMonograms);
-
-        // Kopírovanie hustých matíc (1, 2, 3-gramy)
         System.arraycopy(stats.monograms, 0, finalStats.monograms, 0, 256);
         for(int i = 0; i < 256; i++) {
             System.arraycopy(stats.bigrams[i], 0, finalStats.bigrams[i], 0, 256);
@@ -92,9 +80,17 @@ public class CorpusProcessor {
             }
         }
 
-        // 🔥 OPRAVA TVOJHO BUGU: Preklápame zoznam dlhých N-gramov do finálneho objektu
-        finalStats.longNGrams.addAll(stats.longNGrams);
+        // Prevod z mapy do úsporného zoznamu
+        for (Map.Entry<String, Long> e : aggregatedLongs.entrySet()) {
+            String seqStr = e.getKey();
+            byte[] bytes = new byte[seqStr.length()];
+            for (int i = 0; i < seqStr.length(); i++) {
+                bytes[i] = (byte) seqStr.charAt(i);
+            }
+            finalStats.longNGrams.add(new CompactNGram(bytes, e.getValue()));
+        }
 
+        System.out.println("Kompresia úspešná. Unikátnych dlhých N-gramov po zlúčení: " + finalStats.longNGrams.size());
         return finalStats;
     }
 }

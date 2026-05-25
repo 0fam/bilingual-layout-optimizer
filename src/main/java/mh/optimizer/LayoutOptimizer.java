@@ -8,7 +8,7 @@ public class LayoutOptimizer {
 
     private final Random random = new Random();
 
-    public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, int maxN) {
+    public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, long iterations, int maxN) {
         // 1. JEDNORAZOVÉ PREDSPRACOVANIE KORPUSOV
         NGramStats skStats = CorpusProcessor.process(skRawWords, maxN);
 //        NGramStats enStats = CorpusProcessor.process(enRawWords, maxN);
@@ -29,7 +29,6 @@ public class LayoutOptimizer {
         System.out.printf("Pôvodné kombinované skóre: %.4f (SK Elite: %.2f | EN Elite: %.2f)\n\n",
                 bestGlobalScore, skScore.eliteScore, 0.0);
 
-        long iterations = 500_000;
         long startTime = System.currentTimeMillis();
         long lastPrintTime = startTime;
         long improvementsCount = 0;
@@ -75,6 +74,7 @@ public class LayoutOptimizer {
             } else {
                 // ANULÁCIA MUTÁCIE: Ak bol layout horší, vrátime klávesy bleskovo späť
                 bestLayout.swap(pos1, pos2);
+                if (i % 1000 == 0) System.out.println(i);
             }
         }
 
