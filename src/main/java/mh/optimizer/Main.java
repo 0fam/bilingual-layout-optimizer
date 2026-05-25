@@ -31,11 +31,17 @@ public class Main {
 //        String initialLayoutStr = "zdjbg',koxntrvmuseaifclp.qhw;y"; //dof2
 //        String initialLayoutStr = "vdnkg;j.'wmtrsc,oeaifplbxqzhuy"; //dof4
         String initialLayoutStr = "qxwh;.,lcboaeiyvsntmgukj'fzrdp"; //dof5
+//        y,hu;qvcs. / ioeawmktnl / fjgx'bpdzr
+//        y,hu;qpcs. / ioeawmktnl / gjfx'bvdzr
+//        y,hu'qvcs. / ioeawmktnl / gjfx;bpdzr
+//        y,hu;qpcsl / ioeawmktnr / gjfx'bvdz.
+//        y,hu;qvcsl / ioeawmktnr / gjfx'bpdz.
+//        gjfx;qvcsl / ioeawmktnr / y,hu'bpdz.
 
 
         // 3. Odpal energetické jadro
         LayoutOptimizerMultiThreadHeating optimizer = new LayoutOptimizerMultiThreadHeating();
-        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 50_000, 5);
+        optimizer.runOptimization(skWordFreqs, enWordFreqs, initialLayoutStr, 500_000, 5);
     }
 
     private static Map<String, Long> loadYourExistingSlovakMap() throws URISyntaxException, IOException {

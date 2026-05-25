@@ -28,7 +28,7 @@ public class LayoutOptimizerMultiThreadHeating {
         FastLayoutStats startSk = FastEvaluator.evaluate(startLayout, skStats, weights);
         this.globalBestScore = startSk.eliteScore;
 
-        System.out.println("\n🔥 DETEKOVANÉ PROCESOROVÉ JADRÁ (Fyzické): " + threadsCount);
+        System.out.println("\n🔥 NASTAVENÝ POČET PROCESOROVÝCH JADIER: " + threadsCount);
         System.out.println("Spúšťam paralelné hľadanie na všetkých jadrách naraz...");
 
         ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
@@ -57,10 +57,13 @@ public class LayoutOptimizerMultiThreadHeating {
                 double bestScore = skS.eliteScore;
 
                 // ==========================================
-                // 🔥 NASTAVENIE SIMULOVANÉHO ŽÍHANIA (Pre 50 000 krokov)
+                // 🔥 DYNAMICKÉ NASTAVENIE SIMULOVANÉHO ŽÍHANIA
                 // ==========================================
-                double temp = 10.0;                 // Štartovacia teplota chaosu
-                double coolingRate = 0.9998157;     // Ochladenie presne pre 50k krokov na nulu
+                double temp = 10.0;         // Štartovacia teplota chaosu
+                double finalTemp = 0.001;    // Cieľová teplota zmrazenia (Hill Climber)
+
+                // 💥 ZMENA: Výpočet chladenia presne na mieru podľa zadaných iterácií
+                double coolingRate = Math.pow(finalTemp / temp, 1.0 / iterations);
                 // ==========================================
 
                 long workerStartTime = System.currentTimeMillis();
@@ -72,7 +75,7 @@ public class LayoutOptimizerMultiThreadHeating {
                         long currentNow = System.currentTimeMillis();
                         double elapsedSec = (currentNow - workerStartTime) / 1000.0;
                         double currentIps = elapsedSec > 0 ? (i / elapsedSec) : 0;
-                        System.out.printf("   [%s] Priebeh: %6d / %d | Rýchlosť: %.0f it/s (Aktuálne: %.4f) | Teplota: %.2f\n",
+                        System.out.printf("   [%s] Priebeh: %6d / %d | Rýchlosť: %.0f it/s (Aktuálne: %.4f) | Teplota: %.4f\n",
                                 workerName, i, iterations, currentIps, bestScore, temp);
                     }
 
@@ -101,7 +104,7 @@ public class LayoutOptimizerMultiThreadHeating {
                         currentLayout.swap(pos1, pos2); // rollback
                     }
 
-                    // Ochladzujeme vzduch
+                    // Ochladzujeme vzduch prepočítanou rýchlosťou
                     temp *= coolingRate;
                 }
                 return new OptimizationResult(currentLayout.matrix, bestScore);
