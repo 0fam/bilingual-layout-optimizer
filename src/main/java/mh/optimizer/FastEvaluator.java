@@ -10,7 +10,7 @@ public class FastEvaluator {
         long totalMonograms = 0;
         long[] rows = new long[3];
         long[] fingers = new long[8];
-        long innerStretch = 0;
+        double innerStretchScore = 0;
 
         // --- 1. ÚROVEŇ: MONOGRAMY (30 operácií) ---
         for (int i = 0; i < 30; i++) {
@@ -22,9 +22,8 @@ public class FastEvaluator {
             rows[KeyboardTopology.POS_TO_ROW[i]] += freq;
             fingers[KeyboardTopology.POS_TO_FINGER[i]] += freq;
 
-            if (KeyboardTopology.POS_IS_STRETCH[i]) {
-                innerStretch += freq;
-            }
+            // 🔥 Prepočítavame frekvenciu cez našu novú asymetrickú váhu nepohodlia
+            innerStretchScore += freq * KeyboardTopology.POS_STRETCH_WEIGHT[i];
         }
 
         // --- 2. ÚROVEŇ: BIGRAMY A SKIPGRAMY (900 operácií) ---
@@ -42,7 +41,7 @@ public class FastEvaluator {
             int h1 = KeyboardTopology.POS_TO_HAND[i];
             int f1 = KeyboardTopology.POS_TO_FINGER[i];
             int r1 = KeyboardTopology.POS_TO_ROW[i];
-            boolean s1 = KeyboardTopology.POS_IS_STRETCH[i];
+            boolean s1 = KeyboardTopology.POS_STRETCH_WEIGHT[i] > 0.0;
             int col1 = i % 10;
 
             for (int j = 0; j < 30; j++) {
@@ -55,7 +54,7 @@ public class FastEvaluator {
                     int h2 = KeyboardTopology.POS_TO_HAND[j];
                     int f2 = KeyboardTopology.POS_TO_FINGER[j];
                     int r2 = KeyboardTopology.POS_TO_ROW[j];
-                    boolean s2 = KeyboardTopology.POS_IS_STRETCH[j];
+                    boolean s2 = KeyboardTopology.POS_STRETCH_WEIGHT[j] > 0.0;
                     int col2 = j % 10;
 
                     if (h1 != h2) {
@@ -174,7 +173,7 @@ public class FastEvaluator {
 
         ls.sfbPct = (sfb * 100.0) / denomB;
         ls.sfsPct = (sfs * 100.0) / denomS;
-        ls.stretchPct = (innerStretch * 100.0) / denomM;
+        ls.stretchPct = (innerStretchScore * 100.0) / denomM;
         ls.scissorsPct = (scissors * 100.0) / denomB;
         ls.redirectsPct = (redirects * 100.0) / denomT;
         ls.lsbPct = (lsb * 100.0) / denomB;

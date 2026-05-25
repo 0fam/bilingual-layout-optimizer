@@ -9,7 +9,7 @@ public class FastLayout {
     public final int[] charToFinger = new int[256];
     public final int[] charToHand = new int[256];
     public final int[] charToRow = new int[256];
-    public final boolean[] charIsStretch = new boolean[256];
+    public final double[] charStretchWeight = new double[256];
 
     public FastLayout(String name, String layoutString) {
         this.name = name;
@@ -30,7 +30,7 @@ public class FastLayout {
             charToFinger[i] = -1;
             charToHand[i] = -1;
             charToRow[i] = -1;
-            charIsStretch[i] = false;
+            charStretchWeight[i] = 0.0;
         }
 
         // Naplníme tabuľky podľa aktuálnej pozície znakov v matici
@@ -41,7 +41,7 @@ public class FastLayout {
                 charToFinger[ch] = KeyboardTopology.POS_TO_FINGER[pos];
                 charToHand[ch] = KeyboardTopology.POS_TO_HAND[pos];
                 charToRow[ch] = KeyboardTopology.POS_TO_ROW[pos];
-                charIsStretch[ch] = KeyboardTopology.POS_IS_STRETCH[pos];
+                charStretchWeight[ch] = KeyboardTopology.POS_STRETCH_WEIGHT[pos]; // 🔥 Načítanie váhy
             }
         }
     }

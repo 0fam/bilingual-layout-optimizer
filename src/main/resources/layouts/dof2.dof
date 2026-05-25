@@ -3,9 +3,9 @@
     "board": "ortho",
     "layers": {
         "main": [
-            "q d h g v  w c u o y",
-            "n t r s m  ' p e a i",
-            "b z l k f  ; j , . x"
+            "z d j b g  ' , k o x",
+            "n t r v m  u s e a i",
+            "f c l p .  q h w ; y"
         ]
     },
     "fingering": "traditional"

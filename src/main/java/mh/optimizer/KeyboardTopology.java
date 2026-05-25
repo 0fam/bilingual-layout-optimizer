@@ -9,7 +9,8 @@ public class KeyboardTopology {
     public static final int[] POS_TO_HAND = new int[30];   // 0 = Ľavá, 1 = Pravá
     public static final int[] POS_TO_ROW = new int[30];    // 0 = Top, 1 = Home, 2 = Bottom
     public static final int[] POS_TO_FINGER = new int[30]; // 0 až 7
-    public static final boolean[] POS_IS_STRETCH = new boolean[30]; // true pre stredové stĺpce
+    // 🔥 NOVINKA: Namiesto booleanu ukladáme presnú váhu nepohodlia pozície
+    public static final double[] POS_STRETCH_WEIGHT = new double[30];
 
     static {
         for (int pos = 0; pos < 30; pos++) {
@@ -18,7 +19,19 @@ public class KeyboardTopology {
 
             POS_TO_ROW[pos] = row;
             POS_TO_HAND[pos] = (col < 5) ? 0 : 1;
-            POS_IS_STRETCH[pos] = (col == 4 || col == 5);
+
+            // Výpočet trestných bodov pre stredové stĺpce (stĺpce 4 a 5)
+            if (col == 4 || col == 5) {
+                if (row == 0) {
+                    POS_STRETCH_WEIGHT[pos] = 2.0;  // 🔥 TOP STRETCH = Absolútna smrť (penalizácia x3)
+                } else if (row == 2) {
+                    POS_STRETCH_WEIGHT[pos] = 1.0;  // BOTTOM STRETCH = Zlé, ale anatomicky lepšie ako top
+                } else {
+                    POS_STRETCH_WEIGHT[pos] = 0.1;  // HOME STRETCH = Úplne v pohode, takmer bez trestu
+                }
+            } else {
+                POS_STRETCH_WEIGHT[pos] = 0.0; // Ostatné klávesy nemajú stretch penalizáciu
+            }
 
             // Priradenie prstov podľa stĺpcov
             if (col == 0) POS_TO_FINGER[pos] = L_PINKY;

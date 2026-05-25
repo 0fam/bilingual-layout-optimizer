@@ -1,9 +1,7 @@
 package mh.Ofam.layout;
 
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,8 +13,10 @@ public class LayoutStats {
 
     long[] rows = new long[3];
     long[] fingers = new long[10];
-    long innerStretchL = 0;
-    long innerStretchR = 0;
+
+    // 🔥 ZMENA: Zmenené na double, aby sme mohli sčítavať desatinné indexy kŕčovitosti
+    double innerStretchL = 0;
+    double innerStretchR = 0;
 
     long sfb = 0;
     long sfs = 0;
@@ -124,11 +124,20 @@ public class LayoutStats {
                 if (k.hand == 'L') ls.leftHandMonograms += fw.freq;
                 else ls.rightHandMonograms += fw.freq;
 
+                // 🔥 ZMENA: Dynamický asymetrický výpočet kŕčovitosti stretchu podľa riadku
                 if (k.col == 4) {
-                    ls.innerStretchL += fw.freq;
+                    double weight = 0.1; // Home stretch (predvolený - takmer bez trestu)
+                    if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
+                    else if (k.row == 2) weight = 1.0; // Bottom stretch = nepríjemné
+
+                    ls.innerStretchL += fw.freq * weight;
                     hasInnerStretch = true;
                 } else if (k.col == 5) {
-                    ls.innerStretchR += fw.freq;
+                    double weight = 0.1; // Home stretch
+                    if (k.row == 0) weight = 3.0;      // Top stretch = SMRŤ
+                    else if (k.row == 2) weight = 1.2; // Bottom stretch
+
+                    ls.innerStretchR += fw.freq * weight;
                     hasInnerStretch = true;
                 }
             }
@@ -278,8 +287,9 @@ public class LayoutStats {
         System.out.printf("  Bottom Row: %6.2f%%\n", totalMonograms == 0 ? 0 : (rows[2] * 100.0) / totalMonograms);
 
         System.out.println("\n[2] ZÁŤAŽ PRSTOV A BOČNÝ POHYB");
-        System.out.printf("  Inner Stretch Left :  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretchL * 100.0) / totalMonograms);
-        System.out.printf("  Inner Stretch Right:  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretchR * 100.0) / totalMonograms);
+        // 🔥 ZMENA: Premenovali sme popisy, aby bolo jasné, že ide o index zaťaženosti (vplyv riadkov)
+        System.out.printf("  Inner Stretch Left (Weighted Index) :  %6.2f%%\n", totalMonograms == 0 ? 0 : (innerStretchL * 100.0) / totalMonograms);
+        System.out.printf("  Inner Stretch Right (Weighted Index):  %6.2f%%\n\n", totalMonograms == 0 ? 0 : (innerStretchR * 100.0) / totalMonograms);
 
         String[] fNames = {"Malíček", "Prstenník", "Prostredník", "Ukazovák", "Inner Stretch"};
         System.out.println("  ĽAVÁ RUKA:                               PRAVÁ RUKA:");
@@ -435,7 +445,9 @@ public class LayoutStats {
         double sfbScore       = getEliteScore(getSfbPct(), 1.5, 5.0);
         // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
         double sfsScore       = getEliteScore(getSfsPct(), 4.0, 9.0);
-        // Stretch: Na Toteme je stredový stĺpec blízko, do 6.0% je to bez námahy, nad 15.0% ťa už bude bolieť zápästie
+
+        // 🔥 Vďaka tomu, že getInnerStretchPctL() a R() teraz pracujú s double váhami,
+        // táto metóda automaticky prevezme nový sprísnený index nepohodlia!
         double stretchScore   = getEliteScore(getInnerStretchPctL() + getInnerStretchPctR(), 6.0, 15.0);
         // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
         double scissorsScore  = getEliteScore(getScissorsPct(), 0.5, 3.0);
