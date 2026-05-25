@@ -42,11 +42,15 @@ public class CorpusProcessor {
             for (int i = 0; i < len - 1; i++) {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);
-                stats.bigrams[c1][c2] += freq;
+
+                // 🔥 ZMENA: Zápis do plochého 1D poľa pre bigramy
+                stats.bigrams[(c1 << 8) | c2] += freq;
 
                 if (i < len - 2) {
                     char c3 = word.charAt(i + 2);
-                    stats.skipgrams[c1][c3] += freq;
+
+                    // 🔥 ZMENA: Zápis do plochého 1D poľa pre skipgramy
+                    stats.skipgrams[(c1 << 8) | c3] += freq;
                 }
             }
 
@@ -55,7 +59,9 @@ public class CorpusProcessor {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);
                 char c3 = word.charAt(i + 2);
-                stats.trigrams[c1][c2][c3] += freq;
+
+                // 🔥 ZMENA: Zápis do plochého 1D poľa pre trigramy cez bitový posun
+                stats.trigrams[(c1 << 16) | (c2 << 8) | c3] += freq;
             }
 
             // 4. DYNAMICKÁ NADSTAVBA (Zlučujeme rovnaké 4 a 5-gramy)
@@ -72,13 +78,12 @@ public class CorpusProcessor {
         // Preklopenie agregovaných dát do finálneho objektu
         NGramStats finalStats = new NGramStats(totalMonograms);
         System.arraycopy(stats.monograms, 0, finalStats.monograms, 0, 256);
-        for(int i = 0; i < 256; i++) {
-            System.arraycopy(stats.bigrams[i], 0, finalStats.bigrams[i], 0, 256);
-            System.arraycopy(stats.skipgrams[i], 0, finalStats.skipgrams[i], 0, 256);
-            for(int j = 0; j < 256; j++) {
-                System.arraycopy(stats.trigrams[i][j], 0, finalStats.trigrams[i][j], 0, 256);
-            }
-        }
+
+        // 🔥 ZMENA: Vyhodili sme zložité vnorené cykly. Keďže sú polia ploché,
+        // operačný systém ich skopíruje celé naraz v jedinom bleskovom pamäťovom bloku.
+        System.arraycopy(stats.bigrams, 0, finalStats.bigrams, 0, 256 * 256);
+        System.arraycopy(stats.skipgrams, 0, finalStats.skipgrams, 0, 256 * 256);
+        System.arraycopy(stats.trigrams, 0, finalStats.trigrams, 0, 256 * 256 * 256);
 
         // Prevod z mapy do úsporného zoznamu
         for (Map.Entry<String, Long> e : aggregatedLongs.entrySet()) {
@@ -93,4 +98,5 @@ public class CorpusProcessor {
         System.out.println("Kompresia úspešná. Unikátnych dlhých N-gramov po zlúčení: " + finalStats.longNGrams.size());
         return finalStats;
     }
+
 }

@@ -74,7 +74,14 @@ public class LayoutOptimizer {
             } else {
                 // ANULÁCIA MUTÁCIE: Ak bol layout horší, vrátime klávesy bleskovo späť
                 bestLayout.swap(pos1, pos2);
-                if (i % 1000 == 0) System.out.println(i);
+            }
+
+            // 🔥 NOVINKA: Priebežný živý odhad rýchlosti každých 50 000 krokov
+            if (i % 10_000 == 0 && i > 0) {
+                long currentNow = System.currentTimeMillis();
+                double elapsedSec = (currentNow - startTime) / 1000.0;
+                double currentIps = elapsedSec > 0 ? (i / elapsedSec) : 0;
+                System.out.printf("   [Priebeh] Spracované: %6d iterácií | Živá rýchlosť: %.0f it/s\n", i, currentIps);
             }
         }
 

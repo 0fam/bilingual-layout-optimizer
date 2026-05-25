@@ -48,7 +48,8 @@ public class FastEvaluator {
                 char c2 = layout.matrix[j];
 
                 // --- BIGRAMY ---
-                long bFreq = stats.bigrams[c1][c2];
+                // 🔥 ZMENA: Lookup cez bitový posun v plochom poli
+                long bFreq = stats.bigrams[(c1 << 8) | c2];
                 if (bFreq > 0) {
                     totalBigrams += bFreq;
                     int h2 = KeyboardTopology.POS_TO_HAND[j];
@@ -82,7 +83,8 @@ public class FastEvaluator {
                 }
 
                 // --- SKIPGRAMY ---
-                long sFreq = stats.skipgrams[c1][c2];
+                // 🔥 ZMENA: Lookup cez bitový posun v plochom poli
+                long sFreq = stats.skipgrams[(c1 << 8) | c2];
                 if (sFreq > 0 && i != j) {
                     totalSkipgrams += sFreq;
                     int f2 = KeyboardTopology.POS_TO_FINGER[j];
@@ -105,14 +107,22 @@ public class FastEvaluator {
             int h1 = KeyboardTopology.POS_TO_HAND[i];
             int f1 = KeyboardTopology.POS_TO_FINGER[i];
 
+            // 🔥 OPTIMALIZÁCIA: Predposun pre prvý znak
+            int c1Shift = c1 << 16;
+
             for (int j = 0; j < 30; j++) {
                 char c2 = layout.matrix[j];
                 int h2 = KeyboardTopology.POS_TO_HAND[j];
                 int f2 = KeyboardTopology.POS_TO_FINGER[j];
 
+                // 🔥 OPTIMALIZÁCIA: Spojenie predposunu prvého a druhého znaku
+                int c1c2Shift = c1Shift | (c2 << 8);
+
                 for (int k = 0; k < 30; k++) {
                     char c3 = layout.matrix[k];
-                    long tFreq = stats.trigrams[c1][c2][c3];
+
+                    // 🔥 ZMENA: Priamy skok na finálnu adresu bez pointer chasing
+                    long tFreq = stats.trigrams[c1c2Shift | c3];
                     if (tFreq == 0) continue;
 
                     totalTrigrams += tFreq;
