@@ -16,8 +16,6 @@ public class NGramStats {
     // 🔥 ZMENA: Objektový ArrayList nahradený plochými primitívnymi poliami pre bleskový prelet v cache
     public int longNGramsCount = 0;
     public long[] longNGramsFreqs;
-    public int[] longNGramsLengths;
-    public int[] longNGramsOffsets;
     public byte[] longNGramsConcat;
 
     public NGramStats(long totalMonograms) {

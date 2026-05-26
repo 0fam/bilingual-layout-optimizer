@@ -10,7 +10,7 @@ public class CorpusProcessor {
         long totalMonograms = 0;
         NGramStats stats = new NGramStats(0);
 
-        System.out.println("Spúšťam inteligentnú N-gramovú kompresiu korpusu (Max N = " + maxN + ")...");
+        System.out.println("Spúšťam inteligentnú N-gramovú kompresiu korpusu (Fixná dĺžka 5 pre behy)...");
 
         // Dočasná mapa na agregáciu dlhých N-gramov, aby sme nemali duplicity
         Map<String, Long> aggregatedLongs = new HashMap<>();
@@ -64,13 +64,12 @@ public class CorpusProcessor {
                 stats.trigrams[(c1 << 16) | (c2 << 8) | c3] += freq;
             }
 
-            // 4. DYNAMICKÁ NADSTAVBA (Zlučujeme rovnaké 4 a 5-gramy)
-            if (maxN >= 4) {
-                for (int n = 4; n <= maxN; n++) {
-                    for (int i = 0; i <= len - n; i++) {
-                        String sub = word.substring(i, i + n);
-                        aggregatedLongs.put(sub, aggregatedLongs.getOrDefault(sub, 0L) + freq);
-                    }
+            // 🔥 4. DYNAMICKÁ NADSTAVBA: Hľadáme striktne a LEN 5-gramy (dĺžku 4 sme vyhodili)
+            if (maxN >= 5) {
+                int n = 5; // Fixná dĺžka jednoručných behov
+                for (int i = 0; i <= len - n; i++) {
+                    String sub = word.substring(i, i + n);
+                    aggregatedLongs.put(sub, aggregatedLongs.getOrDefault(sub, 0L) + freq);
                 }
             }
         }
@@ -85,39 +84,36 @@ public class CorpusProcessor {
         System.arraycopy(stats.skipgrams, 0, finalStats.skipgrams, 0, 256 * 256);
         System.arraycopy(stats.trigrams, 0, finalStats.trigrams, 0, 256 * 256 * 256);
 
-        // 🔥 ZMENA: Prevod z dočasnej mapy do super-rýchlych plochých 1D polí
+        // 🔥 5. PREVOD DO SUPER-RÝCHLYCH PLOCHÝCH POLÍ (IBA PRE DĹŽKU 5)
         int numLongs = aggregatedLongs.size();
         finalStats.longNGramsCount = numLongs;
         finalStats.longNGramsFreqs = new long[numLongs];
-        finalStats.longNGramsLengths = new int[numLongs];
-        finalStats.longNGramsOffsets = new int[numLongs];
 
-        // Zistíme presnú celkovú dĺžku v bajtoch pre jedno ploché pole
-        int totalBytes = 0;
-        for (String seqStr : aggregatedLongs.keySet()) {
-            totalBytes += seqStr.length();
-        }
-        finalStats.longNGramsConcat = new byte[totalBytes];
+        // 💥 ZMENA: Staré polia longNGramsLengths a longNGramsOffsets sú kompletne zmazané
+
+        // Keďže vieme, že každý jeden n-gram má presne 5 znakov, alokujeme natvrdo (numLongs * 5)
+        finalStats.longNGramsConcat = new byte[numLongs * 5];
 
         int idx = 0;
-        int currentOffset = 0;
         for (Map.Entry<String, Long> e : aggregatedLongs.entrySet()) {
-            String seqStr = e.getKey();
-            int len = seqStr.length();
+            String seqStr = e.getKey(); // Má garantovanú dĺžku 5 znakov
 
             finalStats.longNGramsFreqs[idx] = e.getValue();
-            finalStats.longNGramsLengths[idx] = len;
-            finalStats.longNGramsOffsets[idx] = currentOffset;
 
-            // Nasypeme znaky za sebou do jedného flat poľa
-            for (int i = 0; i < len; i++) {
-                finalStats.longNGramsConcat[currentOffset + i] = (byte) seqStr.charAt(i);
-            }
-            currentOffset += len;
+            // 💥 ZMENA: Ofset rátame priamo z indexu ako čistú násobilku piatich (idx * 5)
+            int currentOffset = idx * 5;
+
+            // Nasypeme 5 bajtov lineárne za sebou bez pointer-chasingu
+            finalStats.longNGramsConcat[currentOffset]     = (byte) seqStr.charAt(0);
+            finalStats.longNGramsConcat[currentOffset + 1] = (byte) seqStr.charAt(1);
+            finalStats.longNGramsConcat[currentOffset + 2] = (byte) seqStr.charAt(2);
+            finalStats.longNGramsConcat[currentOffset + 3] = (byte) seqStr.charAt(3);
+            finalStats.longNGramsConcat[currentOffset + 4] = (byte) seqStr.charAt(4);
+
             idx++;
         }
 
-        System.out.println("Kompresia úspešná. Unikátnych dlhých N-gramov po zlúčení: " + finalStats.longNGramsCount);
+        System.out.println("Kompresia úspešná. Unikátnych 5-gramov po zlúčení: " + finalStats.longNGramsCount);
         return finalStats;
     }
 

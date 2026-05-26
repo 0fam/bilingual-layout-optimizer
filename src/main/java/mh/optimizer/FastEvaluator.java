@@ -149,23 +149,20 @@ public class FastEvaluator {
         // 🔥 ZMENA: Slučka prerobená na bleskový lineárny prelet cez primitívne polia
         int count = stats.longNGramsCount;
         long[] lFreqs = stats.longNGramsFreqs;
-        int[] lLens = stats.longNGramsLengths;
-        int[] lOffsets = stats.longNGramsOffsets;
         byte[] lConcat = stats.longNGramsConcat;
 
         for (int i = 0; i < count; i++) {
-            int nLen = lLens[i];
-            if (nLen == 0) continue;
-            int offset = lOffsets[i];
+            // 🔥 Pôvodný ofset nahradený čistou násobilkou piatich
+            int offset = i * 5;
 
-            // Vytiahneme ruku prvého znaku priamo z lookup tabuľky layoutu
+            // Vytiahneme ruku prvého znaku
             int targetHand = layout.charToHand[lConcat[offset] & 0xFF];
-            if (targetHand == -1) continue; // Neplatný znak
+            if (targetHand == -1) continue;
 
             boolean isSingleHanded = true;
 
-            // Dynamicky skontrolujeme, či sú VŠETKY ostatné znaky na tej istej ruke
-            for (int j = 1; j < nLen; j++) {
+            // 🔥 Kontrola beží natvrdo do 5 znakov
+            for (int j = 1; j < 5; j++) {
                 int currentHand = layout.charToHand[lConcat[offset + j] & 0xFF];
                 if (currentHand != targetHand) {
                     isSingleHanded = false;
@@ -173,9 +170,9 @@ public class FastEvaluator {
                 }
             }
 
-            // Ak celá sekvencia prebehla na jednej ruke, vyhodnotíme metriku
-            if (isSingleHanded && nLen == 5) {
-                longOneHandedRuns += lFreqs[i]; // Našli sme tvoj 5-písmenový beh!
+            // Ak celých 5 znakov prebehlo na jednej ruke, pripočítame frekvenciu
+            if (isSingleHanded) {
+                longOneHandedRuns += lFreqs[i];
             }
         }
 
