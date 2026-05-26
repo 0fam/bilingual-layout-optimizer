@@ -46,27 +46,32 @@ public final class CorpusProcessor {
                 for (int i = 0; i < cleanedLine.length(); i++) {
                     char c3 = cleanedLine.charAt(i);
 
-                    // Filtrujeme iba znaky, ktoré reálne sedia na našej 30-klávesovej topológii
-                    // Povolíme: A-Z, medzeru a presne 4 tvoje symboly (, . ? -)
-                    boolean isValid = (c3 >= 'A' && c3 <= 'Z') || c3 == ' ' || c3 == ',' || c3 == '.' || c3 == '?' || c3 == '-';
-
-                    if (!isValid) {
-                        // Ak je to akýkoľvek iný znak (číslo, úvodzovka, enter), zlomí to plynulý rytmus a resetuje okno
-                        idx1 = -1;
-                        idx2 = -1;
-                        continue;
+                    // KROK A: Zápis monogramu pre ÚPLNE KAŽDÝ ASCII znak v texte
+                    // Vďaka tomuto uvidíš v záverečnom reporte reálnu frekvenciu stredníkov, výkričníkov atď.
+                    if (c3 < 256) {
+                        stats.addMonogram(c3, stats.getMonogramFreq(c3) + weight);
                     }
 
-                    // A. Zápis monogramu
-                    stats.addMonogram(c3, stats.getMonogramFreq(c3) + weight);
+                    // KROK B: Filter pre uloženie na našich 30 klávesov Totemu
+                    // Povolíme len to, čo sa reálne zmestí: A-Z, medzera a tvoje 4 symboly (, . ? -)
+                    boolean isOnKeyboard = (c3 >= 'A' && c3 <= 'Z') || c3 == ' ' || c3 == ',' || c3 == '.' || c3 == '?' || c3 == '-';
 
-                    // B. Zápis bigramu (Ak máme v pamäti aspoň 2 znaky po sebe)
+                    if (!isOnKeyboard) {
+                        // Znak na klávesnici nemáme (napr. stredník alebo úvodzovka).
+                        // Resetujeme históriu kĺzavého okna, lebo plynulý rytmus prstov sa prerušil.
+                        idx1 = -1;
+                        idx2 = -1;
+                        continue; // PRESKAKUJEME výpočet bigramov, trigramov a sendvičov pre tento znak
+                    }
+
+                    // KROK C: Zápis pokročilých n-gramov (Sem sa dostanú už len čisté klávesy)
+                    // Bigram (c2 -> c3)
                     if (idx2 != -1) {
                         char c2 = (char) idx2;
                         stats.addBigram(c2, c3, stats.getBigramFreq(c2, c3) + weight);
                     }
 
-                    // C. Zápis trigramu a skipgramu (Ak máme v pamäti plné okno 3 znakov)
+                    // Trigram (c1 -> c2 -> c3) a Skipgram (c1 -> c3)
                     if (idx1 != -1 && idx2 != -1) {
                         char c1 = (char) idx1;
                         char c2 = (char) idx2;
