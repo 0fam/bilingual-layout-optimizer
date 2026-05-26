@@ -16,7 +16,7 @@ public final class LayoutStats {
     private final double redirects;
 
     // --- ANATOMICKÉ UKAZOVATELE ---
-    private final double fingerStats;
+    private final double fingerLoad;
     private final double lsb;
     private final double lhb;
 
@@ -27,7 +27,7 @@ public final class LayoutStats {
     private final double rollOut;
 
     public LayoutStats(double eliteScore, double sfb, double sfs, double stretch, double scissors,
-                       double redirects, double fingerStats, double lsb, double lhb,
+                       double redirects, double fingerLoad, double lsb, double lhb,
                        double homeRow, double alt, double rollIn, double rollOut) {
         this.eliteScore = eliteScore;
         this.sfb = sfb;
@@ -35,7 +35,7 @@ public final class LayoutStats {
         this.stretch = stretch;
         this.scissors = scissors;
         this.redirects = redirects;
-        this.fingerStats = fingerStats;
+        this.fingerLoad = fingerLoad;
         this.lsb = lsb;
         this.lhb = lhb;
         this.homeRow = homeRow;
