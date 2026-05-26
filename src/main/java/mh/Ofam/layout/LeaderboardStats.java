@@ -1,6 +1,7 @@
 package mh.Ofam.layout;
 
 import lombok.extern.slf4j.Slf4j;
+import mh.optimizer.Weights;
 
 import java.util.Comparator;
 import java.util.List;

@@ -6,9 +6,15 @@ import java.util.Map;
 public class CorpusProcessor {
 
     // Pridali sme parameter maxN (napr. 5 pre 5-gramy, alebo 3 ak dlhé behy nechceme)
-    public static NGramStats process(Map<String, Long> wordFreqs, int maxN) {
+    public static NGramStats process(Map<String, Long> wordFreqs, int maxN, char[] layoutMatrix) {
         long totalMonograms = 0;
         NGramStats stats = new NGramStats(0);
+
+        // Rýchly lookup set pre klávesy, ktoré reálne máme na klávesnici
+        boolean[] allowedChars = new boolean[256];
+        for (char c : layoutMatrix) {
+            if (c < 256) allowedChars[c] = true;
+        }
 
         System.out.println("Spúšťam inteligentnú N-gramovú kompresiu korpusu (Fixná dĺžka 5 pre behy)...");
 
@@ -22,15 +28,16 @@ public class CorpusProcessor {
 
             if (len == 0) continue;
 
+            // 🔥 KLÚČOVÁ ZMENA: Ak slovo obsahuje akýkoľvek neprítomný znak, letí celé preč!
             boolean valid = true;
             for (int i = 0; i < len; i++) {
-                if (word.charAt(i) >= 256) {
+                char c = word.charAt(i);
+                if (c >= 256 || !allowedChars[c]) {
                     valid = false;
                     break;
                 }
             }
-            if (!valid) continue;
-
+            if (!valid) continue; // Zosynchronizované s Analyzerom
             // 1. MONOGRAMY
             for (int i = 0; i < len; i++) {
                 char c = word.charAt(i);

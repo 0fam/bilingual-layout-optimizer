@@ -35,7 +35,8 @@ public class LayoutOptimizerMultiThreadHeating {
 
     public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, long iterations, int maxN) {
         // 1. JEDNORAZOVÉ PREDSPRACOVANIE
-        NGramStats skStats = CorpusProcessor.process(skRawWords, maxN);
+        FastLayout startLayout = new FastLayout("StartCheck", initialLayoutStr);
+        NGramStats skStats = CorpusProcessor.process(skRawWords, maxN, startLayout.matrix);
 //        NGramStats enStats = CorpusProcessor.process(enRawWords, maxN);
         Weights weights = Weights.builder().build();
 
@@ -44,7 +45,6 @@ public class LayoutOptimizerMultiThreadHeating {
         if (threadsCount < 1) threadsCount = 1;
 
         // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout
-        FastLayout startLayout = new FastLayout("StartCheck", initialLayoutStr);
         FastLayoutStats startSk = FastEvaluator.evaluate(startLayout, skStats, weights);
         this.globalBestScore = startSk.eliteScore;
 

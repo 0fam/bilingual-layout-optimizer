@@ -10,12 +10,12 @@ public class LayoutOptimizer {
 
     public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, long iterations, int maxN) {
         // 1. JEDNORAZOVÉ PREDSPRACOVANIE KORPUSOV
-        NGramStats skStats = CorpusProcessor.process(skRawWords, maxN);
+        FastLayout bestLayout = new FastLayout("Totem Alpha", initialLayoutStr);
+        NGramStats skStats = CorpusProcessor.process(skRawWords, maxN, bestLayout.matrix);
 //        NGramStats enStats = CorpusProcessor.process(enRawWords, maxN);
 
         // Inicializácia váh a štartovacieho layoutu
         Weights weights = Weights.builder().build(); // Načíta predvolené 1.0 váhy
-        FastLayout bestLayout = new FastLayout("Totem Alpha", initialLayoutStr);
 
         // Prvá evaluácia
         FastLayoutStats skScore = FastEvaluator.evaluate(bestLayout, skStats, weights);

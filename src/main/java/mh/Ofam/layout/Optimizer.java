@@ -1,5 +1,7 @@
 package mh.Ofam.layout;
 
+import mh.optimizer.Weights;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
