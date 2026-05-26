@@ -65,14 +65,17 @@ public class FastEvaluator {
                         if (f1 == f2 && i != j) {
                             sfb += bFreq;
                         }
-                        // Nožnice
-                        if (Math.abs(f1 - f2) == 1 && ((r1 == 0 && r2 == 2) || (r1 == 2 && r2 == 0))) {
+
+                        // 🔥 OPRAVA NOŽNÍC: Porovnávame stĺpce (col1, col2) namiesto sploštených prstov (f1, f2)
+                        if (Math.abs(col1 - col2) == 1 && ((r1 == 0 && r2 == 2) || (r1 == 2 && r2 == 0))) {
                             scissors += bFreq;
                         }
-                        // Lateral Stretch Bigram
-                        if (s1 != s2 && f1 != f2) {
+
+                        // 🔥 OPRAVA LSB: Bočné kríženie k stredu reaguje na stĺpce, nie na f1 != f2
+                        if (s1 != s2 && col1 != col2) {
                             lsb += bFreq;
                         }
+
                         // Lateral Hand Bigram (Malíček-Prstenník kombinácie stĺpcov)
                         boolean p1 = (col1 == 0 || col1 == 1 || col1 == 8 || col1 == 9);
                         boolean p2 = (col2 == 0 || col2 == 1 || col2 == 8 || col2 == 9);
@@ -83,13 +86,14 @@ public class FastEvaluator {
                 }
 
                 // --- SKIPGRAMY ---
-                // 🔥 ZMENA: Lookup cez bitový posun v plochom poli
                 long sFreq = stats.skipgrams[(c1 << 8) | c2];
-                if (sFreq > 0 && i != j) {
+                if (sFreq > 0) { // 🔥 OPRAVA DENOMINÁTORA: Podmienka i != j vyhodená, aby menovateľ sedel s Analyzerom
                     totalSkipgrams += sFreq;
-                    int f2 = KeyboardTopology.POS_TO_FINGER[j];
                     int h2 = KeyboardTopology.POS_TO_HAND[j];
-                    if (h1 == h2 && f1 == f2) {
+                    int f2 = KeyboardTopology.POS_TO_FINGER[j];
+
+                    // 🔒 OCHRANA SFS: Samotný trest za SFS sa pripíše len vtedy, ak nejde o rovnakú klávesu (i != j)
+                    if (h1 == h2 && f1 == f2 && i != j) {
                         sfs += sFreq;
                     }
                 }

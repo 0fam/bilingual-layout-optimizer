@@ -151,13 +151,21 @@ public class LayoutStats {
                 }
 
                 if (k1.hand == k2.hand) {
-                    // SFB (Same Finger Bigram)
-                    if (k1.finger == k2.finger && k1 != k2) {
+                    // 🔥 UNIFIKÁCIA PRSTOV: Zlúčime stretch stĺpce pod reálne ukazováky
+                    int f1Real = k1.finger.ordinal();
+                    int f2Real = k2.finger.ordinal();
+                    if (f1Real == 4) f1Real = 3; // Ľavý stretch patrí ľavému ukazováku
+                    if (f2Real == 4) f2Real = 3;
+                    if (f1Real == 5) f1Real = 6; // Pravý stretch patrí pravému ukazováku
+                    if (f2Real == 5) f2Real = 6;
+
+                    // SFB (Same Finger Bigram) - teraz už deteguje aj bočné kmitanie ukazováka!
+                    if (f1Real == f2Real && k1 != k2) {
                         ls.sfb += fw.freq;
                         wordHadSfb = true;
                     }
 
-                    // Scissors
+                    // Scissors (Nožnice) - ponechávame pôvodné indexy stĺpcov pre čistý nožnicový kríž
                     if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
                         if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
                             ls.scissors += fw.freq;
@@ -179,10 +187,19 @@ public class LayoutStats {
                     }
                 }
 
+                // 🔥 SFS (Skipgramy) s premapovanými prstami
                 if (i < fw.len - 2) {
                     KeyInfo k3 = keys[i + 2];
                     ls.totalSkipgrams += fw.freq;
-                    if (k1.hand == k3.hand && k1.finger == k3.finger && k1 != k3) {
+
+                    int f1Real = k1.finger.ordinal();
+                    int f3Real = k3.finger.ordinal();
+                    if (f1Real == 4) f1Real = 3;
+                    if (f3Real == 4) f3Real = 3;
+                    if (f1Real == 5) f1Real = 6;
+                    if (f3Real == 5) f3Real = 6;
+
+                    if (k1.hand == k3.hand && f1Real == f3Real && k1 != k3) {
                         ls.sfs += fw.freq;
                     }
                 }
