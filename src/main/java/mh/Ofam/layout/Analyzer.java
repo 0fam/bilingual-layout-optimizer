@@ -7,6 +7,7 @@ import mh.optimizer.Weights;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +23,10 @@ public class Analyzer {
         if (args.length >= 1) korpusPath = args[0];
         if (args.length >= 2) layoutsDir = args[1];
 
-        Map<String, Layout> layoutsToTest = FileSystemHelper.readLayoutsFromDir(layoutsDir);
+        Map<String, Layout> layoutsToTest = new HashMap<>();
+        layoutsToTest = FileSystemHelper.readLayoutsFromDir(layoutsDir);
+        RecordParser.loadRecordsToAnalyzer("totem_rekordy.txt", layoutsToTest);
+
         if (layoutsToTest.isEmpty()) {
             System.err.println("Nenašli sa žiadne platné layouty na testovanie. Končím.");
             return;
