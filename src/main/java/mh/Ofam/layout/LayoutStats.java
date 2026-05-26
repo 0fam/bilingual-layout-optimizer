@@ -45,9 +45,6 @@ public class LayoutStats {
     double rMiddle = 0;
     double rIndex = 0;
 
-    @Deprecated
-    double fingerScore = 0.0;
-
     // Mapy na sledovanie konkrétnych problémových slov
     Map<String, Long> sfbWordsMap;
     Map<String, Long> longRunWordsMap;
@@ -481,12 +478,9 @@ public class LayoutStats {
         double rIndexScore = getEliteScore(rIndex, 26.0, 30.0);
 
 
-        // Najslabší článok: Layout zlyháva na svojom najviac zničenom prste
-        double maxFingerScore = Math.min(
-                Math.min(Math.min(lPinkyScore, rPinkyScore), Math.min(lRingScore, rRingScore)),
-                Math.min(Math.min(lMiddleScore, rMiddleScore), Math.min(lIndexScore, rIndexScore))
-        );
-        fingerScore = maxFingerScore;
+        // Zjednotenie s optimizerom na čistý kumulatívny súčin prstov
+        double cumulativeFingerScore = lPinkyScore * rPinkyScore * lRingScore * rRingScore * lMiddleScore * rMiddleScore * lIndexScore * rIndexScore;
+
 
         double lsbScore  = getEliteScore(getLsbPct(), 1.0, 6.0);
         double lhbScore  = getEliteScore(getLhbPct(), 1.0, 5.0);
@@ -509,7 +503,8 @@ public class LayoutStats {
                         Math.pow(redirectsScore, weights.getRedirects()) *
                         Math.pow(rollInScore, weights.getRollIn()) *
                         Math.pow(rollOutScore, weights.getRollOut()) *
-                        Math.pow(maxFingerScore, weights.getFingerStats()) * Math.pow(lsbScore, weights.getLsb()) *
+                        Math.pow(cumulativeFingerScore, weights.getFingerStats()) *
+                        Math.pow(lsbScore, weights.getLsb()) *
                         Math.pow(lhbScore, weights.getLhb()) *
                         Math.pow(homeRowScore, weights.getHomeRow());
 

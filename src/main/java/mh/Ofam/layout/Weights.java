@@ -25,14 +25,14 @@ public class Weights {
     private double lhb = 1;        // Lateral Hand Bigram (malíček-prstenník)
     private double homeRow = 1;    // Odmena za to, že ruky sedia doma
 
-    double pinkyPenalty = 1;
-    double ringPenalty = 1;
-    double middlePenalty = 1;
-    double indexPenalty = 1;
-    double indexUnderloadPenalty = 0;
-    double middleUnderloadPenalty = 0;
+//    double pinkyPenalty = 1;
+//    double ringPenalty = 1;
+//    double middlePenalty = 1;
+//    double indexPenalty = 1;
+//    double indexUnderloadPenalty = 0;
+//    double middleUnderloadPenalty = 0;
 
     public double totalWeight() {
-        return sfb + sfs + stretch + alt + runs + scissors + redirects + rollIn + rollOut + fingerStats + lsb + lhb + homeRow + pinkyPenalty + ringPenalty + middlePenalty + indexPenalty + indexUnderloadPenalty + middleUnderloadPenalty;
+        return sfb + sfs + stretch + alt + runs + scissors + redirects + rollIn + rollOut + lsb + lhb + homeRow; // + pinkyPenalty + ringPenalty + middlePenalty + indexPenalty;
     }
 }

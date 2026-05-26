@@ -28,7 +28,7 @@ public class Weights {
     @Builder.Default private double alt = 0.0;         // Striedanie rúk (rytmika)
     @Builder.Default private double rollIn = 0.0;      // Valivé pohyby smerom k palcu (Plynulosť)
     @Builder.Default private double rollOut = 0.0;     // Valivé pohyby smerom von
-    @Builder.Default private double runs = 0.0;        // sekvencie pisane jednou rukou x-znakov za sebou
+    @Builder.Default private double runs = 1.0;        // sekvencie pisane jednou rukou x-znakov za sebou
 
     /**
      * Presný matematický súčet len aktívnych váh.

@@ -1,0 +1,12 @@
+{
+    "name": "dof8",
+    "board": "ortho",
+    "layers": {
+        "main": [
+            "f  j  h  u  ;     g  p  d  r  c  ",
+            "i  o  e  a  '     m  k  t  n  s  ",
+            "y  ,  w  x  q     b  v  z  l  .  "
+        ]
+    },
+    "fingering": "traditional"
+}

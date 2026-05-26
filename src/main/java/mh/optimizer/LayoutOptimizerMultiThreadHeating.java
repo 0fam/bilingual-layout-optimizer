@@ -50,6 +50,8 @@ public class LayoutOptimizerMultiThreadHeating {
 
         System.out.println("\n🔥 NASTAVENÝ POČET PROCESOROVÝCH JADIER: " + threadsCount);
         System.out.println("Spúšťam paralelné hľadanie na všetkých jadrách naraz...");
+        System.out.println("Počiatočné skóre východiskového layoutu: " + startSk.eliteScore);
+        System.out.println("==================================================\n");
 
         ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
         List<Future<OptimizationResult>> futures = new ArrayList<>();

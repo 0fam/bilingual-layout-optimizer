@@ -253,7 +253,8 @@ public class FastEvaluator {
         double f6 = getEliteScore(ls.fingerLoads[6], 20.0, 24.0);
         double f7 = getEliteScore(ls.fingerLoads[7], 9.0, 12.0);
 
-        double maxFingerScore = Math.min(Math.min(Math.min(f0, f1), Math.min(f2, f3)), Math.min(Math.min(f4, f5), Math.min(f6, f7)));
+        // Vynásobíme všetky prsty medzi sebou pre hladký gradient optimizera
+        double cumulativeFingerScore = f0 * f1 * f2 * f3 * f4 * f5 * f6 * f7;
 
         double totalWeight = weights.totalWeight();
         if (totalWeight == 0) return;
@@ -267,7 +268,8 @@ public class FastEvaluator {
                         Math.pow(redirectsScore, weights.getRedirects()) *
                         Math.pow(rollInScore, weights.getRollIn()) *
                         Math.pow(rollOutScore, weights.getRollOut()) *
-                        Math.pow(maxFingerScore, weights.getFingerStats()) * Math.pow(lsbScore, weights.getLsb()) *
+                        Math.pow(cumulativeFingerScore, weights.getFingerStats()) *
+                        Math.pow(lsbScore, weights.getLsb()) *
                         Math.pow(lhbScore, weights.getLhb()) *
                         Math.pow(homeRowScore, weights.getHomeRow()) *
                         Math.pow(runsScore, weights.getRuns()); // 🔥 OPRAVA: Pridané do finálneho násobenia telesa

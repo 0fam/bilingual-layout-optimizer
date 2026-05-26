@@ -79,8 +79,8 @@ public class LeaderboardStats {
 
             // Zlúčenie násobením: Väčšina prstov bude 1.0.
             // Ak nejaký prst vybočí, skóre klesne. Ak vybočia viaceré, tresty sa tvrdo zosobášia.
-            double maxFingerScore = lPinkyScore * rPinkyScore * lRingScore * rRingScore * lMiddleScore * rMiddleScore * lIndexScore * rIndexScore;
-            r.fingerScore = maxFingerScore;
+            double cumulativeFingerScore = lPinkyScore * rPinkyScore * lRingScore * rRingScore * lMiddleScore * rMiddleScore * lIndexScore * rIndexScore;
+
 
             double lsbScore = getAbsoluteScore(r.getLsbPct(), 1.0, 6.0);
             double lhbScore = getAbsoluteScore(r.getLhbPct(), 1.0, 5.0);
@@ -105,7 +105,7 @@ public class LeaderboardStats {
                             Math.pow(redirectsScore, weights.getRedirects()) *
                             Math.pow(rollInScore, weights.getRollIn()) *
                             Math.pow(rollOutScore, weights.getRollOut()) *
-                            Math.pow(maxFingerScore, weights.getFingerStats()) *
+                            Math.pow(cumulativeFingerScore, weights.getFingerStats()) *
                             Math.pow(lsbScore, weights.getLsb()) *
                             Math.pow(lhbScore, weights.getLhb()) *
                             Math.pow(homeRowScore, weights.getHomeRow());
@@ -140,28 +140,28 @@ public class LeaderboardStats {
 // (Biológia je pevná, váha trestu je dynamická)
 
 // Malíčky (limit 9%)
-            painScore += Math.max(0, r.lPinky - 9.0) * weights.getPinkyPenalty();
-            painScore += Math.max(0, r.rPinky - 9.0) * weights.getPinkyPenalty();
+            painScore += Math.max(0, r.lPinky - 9.0); // * weights.getPinkyPenalty();
+            painScore += Math.max(0, r.rPinky - 9.0); // * weights.getPinkyPenalty();
 
 // Prstenníky (limit 18%)
-            painScore += Math.max(0, r.lRing - 18.0) * weights.getRingPenalty();
-            painScore += Math.max(0, r.rRing - 18.0) * weights.getRingPenalty();
+            painScore += Math.max(0, r.lRing - 18.0); // * weights.getRingPenalty();
+            painScore += Math.max(0, r.rRing - 18.0); // * weights.getRingPenalty();
 
 // Prostredníky (limit 24%)
-            painScore += Math.max(0, r.lMiddle - 24.0) * weights.getMiddlePenalty();
-            painScore += Math.max(0, r.rMiddle - 24.0) * weights.getMiddlePenalty();
+            painScore += Math.max(0, r.lMiddle - 24.0); // * weights.getMiddlePenalty();
+            painScore += Math.max(0, r.rMiddle - 24.0); // * weights.getMiddlePenalty();
 
 // Ukazováky (limit 28% pre preťaženie)
-            painScore += Math.max(0, r.lIndex - 28.0) * weights.getIndexPenalty();
-            painScore += Math.max(0, r.rIndex - 28.0) * weights.getIndexPenalty();
+            painScore += Math.max(0, r.lIndex - 28.0); // * weights.getIndexPenalty();
+            painScore += Math.max(0, r.rIndex - 28.0); // * weights.getIndexPenalty();
 
 // 4. FLÁKANIE SA UKAZOVÁKOV (UNDERLOAD)
-// Každý ukazovák OSOBITNE musí urobiť aspoň 12%. Ak nie, dostane trest.
-            painScore += Math.max(0, 12.0 - r.lIndex) * weights.getIndexUnderloadPenalty();
-            painScore += Math.max(0, 12.0 - r.rIndex) * weights.getIndexUnderloadPenalty();
-// Flákanie sa prostredníkov (Musia urobiť aspoň 8%)
-            painScore += Math.max(0, 8.0 - r.lMiddle) * weights.getMiddleUnderloadPenalty();
-            painScore += Math.max(0, 8.0 - r.rMiddle) * weights.getMiddleUnderloadPenalty();
+//// Každý ukazovák OSOBITNE musí urobiť aspoň 12%. Ak nie, dostane trest.
+//            painScore += Math.max(0, 12.0 - r.lIndex) * weights.getIndexUnderloadPenalty();
+//            painScore += Math.max(0, 12.0 - r.rIndex) * weights.getIndexUnderloadPenalty();
+//// Flákanie sa prostredníkov (Musia urobiť aspoň 8%)
+//            painScore += Math.max(0, 8.0 - r.lMiddle) * weights.getMiddleUnderloadPenalty();
+//            painScore += Math.max(0, 8.0 - r.rMiddle) * weights.getMiddleUnderloadPenalty();
 
 // 5. ODMENY (Znižujú výsledné skóre)
             painScore -= r.getAlternationPct() * weights.getAlt();
