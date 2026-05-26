@@ -13,13 +13,28 @@ public final class CorpusProcessor {
 
     /**
      * Načíta korpus, odmasťuje diakritiku, plní ploché N-gramy pre Optimizér
-     * a vracia čistý slovník "písacích kusov" rozdelených medzerami pre Analyzátor.
+     * na základe povolených znakov z tvojho layoutu.
      * * @param filePath Cesta k súboru korpusu
-     * @param stats Pamäťová schránka (štruktúra), ktorú ideme naplniť
-     * @param weight Násobiteľ frekvencie (ak chceš ručne vyvážiť menší korpus)
+     * @param stats    Pamäťová schránka, ktorú ideme naplniť
+     * @param layout   Aktuálny layout klávesnice, z ktorého si vyčítame povolené symboly
      */
-    public static Map<String, Double> processFile(String filePath, NGramStats stats, double weight) throws IOException {
+    public static Map<String, Double> processFile(String filePath, NGramStats stats, char[] layout) throws IOException {
         Map<String, Double> wordDictionary = new HashMap<>();
+
+        // --- 1. DYNAMICKÁ MAPA POVOLENÝCH ZNAKOV Z LAYOUTU ---
+        // Vytvoríme si bleskové lookup pole pre všetky ASCII znaky
+        boolean[] allowedOnKeyboard = new boolean[256];
+
+        // Medzerník je na klávesnici vždy povolený, hoci nie je v mriežke 3x10
+        allowedOnKeyboard[' '] = true;
+
+        // Prejdeme tvoj layout a zapíšeme si, ktoré znaky a symboly reálne vlastníš
+        for (char key : layout) {
+            if (key < 256) {
+                // Konvertujeme pre istotu na Upper, keďže aj text normalizujeme na Upper
+                allowedOnKeyboard[Character.toUpperCase(key)] = true;
+            }
+        }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -27,15 +42,14 @@ public final class CorpusProcessor {
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank()) continue;
 
-                // --- 1. ODMASTENIE DIAKRITIKY A UPPERCASE ---
+                // Odmastenie diakritiky a prevod na veľké písmená
                 String cleanedLine = normalizeLine(line);
 
-                // --- 2. ZBER KUSOV TEXTU (Chunks) PRE ANALYZÁTOR ---
-                // Sekáme výhradne podľa medzier. Slová ako Qaa'ed alebo text s otáznikom ostanú v kope.
+                // Zber kusov textu pre Analyzátor (sekanie podľa medzier)
                 String[] chunks = cleanedLine.split("\\s+");
                 for (String chunk : chunks) {
                     if (chunk.length() >= 4) { // Krátke kusy pre štatistiku behov preskakujeme
-                        wordDictionary.put(chunk, wordDictionary.getOrDefault(chunk, 0.0) + weight);
+                        wordDictionary.put(chunk, wordDictionary.getOrDefault(chunk, 0.0) + 1.0);
                     }
                 }
 
@@ -46,19 +60,16 @@ public final class CorpusProcessor {
                 for (int i = 0; i < cleanedLine.length(); i++) {
                     char c3 = cleanedLine.charAt(i);
 
-                    // KROK A: Zápis monogramu pre ÚPLNE KAŽDÝ ASCII znak v texte
-                    // Vďaka tomuto uvidíš v záverečnom reporte reálnu frekvenciu stredníkov, výkričníkov atď.
+                    // Zápis monogramu pre ÚPLNE KAŽDÝ znak v texte (uvidíš ho v štatistike)
                     if (c3 < 256) {
-                        stats.addMonogram(c3, stats.getMonogramFreq(c3) + weight);
+                        stats.addMonogram(c3, stats.getMonogramFreq(c3) + 1.0);
                     }
 
-                    // KROK B: Filter pre uloženie na našich 30 klávesov Totemu
-                    // Povolíme len to, čo sa reálne zmestí: A-Z, medzera a tvoje 4 symboly (, . ? -)
-                    boolean isOnKeyboard = (c3 >= 'A' && c3 <= 'Z') || c3 == ' ' || c3 == ',' || c3 == '.' || c3 == '?' || c3 == '-';
+                    // KĽÚČOVÁ ZMENA: Žiadny hardcode! Pýtame sa priamo našej vyčítanej mapy
+                    boolean isOnKeyboard = c3 < 256 && allowedOnKeyboard[c3];
 
                     if (!isOnKeyboard) {
-                        // Znak na klávesnici nemáme (napr. stredník alebo úvodzovka).
-                        // Resetujeme históriu kĺzavého okna, lebo plynulý rytmus prstov sa prerušil.
+                        // Znak nie je na klávesnici -> reset rytmu a ideme ďalej
                         idx1 = -1;
                         idx2 = -1;
                         continue; // PRESKAKUJEME výpočet bigramov, trigramov a sendvičov pre tento znak
@@ -68,7 +79,7 @@ public final class CorpusProcessor {
                     // Bigram (c2 -> c3)
                     if (idx2 != -1) {
                         char c2 = (char) idx2;
-                        stats.addBigram(c2, c3, stats.getBigramFreq(c2, c3) + weight);
+                        stats.addBigram(c2, c3, stats.getBigramFreq(c2, c3) + 1.0);
                     }
 
                     // Trigram (c1 -> c2 -> c3) a Skipgram (c1 -> c3)
@@ -77,10 +88,10 @@ public final class CorpusProcessor {
                         char c2 = (char) idx2;
 
                         // Trigram pre zmeny smeru (c1 -> c2 -> c3)
-                        stats.addTrigram(c1, c2, c3, stats.getTrigramFreq(c1, c2, c3) + weight);
+                        stats.addTrigram(c1, c2, c3, stats.getTrigramFreq(c1, c2, c3) + 1.0);
 
                         // Skipgram (SFS - Sendvič): Prvý a tretí znak, stredný sa ignoruje
-                        stats.addSkipgram(c1, c3, stats.getSkipgramFreq(c1, c3) + weight);
+                        stats.addSkipgram(c1, c3, stats.getSkipgramFreq(c1, c3) + 1.0);
                     }
 
                     // Posun kĺzavého okna o jeden krok vpred
