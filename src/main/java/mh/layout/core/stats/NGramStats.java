@@ -19,9 +19,8 @@ public final class NGramStats {
     // Použijeme mapu, kde kľúčom je 5 znakov bleskovo zabalených do jedného objektu Long.
     private final Map<Long, Double> runs5Grams = new HashMap<>();
 
-    // --- MONOGRAMY (Tvoja chýbajúca úroveň) ---
-    public void addMonogram(char c, double freq) {
-        monograms[c] = freq;
+    public void incrementMonogram(char c) {
+        monograms[c]++;
     }
 
     public double getMonogramFreq(char c) {
@@ -29,8 +28,8 @@ public final class NGramStats {
     }
 
     // --- BIGRAMY ---
-    public void addBigram(char c1, char c2, double freq) {
-        bigrams[(c1 << 8) | c2] = freq;
+    public void incrementBigram(char c1, char c2) {
+        bigrams[(c1 << 8) | c2]++;
     }
 
     public double getBigramFreq(char c1, char c2) {
@@ -38,8 +37,8 @@ public final class NGramStats {
     }
 
     // --- SKIPGRAMY (SFS - Sendviče) ---
-    public void addSkipgram(char c1, char c2, double freq) {
-        skipgrams[(c1 << 8) | c2] = freq;
+    public void incrementSkipgram(char c1, char c2) {
+        skipgrams[(c1 << 8) | c2]++;
     }
 
     public double getSkipgramFreq(char c1, char c2) {
@@ -47,8 +46,8 @@ public final class NGramStats {
     }
 
     // --- TRIGRAMY (Redirects / Pinbally) ---
-    public void addTrigram(char c1, char c2, char c3, double freq) {
-        trigrams[(c1 << 16) | (c2 << 8) | c3] = freq;
+    public void incrementTrigram(char c1, char c2, char c3) {
+        trigrams[(c1 << 16) | (c2 << 8) | c3]++;
     }
 
     public double getTrigramFreq(char c1, char c2, char c3) {

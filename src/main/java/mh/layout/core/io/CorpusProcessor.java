@@ -12,11 +12,11 @@ public final class CorpusProcessor {
     private CorpusProcessor() {}
 
     /**
-     * Načíta korpus, odmasťuje diakritiku, plní ploché N-gramy pre Optimizér
-     * na základe povolených znakov z tvojho layoutu.
-     * * @param filePath Cesta k súboru korpusu
-     * @param stats    Pamäťová schránka, ktorú ideme naplniť
-     * @param layout   Aktuálny layout klávesnice, z ktorého si vyčítame povolené symboly
+     * Načíta korpus, odmasťuje diakritiku a plní štatistiky pre jeden konkrétny jazyk.
+     * * @param filePath Cesta k súboru korpusu (napr. data/slovak_corpus.txt)
+     * @param stats    Samostatná dátová schránka pre tento konkrétny jazyk
+     * @param layout   Aktuálny štartovací layout, z ktorého dynamicky vyčítame povolené symboly
+     * @return Čistý slovník "písacích kusov" rozdelených medzerami pre záverečný report Analyzátora
      */
     public static Map<String, Double> processFile(String filePath, NGramStats stats, char[] layout) throws IOException {
         Map<String, Double> wordDictionary = new HashMap<>();
@@ -36,33 +36,34 @@ public final class CorpusProcessor {
             }
         }
 
+        // --- 2. ČÍTANIE SÚBORU RIADOK PO RIADKU ---
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
 
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank()) continue;
 
-                // Odmastenie diakritiky a prevod na veľké písmená
+                // Prevod na veľké písmená a odstránenie dĺžňov/mäkčeňov
                 String cleanedLine = normalizeLine(line);
 
                 // Zber kusov textu pre Analyzátor (sekanie podľa medzier)
                 String[] chunks = cleanedLine.split("\\s+");
                 for (String chunk : chunks) {
                     if (chunk.length() >= 4) { // Krátke kusy pre štatistiku behov preskakujeme
-                        wordDictionary.put(chunk, wordDictionary.getOrDefault(chunk, 0.0) + 1.0);
+                        wordDictionary.merge(chunk, 1.0, Double::sum);
                     }
                 }
 
-                // --- 3. KĹZAVÉ OKNO PRE N-GRAMY (Hot-path plnenie) ---
-                int idx1 = -1; // Znak pred-predchodca (c1)
-                int idx2 = -1; // Znak predchodca (c2)
+                // --- 4. KĹZAVÉ OKNO PRE N-GRAMY (Čisté prírastky) ---
+                int idx1 = -1; // Pred-predchodca (c1)
+                int idx2 = -1; // Predchodca (c2)
 
                 for (int i = 0; i < cleanedLine.length(); i++) {
                     char c3 = cleanedLine.charAt(i);
 
-                    // Zápis monogramu pre ÚPLNE KAŽDÝ znak v texte (uvidíš ho v štatistike)
+                    // Monogramy: Každý reálny ASCII znak v texte zrátame pre potreby celkovej štatistiky
                     if (c3 < 256) {
-                        stats.addMonogram(c3, stats.getMonogramFreq(c3) + 1.0);
+                        stats.incrementMonogram(c3);
                     }
 
                     // KĽÚČOVÁ ZMENA: Žiadny hardcode! Pýtame sa priamo našej vyčítanej mapy
@@ -78,20 +79,13 @@ public final class CorpusProcessor {
                     // KROK C: Zápis pokročilých n-gramov (Sem sa dostanú už len čisté klávesy)
                     // Bigram (c2 -> c3)
                     if (idx2 != -1) {
-                        char c2 = (char) idx2;
-                        stats.addBigram(c2, c3, stats.getBigramFreq(c2, c3) + 1.0);
+                        stats.incrementBigram((char) idx2, c3);
                     }
 
-                    // Trigram (c1 -> c2 -> c3) a Skipgram (c1 -> c3)
+                    // Trigramy (c1 -> c2 -> c3) a Skipgramy (c1 -> c3) pre sendviče (SFS)
                     if (idx1 != -1 && idx2 != -1) {
-                        char c1 = (char) idx1;
-                        char c2 = (char) idx2;
-
-                        // Trigram pre zmeny smeru (c1 -> c2 -> c3)
-                        stats.addTrigram(c1, c2, c3, stats.getTrigramFreq(c1, c2, c3) + 1.0);
-
-                        // Skipgram (SFS - Sendvič): Prvý a tretí znak, stredný sa ignoruje
-                        stats.addSkipgram(c1, c3, stats.getSkipgramFreq(c1, c3) + 1.0);
+                        stats.incrementTrigram((char) idx1, (char) idx2, c3);
+                        stats.incrementSkipgram((char) idx1, c3);
                     }
 
                     // Posun kĺzavého okna o jeden krok vpred
@@ -105,7 +99,7 @@ public final class CorpusProcessor {
     }
 
     /**
-     * Pomocná funkcia, ktorá kompletne strhne slovenskú diakritiku a hodí text do Uppercase.
+     * Bleskové odstránenie slovenskej diakritiky v O(N) čase bez zbytočnej alokácie objektov.
      */
     private static String normalizeLine(String text) {
         char[] src = text.toUpperCase().toCharArray();
