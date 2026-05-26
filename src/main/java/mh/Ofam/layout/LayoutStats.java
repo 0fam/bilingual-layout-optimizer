@@ -89,7 +89,9 @@ public class LayoutStats {
         for (FastWord fw : fastCorpus) {
             if (fw.len == 0 || fw.len > 100) continue;
 
-            boolean validWord = true;
+            // 🔥 DYNAMICKÉ SITO: Očistíme slovo tak, že do poľa keys naukladáme len to, čo matrix pozná
+            int validLen = 0;
+            StringBuilder cleanWordSb = !silent ? new StringBuilder() : null;
 
             for (int i = 0; i < fw.len; i++) {
                 char ch = fw.chars[i];
@@ -98,21 +100,22 @@ public class LayoutStats {
                 KeyInfo info = ch < fastLookup.length ? fastLookup[ch] : null;
 
                 if (info != null) {
-                    keys[i] = info;
-                } else {
-                    validWord = false;
-                    break; // Ak nepozná znak, preskočí slovo (bez logovania v hot path)
+                    keys[validLen++] = info;
+                    if (!silent) {
+                        cleanWordSb.append(ch); // Pre top 10 mapu ukladáme čisté slovo bez zátvoriek
+                    }
                 }
             }
-            if (!validWord) continue;
+
+            if (validLen == 0) continue; // Ak po orezaní šumu nič nezostalo, ideme ďalej
 
             boolean wordHadSfb = false;
             boolean wordHadLongRun = false;
             boolean hasInnerStretch = false;
 
             // --- 1. ÚROVEŇ: MONOGRAMY ---
-            // OPRAVA: Používame fw.len a fw.freq
-            for (int i = 0; i < fw.len; i++) {
+            // 💥 ZMENA: Používame novú vyčistenú dĺžku validLen
+            for (int i = 0; i < validLen; i++) {
                 KeyInfo k = keys[i];
 
                 ls.totalMonograms += fw.freq;
@@ -141,7 +144,8 @@ public class LayoutStats {
             }
 
             // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
-            for (int i = 0; i < fw.len - 1; i++) {
+            // 💥 ZMENA: Slučka upravená podľa validLen
+            for (int i = 0; i < validLen - 1; i++) {
                 KeyInfo k1 = keys[i];
                 KeyInfo k2 = keys[i + 1];
                 ls.totalBigrams += fw.freq;
@@ -188,7 +192,8 @@ public class LayoutStats {
                 }
 
                 // 🔥 SFS (Skipgramy) s premapovanými prstami
-                if (i < fw.len - 2) {
+                // 💥 ZMENA: Podmienka upravená podľa validLen
+                if (i < validLen - 2) {
                     KeyInfo k3 = keys[i + 2];
                     ls.totalSkipgrams += fw.freq;
 
@@ -206,7 +211,8 @@ public class LayoutStats {
             }
 
             // --- 3. ÚROVEŇ: TRIGRAMY ---
-            for (int i = 0; i < fw.len - 2; i++) {
+            // 💥 ZMENA: Slučka upravená podľa validLen
+            for (int i = 0; i < validLen - 2; i++) {
                 KeyInfo k1 = keys[i];
                 KeyInfo k2 = keys[i + 1];
                 KeyInfo k3 = keys[i + 2];
@@ -230,7 +236,8 @@ public class LayoutStats {
             // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
             int currentRun = 1;
             char currentHand = keys[0].hand;
-            for (int i = 1; i < fw.len; i++) {
+            // 💥 ZMENA: Slučka upravená podľa validLen
+            for (int i = 1; i < validLen; i++) {
                 if (keys[i].hand == currentHand) {
                     currentRun++;
                 } else {
@@ -248,10 +255,9 @@ public class LayoutStats {
             }
 
             // --- MAPY PRE TOP 10 SLOV ---
-            // OPRAVA: Tu vytvárame String z poľa chars len vtedy, ak potrebujeme logovať
+            // 💥 ZMENA: Ak nie sme silent, logujeme čisté slovo (napr. zo "(slovo)" zaloguje "slovo")
             if (!silent) {
-                String wordStr = new String(fw.chars);
-                // Pretypovanie fw.freq na int, keďže mapa akceptuje <String, Integer>
+                String wordStr = cleanWordSb.toString();
                 long mapFreq = fw.freq;
                 if (wordHadSfb) ls.sfbWordsMap.put(wordStr, mapFreq);
                 if (wordHadLongRun) ls.longRunWordsMap.put(wordStr, mapFreq);

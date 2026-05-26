@@ -22,30 +22,32 @@ public class CorpusProcessor {
         Map<String, Long> aggregatedLongs = new HashMap<>();
 
         for (Map.Entry<String, Long> entry : wordFreqs.entrySet()) {
-            String word = entry.getKey();
+            String rawWord = entry.getKey();
             long freq = entry.getValue();
-            int len = word.length();
 
-            if (len == 0) continue;
-
-            // 🔥 KLÚČOVÁ ZMENA: Ak slovo obsahuje akýkoľvek neprítomný znak, letí celé preč!
-            boolean valid = true;
-            for (int i = 0; i < len; i++) {
-                char c = word.charAt(i);
-                if (c >= 256 || !allowedChars[c]) {
-                    valid = false;
-                    break;
+            // 🔥 ZMENA: Namiesto zahodenia celého slova vytvoríme očistené slovo
+            // Prejde len to, čo táto konkrétna klávesnica reálne dokáže napísať
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < rawWord.length(); i++) {
+                char c = rawWord.charAt(i);
+                if (c < 256 && allowedChars[c]) {
+                    sb.append(c);
                 }
             }
-            if (!valid) continue; // Zosynchronizované s Analyzerom
-            // 1. MONOGRAMY
+
+            String word = sb.toString();
+            int len = word.length();
+
+            if (len == 0) continue; // Ak po vymazaní šumu (zátvoriek) nič nezostalo, preskočíme
+
+            // 1. MONOGRAMY (bežia nad word)
             for (int i = 0; i < len; i++) {
                 char c = word.charAt(i);
                 stats.monograms[c] += freq;
                 totalMonograms += freq;
             }
 
-            // 2. BIGRAMY a SKIPGRAMY
+            // 2. BIGRAMY a SKIPGRAMY (bežia nad word)
             for (int i = 0; i < len - 1; i++) {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);
@@ -61,7 +63,7 @@ public class CorpusProcessor {
                 }
             }
 
-            // 3. TRIGRAMY
+            // 3. TRIGRAMY (bežia nad word)
             for (int i = 0; i < len - 2; i++) {
                 char c1 = word.charAt(i);
                 char c2 = word.charAt(i + 1);

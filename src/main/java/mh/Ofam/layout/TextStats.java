@@ -20,31 +20,30 @@ public class TextStats {
 
     public static TextStats instance(String text) {
         TextStats textStats = new TextStats();
+        if (text == null) return textStats;
 
-        // <--- TU SA DEJE ODSTRÁNENIE DIAKRITIKY --->
-        String cleanText = stripDiacritics(text).toLowerCase();
+        // Rozdelenie STRICTLY iba podľa whitespace – zachováme všetky slová aj s prichytenou interpunkciou
+        String[] tokens = text.split("\\s+");
 
-        // Rozdelenie na slová (odstránenie interpunkcie pre presnosť slov)
-//        String[] words = cleanText.split("[^a-zA-Z0-9/.,;'-]+"); // symboly musia prec
-//        String[] words = cleanText.split("[^a-z0-9']+"); // cisla musia prec
-//        String[] words = cleanText.toLowerCase().split("[^a-z']+");
-        String[] words = cleanText.toLowerCase().split("[^a-z,.']+"); // ciarka bodka nazad
+        for (String token : tokens) {
+            if (token.isEmpty()) continue;
 
-        for (String word : words) {
-            if (word.isEmpty()) continue;
-            textStats.wordFreqs.put(word, textStats.wordFreqs.getOrDefault(word, 0L) + 1);
-            textStats.wordsTotal++;
+            String cleanToken = stripDiacritics(token).toLowerCase();
 
-            for (char ch : word.toCharArray()) {
-                // Tu pridáme počítanie samotného znaku:
+            // Zrátame absolútne všetko pre tvoj úvodný report
+            for (char ch : cleanToken.toCharArray()) {
                 textStats.charFreqs.put(ch, textStats.charFreqs.getOrDefault(ch, 0L) + 1L);
                 textStats.charsTotal++;
             }
 
+            // Do wordFreqs ukladáme slová tak, ako sú (všetky písmená + akákoľvek interpunkcia)
+            textStats.wordFreqs.put(cleanToken, textStats.wordFreqs.getOrDefault(cleanToken, 0L) + 1);
+            textStats.wordsTotal++;
         }
 
         textStats.printTextReport();
 
+        // Vygeneruje sa kompletný, surový korpus pre celý Analyzer
         textStats.fastCorpus = textStats.wordFreqs.entrySet().stream()
                 .map(e -> new FastWord(e.getKey(), e.getValue()))
                 .toArray(FastWord[]::new);
