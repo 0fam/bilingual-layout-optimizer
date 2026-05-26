@@ -58,10 +58,17 @@ public class Main {
         return textStats.getWordFreqs();
     }
 
-    private static Map<String, Long> loadYourExistingEnglishMap() {
+    private static Map<String, Long> loadYourExistingEnglishMap() throws URISyntaxException, IOException {
         // Tu prepoj tvoj existujúci TextStats parser pre angličtinu
         // Napr.: return myTextParser.getEnglishStats().wordFreqs;
-        return new HashMap<>();
+        String korpusPath = "korpus_en.txt";
+        String rawKorpus = FileSystemHelper.readKorpus(korpusPath);
+        if (rawKorpus.strip().isEmpty()) {
+            System.err.println("Chyba: Načítaný súbor s korpusom je prázdny!");
+            return null;
+        }
+        TextStats textStats = TextStats.instance(rawKorpus);
+        return textStats.getWordFreqs();
     }
 
 }

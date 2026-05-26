@@ -9,9 +9,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class LayoutOptimizerMultiThreadHeating {
+    public static final int THRESHOLD_SCORE_SK = 80;
+    public static final int THRESHOLD_SCORE_EN = 70;
 
     private final Object globalLock = new Object();
-    private double globalBestScore = -1.0;
 
     // 🔥 NOVINKA: Deterministické anatomické pravidlá na brutálne orezanie vyhľadávacieho priestoru
     private static boolean isValidTarget(char ch, int pos) {
@@ -34,31 +35,29 @@ public class LayoutOptimizerMultiThreadHeating {
     }
 
     public void runOptimization(Map<String, Long> skRawWords, Map<String, Long> enRawWords, String initialLayoutStr, long iterations, int maxN) {
-        // 1. JEDNORAZOVÉ PREDSPRACOVANIE
+        // 1. JEDNORAZOVÉ PREDSPRACOVANIE (Oba korpusy očistíme cez štartovaciu maticu)
         FastLayout startLayout = new FastLayout("StartCheck", initialLayoutStr);
         NGramStats skStats = CorpusProcessor.process(skRawWords, maxN, startLayout.matrix);
-//        NGramStats enStats = CorpusProcessor.process(enRawWords, maxN);
+        NGramStats enStats = CorpusProcessor.process(enRawWords, maxN, startLayout.matrix);
         Weights weights = Weights.builder().build();
 
         // Zistíme počet jadier procesora (u teba 8)
         int threadsCount = 5; // Runtime.getRuntime().availableProcessors() / 2;
         if (threadsCount < 1) threadsCount = 1;
 
-        // NASTAVENIE POČIATOČNEJ LATKY: Načítame východiskový layout
+        // NASTAVENIE POČIATOČNEJ BILINGVÁLNEJ LATKY
         FastLayoutStats startSk = FastEvaluator.evaluate(startLayout, skStats, weights);
-        this.globalBestScore = startSk.eliteScore;
+        FastLayoutStats startEn = FastEvaluator.evaluate(startLayout, enStats, weights);
 
         System.out.println("\n🔥 NASTAVENÝ POČET PROCESOROVÝCH JADIER: " + threadsCount);
-        System.out.println("Spúšťam paralelné hľadanie na všetkých jadrách naraz...");
-        System.out.println("Počiatočné skóre východiskového layoutu: " + startSk.eliteScore);
-        System.out.println("==================================================\n");
+        System.out.printf("Štartovacia latka: SK: %.4f | EN: %.4f\n\n", startSk.eliteScore, startEn.eliteScore);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadsCount);
         List<Future<OptimizationResult>> futures = new ArrayList<>();
 
         long startTime = System.currentTimeMillis();
 
-        // 2. ODPAĽUJEME SAMOSTATNÉ WORKERY PRE KAŽDÉ JADRO
+        // 2. PARALELNÉ WORKERY PRE KAŽDÉ JADRO
         for (int t = 0; t < threadsCount; t++) {
             final int workerId = t;
             futures.add(executor.submit(() -> {
@@ -76,7 +75,9 @@ public class LayoutOptimizerMultiThreadHeating {
                 }
 
                 FastLayoutStats skS = FastEvaluator.evaluate(currentLayout, skStats, weights);
-                double bestScore = skS.eliteScore;
+                FastLayoutStats enS = FastEvaluator.evaluate(currentLayout, enStats, weights);
+                double currentSkScore = skS.eliteScore;
+                double currentEnScore = enS.eliteScore;
 
                 // ==========================================
                 // 🔥 DYNAMICKÉ NASTAVENIE SIMULOVANÉHO ŽÍHANIA
@@ -101,8 +102,8 @@ public class LayoutOptimizerMultiThreadHeating {
                         long currentNow = System.currentTimeMillis();
                         double elapsedSec = (currentNow - workerStartTime) / 1000.0;
                         double currentIps = elapsedSec > 0 ? (i / elapsedSec) : 0;
-                        System.out.printf("   [%s] Priebeh: %6d / %d | Rýchlosť: %.0f it/s (Aktuálne: %.4f) | Teplota: %.4f\n",
-                                workerName, i, iterations, currentIps, bestScore, temp);
+                        System.out.printf("   [%s] Priebeh: %6d / %d | Rýchlosť: %.0f it/s (Aktuálne: %.4f | %.4f) | Teplota: %.4f\n",
+                                workerName, i, iterations, currentIps, currentSkScore, currentEnScore, temp);
                     }
 
                     // Čistá, slobodná mutácia dvoch náhodných pozícií
@@ -117,43 +118,45 @@ public class LayoutOptimizerMultiThreadHeating {
 
                     // EVALUÁCIA: Nech o kvalite rozhodne čistá matematika tvojho FastEvaluatora
                     FastLayoutStats newSk = FastEvaluator.evaluate(currentLayout, skStats, weights);
-                    double newGlobalScore = newSk.eliteScore;
+                    FastLayoutStats newEn = FastEvaluator.evaluate(currentLayout, enStats, weights);
+
+//                    // Poistka: Ak by po mutácii spadol hociktorý jazyk pod 80, okamžitý rollback
+//                    if (newSk.eliteScore < THRESHOLD_SCORE || newEn.eliteScore < THRESHOLD_SCORE) {
+//                        currentLayout.swap(pos1, pos2);
+//                        continue;
+//                    }
 
                     // Matematická delta žíhania
-                    double delta = newGlobalScore - bestScore;
+                    double deltaSk = newSk.eliteScore - currentSkScore;
+                    double deltaEn = newEn.eliteScore - currentEnScore;
 
-                    // PODMIENKA ŽÍHANIA (Lotéria chaosu pri vysokej teplote)
-                    if (delta > 0 || (temp > 0.001 && random.nextDouble() < Math.exp(delta / temp))) {
-                        bestScore = newGlobalScore;
+                    boolean acceptSk = deltaSk > 0 || (temp > 0.001 && random.nextDouble() < Math.exp(deltaSk / temp));
+                    boolean acceptEn = deltaEn > 0 || (temp > 0.001 && random.nextDouble() < Math.exp(deltaEn / temp));
 
-                        // Kontrola a nahlásenie absolútneho rekordu
+                    // PODMIENKA ŽÍHANIA
+                    if (acceptSk || acceptEn) {
+                        currentSkScore = newSk.eliteScore;
+                        currentEnScore = newEn.eliteScore;
+
+                        // Systém si sám skontroluje, či skore splna poziadavky a zapíše ho na disk/obrazovku
                         char[] matrixCopy = currentLayout.matrix.clone();
-                        checkAndReportGlobalImprovement(workerName, matrixCopy, bestScore, i);
+                        checkAndReportGlobalImprovement(workerName, matrixCopy, currentSkScore, currentEnScore, i);
                     } else {
                         currentLayout.swap(pos1, pos2); // rollback
                     }
 
-                    // Plynulé chladnutie po každom jednom poctivom kroku
                     temp *= coolingRate;
                 }
 
-                return new OptimizationResult(currentLayout.matrix, bestScore);
+                return new OptimizationResult(currentLayout.matrix, currentSkScore, currentEnScore);
             }));
         }
 
-        // 3. ZBER VÝSLEDKOV Z JADIER
-        // 💥 OPRAVA: Počítadlo inicializujeme pôvodným stavom. Ak nič neprekoná latku, vyhráva originál.
-        char[] absoluteBestMatrix = startLayout.matrix.clone();
-        double absoluteBestScore = startSk.eliteScore;
-
+        // 3. ZBER VÝSLEDKOV (Len počkáme na tiché dobehnutie všetkých vlákien)
         try {
             for (Future<OptimizationResult> future : futures) {
                 OptimizationResult res = future.get(); // Čaká na dokončenie konkrétneho jadra
-                System.out.printf("📢 [%s] dokončilo prácu. Najlepšie dosiahnuté skóre: %.4f\n", Thread.currentThread().getName(), res.score);
-                if (res.score > absoluteBestScore) {
-                    absoluteBestScore = res.score;
-                    absoluteBestMatrix = res.matrix;
-                }
+                System.out.printf("📢 [%s] dokončilo prácu. Aktualne skóre sk: %.4f | en: %.4f\n", Thread.currentThread().getName(), res.scoreSk, res.scoreEn);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -161,31 +164,23 @@ public class LayoutOptimizerMultiThreadHeating {
             executor.shutdown();
         }
 
+        // 4. FINÁLNE UTRETIE STOLA
         long endTime = System.currentTimeMillis();
         double totalTimeSec = (endTime - startTime) / 1000.0;
 
-        // 4. VYPÍSANIE ABSOLÚTNEHO VÍŤAZA VŠETKÝCH JADIER
         System.out.println("\n==================================================");
-        System.out.println("🔥 PARALELNÁ OPTIMALIZÁCIA DOKONČENÁ 🔥");
-        System.out.printf("Celkový čas na všetkých jadrách: %.2f sekúnd\n", totalTimeSec);
-        System.out.printf("Celkovo spracovaných: %d iterácií\n", (threadsCount * iterations));
-        System.out.printf("Ultimátne kombinované skóre: %.4f\n", absoluteBestScore);
+        System.out.printf("🔥 OPTIMALIZÁCIA DOKONČENÁ za %.2f sekúnd 🔥\n", totalTimeSec);
+        System.out.println("Všetky top bilingválne rozloženia máš uložené v logu.");
         System.out.println("==================================================");
-
-        printMatrixBeautifully(absoluteBestMatrix);
-
-        // Zobrazenie výsledného porovnania zmien oproti počiatočnému stavu
-        printLayoutDiff(initialLayoutStr, absoluteBestMatrix);
     }
 
-    private void checkAndReportGlobalImprovement(String workerName, char[] matrix, double score, long iteration) {
+    private void checkAndReportGlobalImprovement(String workerName, char[] matrix, double scoreSk, double scoreEn, long iteration) {
         synchronized (globalLock) {
-            if (score > globalBestScore) {
-                globalBestScore = score;
+            if (scoreSk > THRESHOLD_SCORE_SK && scoreEn > THRESHOLD_SCORE_EN) {
 
                 // 1. Klasický výpis do konzoly, ako doteraz
-                System.out.printf("\n🚀 [%s] Iterácia %6d: !!! NOVÝ ABSOLÚTNY REKORD -> %.4f !!!\n  Layout: ",
-                        workerName, iteration, score);
+                System.out.printf("\n🚀 [%s] Iterácia %6d: !!! NOVÝ ZAPIS -> %.4f | %.4f !!!\n  Layout: ",
+                        workerName, iteration, scoreSk, scoreEn);
 
                 StringBuilder layoutSb = new StringBuilder();
                 for (int i = 0; i < 30; i++) {
@@ -197,8 +192,8 @@ public class LayoutOptimizerMultiThreadHeating {
                 // 🔥 2. ZÁCHRANNÁ ČIERNA SKRINKA: Okamžitý zápis na disk
                 try (java.io.FileWriter fw = new java.io.FileWriter("totem_rekordy.txt", true);
                      java.io.PrintWriter pw = new java.io.PrintWriter(fw)) {
-                    pw.printf("[%s] Iteracia: %d | SKORE: %.4f | Layout: %s\n",
-                            workerName, iteration, score, layoutSb.toString());
+                    pw.printf("[%s] Iteracia: %d | SKOREsk: %.4f | SKOREen: %.4f | Layout: %s\n",
+                            workerName, iteration, scoreSk, scoreEn, layoutSb.toString());
                 } catch (java.io.IOException e) {
                     // Ak zápis zlyhá, nechceme, aby nám to zhodilo celú optimalizáciu
                 }
@@ -239,11 +234,13 @@ public class LayoutOptimizerMultiThreadHeating {
     // Malá interná pomocná štruktúra na prenos výsledkov z jadier
     private static class OptimizationResult {
         final char[] matrix;
-        final double score;
+        final double scoreSk;
+        final double scoreEn;
 
-        OptimizationResult(char[] matrix, double score) {
+        OptimizationResult(char[] matrix, double scoreSk, double scoreEn) {
             this.matrix = matrix;
-            this.score = score;
+            this.scoreSk = scoreSk;
+            this.scoreEn = scoreEn;
         }
     }
 }

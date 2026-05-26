@@ -1,0 +1,12 @@
+{
+    "name": "L94",
+    "board": "ortho",
+    "layers": {
+        "main": [
+            "h l d p f   ; w z u .",
+            "s n t k m   y e o a i",
+            "j r c v b   ' g , x q"
+        ]
+    },
+    "fingering": "traditional"
+}

@@ -82,3 +82,49 @@
 [Jadro-2] Iteracia: 261818 | SKORE: 91.8189 | Layout: y,wx'gpdrc / ioeaqmktns / fjhu;bvzl.
 [Jadro-2] Iteracia: 278789 | SKORE: 91.8363 | Layout: fjwxqgvzrc / ioea'mktns / y,hu;bpdl.
 [Jadro-2] Iteracia: 280747 | SKORE: 91.8365 | Layout: fjwx;gvzrc / ioea'mktns / y,huqbpdl.
+[Jadro-0] Iteracia: 74 | SKORE: 89.1685 | Layout: qxwh;f,lcb / oaeiyvsntm / gukj'.zrdp
+[Jadro-0] Iteracia: 342 | SKORE: 89.6454 | Layout: qxgh;f,lcb / oaeiyvsntm / wukj'.zrdp
+[Jadro-0] Iteracia: 401 | SKORE: 89.6905 | Layout: qxghwf,lcb / oaeiyvsntm / ;ukj'.zrdp
+[Jadro-0] Iteracia: 437 | SKORE: 89.7073 | Layout: qxhgwf,lcb / oaeiyvsntm / ;ukj'.zrdp
+[Jadro-0] Iteracia: 450 | SKORE: 89.7166 | Layout: qxhg'f,lcb / oaeiyvsntm / ;ukjw.zrdp
+[Jadro-0] Iteracia: 635 | SKORE: 89.7554 | Layout: ;xhg'f,lcb / oaeiyvsntm / qukjw.zrdp
+[Jadro-1] Iteracia: 142116 | SKORE: 90.1187 | Layout: ,lcb.wzuf; / sntkmxiaeo / jrdvg'hpyq
+[Jadro-2] Iteracia: 147320 | SKORE: 90.2064 | Layout: hldpf;xzuy / sntvm.eoai / jrckb'g,wq
+[Jadro-2] Iteracia: 147331 | SKORE: 90.3175 | Layout: hldpf;wzuy / sntvm.eoai / jrckb'g,xq
+[Jadro-2] Iteracia: 147343 | SKORE: 90.5566 | Layout: hldpf;wzu. / sntkmyeoai / jrcvb'g,xq
+[Jadro-2] Iteracia: 155977 | SKORE: 90.5831 | Layout: rzdbgq'h,j / lntkmyaeoi / xscvw;upf.
+[Jadro-1] Iteracia: 155526 | SKORE: 90.6748 | Layout: lsdpf;j.,q / rntkmyieao / wzcvbxghu'
+[Jadro-1] Iteracia: 155552 | SKORE: 90.7161 | Layout: lsdpfqj.,; / rntkmyieao / wzcvbxghu'
+[Jadro-2] Iteracia: 157408 | SKORE: 90.7306 | Layout: rzdb'quhjg / lntkmxaeoi / .scvfwp,;y
+[Jadro-2] Iteracia: 157459 | SKORE: 90.7860 | Layout: rzdvgquhjy / lntkmxaeoi / .scb;wp,f'
+[Jadro-2] Iteracia: 157809 | SKORE: 91.0627 | Layout: rzdvf'uhyq / lntkmxaeoi / .scb;wpg,j
+[Jadro-2] Iteracia: 158508 | SKORE: 91.2568 | Layout: rzdbxq,pf' / lntkmwaeoi / .scvg;uhjy
+[Jadro-2] Iteracia: 158564 | SKORE: 91.2971 | Layout: rzdbx;,pf' / lntkmwaeoi / .scvgquhjy
+[Jadro-2] Iteracia: 159297 | SKORE: 91.4796 | Layout: .zdvbqfx,j / rntkm'aeoi / lscpw;uhyg
+[Jadro-1] Iteracia: 159356 | SKORE: 91.7038 | Layout: xscvgwfhu' / lntkmyieao / rzdpb;j,.q
+[Jadro-1] Iteracia: 159567 | SKORE: 92.0523 | Layout: .scvg;fhuq / lntkmyieao / rzdpbwj,x'
+[Jadro-3] Iteracia: 167043 | SKORE: 92.1039 | Layout: rscvg'ufqw / lntkmxaeoi / .zdpb;,hjy
+[Jadro-3] Iteracia: 167076 | SKORE: 92.1189 | Layout: rscvgxuhqw / lntkm'aeoi / .zdpb;,fjy
+[Jadro-3] Iteracia: 167265 | SKORE: 92.2180 | Layout: lscvgwuf,y / rntkm;aeoi / qzdpb'xhj.
+[Jadro-3] Iteracia: 167294 | SKORE: 92.3024 | Layout: lscvg;uf,y / rntkmwaeoi / qzdpb'xhj.
+[Jadro-3] Iteracia: 167549 | SKORE: 92.3892 | Layout: .scpf;uh,y / lntkmwaeoi / rzdvbqx'jg
+[Jadro-2] Iteracia: 188019 | SKORE: 92.4684 | Layout: lscpq;.f,y / rntkm'aeoi / xzdvbwuhjg
+[Jadro-3] Iteracia: 195043 | SKORE: 92.4816 | Layout: .ldpxqwf,y / sntkm'aeoi / crzvb;uhjg
+[Jadro-3] Iteracia: 205890 | SKORE: 92.5229 | Layout: .ldpq;,wjy / sntkm'aeoi / crzvbxuhfg
+[Jadro-3] Iteracia: 208949 | SKORE: 92.5433 | Layout: gldpq',w.y / sntkmxaeoi / crzvb;uhjf
+[Jadro-3] Iteracia: 208985 | SKORE: 92.5455 | Layout: gldpq;,w.y / sntkmxaeoi / crzvb'uhjf
+[Jadro-3] Iteracia: 209088 | SKORE: 92.6068 | Layout: .ldpq',wfy / sntkmxaeoi / crzvb;uhjg
+[Jadro-3] Iteracia: 215327 | SKORE: 92.6145 | Layout: crdpg',wxf / sntkm;aeoi / .lzvbquhjy
+[Jadro-3] Iteracia: 215505 | SKORE: 92.6245 | Layout: crdpx',wfg / sntkm;aeoi / .lzvbquhjy
+[Jadro-3] Iteracia: 236604 | SKORE: 92.7013 | Layout: crdpg'uh,y / sntkm;aeoi / .lzvbqxwjf
+[Jadro-3] Iteracia: 258694 | SKORE: 92.7254 | Layout: .ldpgquhjf / sntkm'aeoi / crzvb;xw,y
+[Jadro-3] Iteracia: 270414 | SKORE: 92.7307 | Layout: crdpg;uh,y / sntkmqaeoi / .lzvb'xwjf
+[Jadro-3] Iteracia: 274635 | SKORE: 92.7364 | Layout: .ldpgquh,y / sntkm;aeoi / crzvb'xwjf
+[Jadro-3] Iteracia: 274714 | SKORE: 92.7503 | Layout: .ldpgquh,y / sntkm'aeoi / crzvb;xwjf
+[Jadro-3] Iteracia: neznama | SKORE: 92.7274 | Layout: crzvgquh,y / sntkm'aeoi / .ldpb;xwjf
+[Jadro-0] Iteracia: 48 | SKOREsk: 89.1359 | SKOREen: 73.4900 | Layout: q.wh;x,lcb / oaeiyvsntm / gukj'fzrdp
+[Jadro-0] Iteracia: 69 | SKOREsk: 89.7538 | SKOREen: 73.4900 | Layout: q.wh;g,lcb / oaeiyvsntm / xukj'fzrdp
+[Jadro-0] Iteracia: 498 | SKOREsk: 89.7626 | SKOREen: 73.4900 | Layout: x.wh;g,lcb / oaeiyvsntm / qukj'fzrdp
+[Jadro-0] Iteracia: 19 | SKOREsk: 84.2804 | SKOREen: 77.3261 | Layout: qxwh;.jlmb / oaeiyvsntc / guk,'fzrdp
+[Jadro-0] Iteracia: 43 | SKOREsk: 83.2529 | SKOREen: 80.2174 | Layout: qxwh;.glmp / oaeiyvsntc / fuk,'jzrdb
+[Jadro-0] Iteracia: 49 | SKOREsk: 80.0632 | SKOREen: 81.3204 | Layout: qxwh;.glzp / oaeiyvsntc / fuk,'jmrdb
