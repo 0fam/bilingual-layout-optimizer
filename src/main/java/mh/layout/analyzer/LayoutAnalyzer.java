@@ -1,10 +1,11 @@
 package mh.layout.analyzer;
 
-import mh.layout.stats.Evaluator;
-import mh.layout.stats.Weights;
+import mh.layout.evaluator.Evaluator;
+import mh.layout.evaluator.Weights;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.NGramStats;
 import mh.layout.stats.MetricType;
+import mh.layout.topology.Finger;
 import mh.layout.topology.KeyboardTopology;
 
 import java.io.IOException;
@@ -15,9 +16,10 @@ import java.util.stream.Collectors;
 
 public final class LayoutAnalyzer {
 
+    private LayoutAnalyzer() {}
+
     /**
-     * Dátový kontajner, ktorý zachytí celý report.
-     * Oslobodzuje analyzátor od priameho tlačenia do konzoly.
+     * Dátový kontajner, ktorý zachytí celý report a vie ho zapísať na disk.
      */
     public static final class AnalysisReport {
         private final StringBuilder output = new StringBuilder();
@@ -31,93 +33,94 @@ public final class LayoutAnalyzer {
             return output.toString();
         }
 
-        /**
-         * Bleskové uloženie celého biomechanického auditu do súboru na disk.
-         */
         public void saveToFile(String filePath) throws IOException {
-            // Použitím FileOutputStream s parametrom 'true' povieme Jave, aby text pridávala na koniec (append)
             try (PrintWriter writer = new PrintWriter(
                     new java.io.OutputStreamWriter(
                             new java.io.FileOutputStream(filePath, true),
                             StandardCharsets.UTF_8))) {
                 writer.print(output.toString());
                 writer.println("\n\n# ====================================================================\n\n");
-                // Tento riadok vyššie ti vizuálne oddelí staré audity od nových v jednom súbore, nech sa ti to lepšie číta.
             }
         }
     }
 
-    public static AnalysisReport generateReport(char[] matrix, NGramStats statsSK, NGramStats statsEN,
+    public static AnalysisReport generateReport(char[] matrix, String layoutName, NGramStats statsSK, NGramStats statsEN,
                                                 Map<String, Double> dictSK, Map<String, Double> dictEN,
                                                 Weights weights, double skRatio) {
 
         AnalysisReport report = new AnalysisReport();
 
-        // 1. Spustíme bleskové jadro pre globálne čísla
+        // 1. Spustíme bleskové jadro pre reálne čísla oboch jazykov
         LayoutStats skStats = Evaluator.evaluate(matrix, statsSK, weights);
         LayoutStats enStats = Evaluator.evaluate(matrix, statsEN, weights);
 
         double enRatio = 1.0 - skRatio;
         double combinedScore = (skStats.getScore() * skRatio) + (enStats.getScore() * enRatio);
 
-        // Zistenie špičkovej záťaže prstov
-        double skMaxFinger = 0;
-        double enMaxFinger = 0;
-        MetricType[] fingers = {
-                MetricType.L_PINKY, MetricType.L_RING, MetricType.L_MIDDLE, MetricType.L_INDEX,
-                MetricType.R_INDEX, MetricType.R_MIDDLE, MetricType.R_RING, MetricType.R_PINKY
-        };
-        for (MetricType f : fingers) {
-            skMaxFinger = Math.max(skMaxFinger, skStats.get(f));
-            enMaxFinger = Math.max(enMaxFinger, enStats.get(f));
-        }
-
         // --- HLAVIČKA REPORTU ---
         report.append("====================================================================\n");
-        report.append("📊      FINÁLNY BIOMECHANICKÝ AUDIT BILINGVÁLNEHO LAYOUTU       📊\n");
+        report.append("📊      BIOMECHANICKÝ AUDIT REKORDNÉHO LAYOUTU: %-16s  📊\n", layoutName);
         report.append("====================================================================\n");
         report.append("👑 KOMBINOVANÉ BILINGVÁLNE ELITE SKÓRE: %.4f\n", combinedScore);
         report.append("🇸🇰 Slovenská vetva: %.4f (Váha: %.0f%%)\n", skStats.getScore(), skRatio * 100);
         report.append("🇬🇧 Anglická vetva:   %.4f (Váha: %.0f%%)\n", enStats.getScore(), enRatio * 100);
         report.append("--------------------------------------------------------------------\n");
 
-        // --- TABUĽKA METRÍK ---
+        // --- TABUĽKA REÁLNYCH METRÍK ---
         report.append("\n🧠 BIOMECHANICKÉ UKAZOVATELE (Frekvencie výskytu v %%):\n");
         report.append(String.format("%-25s | %-18s | %-18s\n", "Metrika", "Slovenčina (SK)", "Angličtina (EN)"));
         report.append("--------------------------------------------------------------------\n");
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFB (Rovnaký prst)", skStats.get(MetricType.SFB), enStats.get(MetricType.SFB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFS (Sendviče)", skStats.get(MetricType.SFS), enStats.get(MetricType.SFS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ALT (Striedanie rúk)", skStats.get(MetricType.ALTERNATION), enStats.get(MetricType.ALTERNATION)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-In (Valenie dnu)", skStats.get(MetricType.ROLL_IN), enStats.get(MetricType.ROLL_IN)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-Out (Valenie von)", skStats.get(MetricType.ROLL_OUT), enStats.get(MetricType.ROLL_OUT)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Scissors (Nožnice)", skStats.get(MetricType.SCISSORS), enStats.get(MetricType.SCISSORS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Redirects (Otočky)", skStats.get(MetricType.REDIRECTS), enStats.get(MetricType.REDIRECTS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LSB (Bočné uličky)", skStats.get(MetricType.LSB), enStats.get(MetricType.LSB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LHB (Záťaž malíčkov)", skStats.get(MetricType.LHB), enStats.get(MetricType.LHB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", skStats.get(MetricType.STRETCH), enStats.get(MetricType.STRETCH)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Peak Finger Load", skMaxFinger, enMaxFinger));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFB (Rovnaký prst)", skStats.getMetricPercent(MetricType.SFB), enStats.getMetricPercent(MetricType.SFB)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFS (Sendviče)", skStats.getMetricPercent(MetricType.SFS), enStats.getMetricPercent(MetricType.SFS)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ALT (Striedanie rúk)", skStats.getMetricPercent(MetricType.ALTERNATION), enStats.getMetricPercent(MetricType.ALTERNATION)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-In (Valenie dnu)", skStats.getMetricPercent(MetricType.ROLL_IN), enStats.getMetricPercent(MetricType.ROLL_IN)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-Out (Valenie von)", skStats.getMetricPercent(MetricType.ROLL_OUT), enStats.getMetricPercent(MetricType.ROLL_OUT)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Scissors (Nožnice)", skStats.getMetricPercent(MetricType.SCISSORS), enStats.getMetricPercent(MetricType.SCISSORS)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Redirects (Otočky)", skStats.getMetricPercent(MetricType.REDIRECTS), enStats.getMetricPercent(MetricType.REDIRECTS)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LSB (Bočné uličky)", skStats.getMetricPercent(MetricType.LSB), enStats.getMetricPercent(MetricType.LSB)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LHB (Záťaž malíčkov)", skStats.getMetricPercent(MetricType.LHB), enStats.getMetricPercent(MetricType.LHB)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", skStats.getMetricPercent(MetricType.EFFORT), enStats.getMetricPercent(MetricType.EFFORT)));
+        report.append("--------------------------------------------------------------------\n");
 
-        // 2. SPRACOVANIE DIGITÁLNEHO RÖNTGENU SLOVNÍKOV (Top 10 hriešnici)
-        // Vyrobíme si rýchle lookup tabuľky mapované priamo na Totem matrix
+        // --- ZAŤAŽENIE JEDNOTLIVÝCH PRSTOV ---
+        report.append("\n🖐️ DISTRIBÚCIA ZAŤAŽENIA PRSTOV (v %%):\n");
+        report.append(String.format("%-12s | %-6s | %-6s | %-6s | %-6s || %-6s | %-6s | %-6s | %-6s\n",
+                "Jazyk", "L_Mal", "L_Prs", "L_Pro", "L_Uka", "R_Uka", "R_Pro", "R_Prs", "R_Mal"));
+        report.append("--------------------------------------------------------------------\n");
+        report.append(String.format("%-12s | %6.2f | %6.2f | %6.2f | %6.2f || %6.2f | %6.2f | %6.2f | %6.2f\n", "Slovenčina",
+                skStats.getFingerPercent(Finger.LP.ordinal()), skStats.getFingerPercent(Finger.LR.ordinal()),
+                skStats.getFingerPercent(Finger.LM.ordinal()), skStats.getFingerPercent(Finger.LI.ordinal()),
+                skStats.getFingerPercent(Finger.RI.ordinal()), skStats.getFingerPercent(Finger.RM.ordinal()),
+                skStats.getFingerPercent(Finger.RR.ordinal()), skStats.getFingerPercent(Finger.RP.ordinal())));
+        report.append(String.format("%-12s | %6.2f | %6.2f | %6.2f | %6.2f || %6.2f | %6.2f | %6.2f | %6.2f\n", "Angličtina",
+                enStats.getFingerPercent(Finger.LP.ordinal()), enStats.getFingerPercent(Finger.LR.ordinal()),
+                enStats.getFingerPercent(Finger.LM.ordinal()), enStats.getFingerPercent(Finger.LI.ordinal()),
+                enStats.getFingerPercent(Finger.RI.ordinal()), enStats.getFingerPercent(Finger.RM.ordinal()),
+                enStats.getFingerPercent(Finger.RR.ordinal()), enStats.getFingerPercent(Finger.RP.ordinal())));
+
+        // 2. SPRACOVANIE DIGITÁLNEHO RÖNTGENU SLOVNÍKOV
         boolean[] presentOnKeyboard = new boolean[256];
         int[] charToHand = new int[256];
         int[] charToRow = new int[256];
         int[] charToCol = new int[256];
         int[] charToFinger = new int[256];
 
+        // 🚀 FIX: Vyťahujeme anatómiu cez bitové masky z POS_INFO, presne podľa novej topológie
+        final int[] posInfo = KeyboardTopology.POS_INFO;
         for (int i = 0; i < 30; i++) {
             char c = matrix[i];
             if (c < 256) {
                 presentOnKeyboard[c] = true;
-                charToHand[c] = KeyboardTopology.POS_TO_HAND[i];
-                charToRow[c] = KeyboardTopology.POS_TO_ROW[i];
-                charToCol[c] = i % 10; // Čistá matematika, stĺpec 0 až 9
-                charToFinger[c] = KeyboardTopology.POS_TO_FINGER[i];
+                int info = posInfo[i];
+                charToHand[c]   = (info >> 9) & 0x1;
+                charToRow[c]    = (info >> 7) & 0x3;
+                charToCol[c]    = (info >> 3) & 0xF;
+                charToFinger[c] = info & 0x7;
             }
         }
 
         report.append("\n====================================================================\n");
-        report.append("🔍       HLBKOVÁ ANALÝZA SLOVNÍKOV (Top 10 najhorších slov)        \n");
+        report.append("🔍       HĹBKOVÁ ANALÝZA SLOVNÍKOV (Top 10 najhorších slov)        \n");
         report.append("====================================================================\n");
 
         analyzeLanguageOffenders(report, dictSK, "SLOVENČINA (SK)", presentOnKeyboard, charToHand, charToRow, charToCol, charToFinger);
@@ -161,7 +164,6 @@ public final class LayoutAnalyzer {
                 int h = hands[c];
                 int r = rows[c];
                 int col = cols[c];
-                int f = fingers[c];
 
                 // A. Výpočet asymetrického stretchu slova
                 if (col == 4 || col == 5) {
@@ -197,7 +199,7 @@ public final class LayoutAnalyzer {
         }
 
         // Tlač rebríčkov do reportu
-        report.append("\n🇸🇰 Vetva: %s\n", label);
+        report.append("\n🌍 Vetva: %s\n", label);
         report.append("-------");
         report.append("\n🔥 Top 10 kmitavých slov (SFB kŕč):\n");
         printTop10(report, sfbWords);

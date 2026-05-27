@@ -1,5 +1,6 @@
 package mh.layout;
 
+import mh.layout.analyzer.LayoutAnalyzer;
 import mh.layout.evaluator.Evaluator;
 import mh.layout.evaluator.Weights;
 import mh.layout.io.CorpusProcessor;
@@ -23,7 +24,7 @@ public final class LayoutAnalysisEngine {
 
     private final double slovakRatio = 0.60;
 
-    // Pomocný kontajner pre zoradenie výsledkov v leaderboarde
+    // Vnútorný pomocný kontajner pre potreby zoradenia výsledkov
     private record AnalyzedLayout(
             String name,
             char[] matrix,
@@ -37,28 +38,28 @@ public final class LayoutAnalysisEngine {
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
 
-        // 1. Inicializuj ergonomické váhy -> Už sa stalo automaticky vo fieldoch triedy (new Weights())
+        // 1. Inicializuj ergonomické váhy (Už sa stalo vo fieldoch triedy pri 'new Weights()')
 
-        // 2. Volaj CorpusProcessor na načítanie invariantných štatistík textu (SK a EN)
-        System.out.println("📥 Načítavam jazykové korpusy a slovníky...");
+        // 2. Volaj CorpusProcessor na načítanie štatistík textu (Čistá pravda o jazyku, bez layoutu)
+        System.out.println("📥 Načítavam jazykové korpusy a slovníky slov...");
         try {
             this.dictSK = CorpusProcessor.processFile("data/slovak_corpus.txt", statsSK);
-            System.out.println("✅ Slovenský korpus úspešne načítaný.");
+            System.out.println("✅ Slovenský korpus úspešne spracovaný.");
 
             this.dictEN = CorpusProcessor.processFile("data/english_corpus.txt", statsEN);
-            System.out.println("✅ Anglický korpus úspešne načítaný.\n");
+            System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
         } catch (IOException e) {
-            System.err.println("❌ Chyba pri načítavaní korpusov: " + e.getMessage());
+            System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
             return;
         }
 
-        // 3. Načítaj súbor alebo prebehni zložku 'targetPath' a vytiahni z nej matice char[]
+        // 3. Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
         List<Map.Entry<String, char[]>> loadedLayouts = new ArrayList<>();
         File target = new File(targetPath);
 
         try {
             if (target.isDirectory()) {
-                // Prebehni zložku súbor po súbore (napr. čo súbor, to jeden layout)
+                // Prípad A: Používateľ poslal cestu k priečinku plnému samostatných layoutov
                 File[] files = target.listFiles();
                 if (files != null) {
                     for (File f : files) {
@@ -71,7 +72,7 @@ public final class LayoutAnalysisEngine {
                     }
                 }
             } else if (target.isFile()) {
-                // Načítaj jeden súbor (napr. layout_journal.txt) riadok po riadku
+                // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
                 List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
                 int counter = 1;
                 for (String line : lines) {
@@ -109,7 +110,7 @@ public final class LayoutAnalysisEngine {
             LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
             LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights);
 
-            // Výpočet kombinovaného bilingválneho Elite skóre
+            // Kombinované bilingválne Elite skóre postavené na našom vzájomnom pomere jazykov
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
 
             leaderboard.add(new AnalyzedLayout(entry.getKey(), matrix, skRes, enRes, combinedScore));
@@ -120,6 +121,25 @@ public final class LayoutAnalysisEngine {
 
         // 7. Vytlač do konzoly nádherný bilingválny LEADERBOARD
         printLeaderboardTable(leaderboard);
+
+        // =========================================================================
+        // 🔍 HĹBKOVÁ DIGITÁLNA ANALÝZA SLOVNÍKOV PRE ABSOLÚTNEHO VÍŤAZA
+        // =========================================================================
+        if (!leaderboard.isEmpty()) {
+            AnalyzedLayout winner = leaderboard.get(0);
+
+            // LayoutAnalyzer vygeneruje kompletný audit vrátane top 10 najhorších slov pre prsty
+            LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
+                    winner.matrix, winner.name, statsSK, statsEN, dictSK, dictEN, weights, slovakRatio
+            );
+
+            try {
+                detailedReport.saveToFile("data/best_layout_audit.txt");
+                System.out.println("\n🎯 Hĺbkový biomechanický audit víťaza bol úspešne pridaný do: data/best_layout_audit.txt");
+            } catch (IOException e) {
+                System.err.println("⚠️ Nepodarilo sa uložiť podrobný textový report na disk: " + e.getMessage());
+            }
+        }
     }
 
     private void printLeaderboardTable(List<AnalyzedLayout> list) {
@@ -143,7 +163,7 @@ public final class LayoutAnalysisEngine {
                 System.out.println(lineSeparator);
             }
 
-            // Metriky zobrazujeme ako bilingválny priemer (SK + EN) pre dokonalý jednoradový prehľad
+            // Metriky zobrazujeme ako vyvážený priemer oboch svetov pre čistý tabuľkový prehľad
             double avgSfb      = (res.skStats.getMetricPercent(MetricType.SFB) + res.enStats.getMetricPercent(MetricType.SFB)) / 2.0;
             double avgSfs      = (res.skStats.getMetricPercent(MetricType.SFS) + res.enStats.getMetricPercent(MetricType.SFS)) / 2.0;
             double avgAlt      = (res.skStats.getMetricPercent(MetricType.ALTERNATION) + res.enStats.getMetricPercent(MetricType.ALTERNATION)) / 2.0;
