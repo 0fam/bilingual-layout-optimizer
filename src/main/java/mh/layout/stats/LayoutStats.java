@@ -82,30 +82,41 @@ public final class LayoutStats {
         computePercents();
         computeCoefficients();
 
-        // 🚀 OPRAVA: Zosypeme filtre z n-gramov AJ z prstov do jedného globálneho skóre
-        double product = Arrays.stream(metricCoefficients).filter(value -> value >= 0).reduce(1.0, (a, b) -> a * b);
-        long count = Arrays.stream(metricCoefficients).filter(value -> value >= 0).count();
+        double totalProduct = 1.0;
+        long totalCount = 0;
 
-        double fingerProduct = Arrays.stream(fingerCoefficients).filter(value -> value >= 0).reduce(1.0, (a, b) -> a * b);
-        long fingerCount = Arrays.stream(fingerCoefficients).filter(value -> value >= 0).count();
+        // 🚀 ULTRA-OPTIMALIZÁCIA: Jeden primitívny prechod cez metriky
+        for (int i = 0; i < METRIC_COUNT; i++) {
+            double coef = metricCoefficients[i];
+            if (coef >= 0) {
+                totalProduct *= coef;
+                totalCount++;
+            }
+        }
 
-        product *= fingerProduct;
-        count += fingerCount;
+        // 🚀 Jeden primitívny prechod cez prsty
+        for (int i = 0; i < FINGERS_CACHE.length; i++) {
+            double coef = fingerCoefficients[i];
+            if (coef >= 0) {
+                totalProduct *= coef;
+                totalCount++;
+            }
+        }
 
-        if (count == 0) return 0.0;
+        if (totalCount == 0) return 0.0;
 
-        return totalScore = Math.pow(product, 1.0 / count) * 100.0; // toto je priemer n-rozmerneho telesa, namiesto objemu
-//        return globalScore = poweredProduct * 10000; // ak preferujes hrube skore, pozor, vysledky budu logaritmickeho charakteru
-
+        // Jedno jediné zavolanie Math.pow na konci je pre procesor úplná hračka
+        return totalScore = Math.pow(totalProduct, 1.0 / totalCount) * 100.0; // toto je priemer n-rozmerneho telesa, namiesto objemu
+//        return totalScore = totalProduct * 10000; // ak preferujes hrube skore, pozor, vysledky budu logaritmickeho charakteru
     }
 
-    /**
-     * KĽÚČOVÉ DOPLNENIE: Preráta surové sumy na reálne percentá s ochranou proti deleniu nulou.
-     */
     private void computePercents() {
-        // =========================================================================
+        // 🚀 POISTKA: Vyčistíme stopu prstov pred novým sčítaním pozícií
+//        Arrays.fill(fingerPercents, 0.0);
+
+        long totalMonograms = nGramStats.getTotalMonogramsCount();
+
         // 🚀 1. DEKONŠTRUKCIA 30 POZÍCIÍ NA PRSTY
-        // =========================================================================
         for (int i = 0; i < keyFrequencies.length; i++) {
             double rawValue = keyFrequencies[i];
 
@@ -113,38 +124,27 @@ public final class LayoutStats {
             if (rawValue < 0) rawValue = 0.0;
 
             // Vypočítame reálne percento stlačenia tohto jedného konkrétneho klávesu
-            keyPercents[i] = (nGramStats.getTotalMonogramsCount() == 0) ? 0.0 : (rawValue * 100.0) / nGramStats.getTotalMonogramsCount();
+            keyPercents[i] = (totalMonograms == 0) ? 0.0 : (rawValue * 100.0) / totalMonograms;
 
-            // 🎯 MAGICKÝ TRIK: Z tvojej topológie zistíme ID prsta (0 až 7) pre túto pozíciu
             Finger f = KeyboardTopology.POS_TO_FINGER[i];
-
             // Pripočítame percento klávesu k celkovému zaťaženiu prsta
             fingerPercents[f.ordinal()] += keyPercents[i];
         }
 
-        // =========================================================================
-        // 🧮 2. PREPOČET OSTATNÝCH N-GRAMOVÝCH METRÍK (SFB, SFS, ALT...)
-        // =========================================================================
+        // 🧮 2. PREPOČET OSTATNÝCH METRÍK (Používame superrýchlu METRICS_CACHE)
         for (int i = 0; i < METRIC_COUNT; i++) {
-            MetricType type = MetricType.values()[i];
+            MetricType type = METRICS_CACHE[i];
 
             double rawValue = metrics[i];
-
-            // Ak optimizér túto metriku vôbec nezmeral, necháme predvolenú hodnotu
             if (rawValue < 0) {
                 continue;
             }
 
-            // Nový, moderný switch expression priradí správneho menovateľa pre všetkých 20 metrík
             long denominator = switch (type) {
                 case HOME_ROW, STRETCH, RUNS -> nGramStats.getTotalMonogramsCount();
                 case SFB, ALTERNATION, SCISSORS, LSB, LHB -> nGramStats.getTotalBigramsCount();
                 case SFS -> nGramStats.getTotalSkipgramsCount();
                 case REDIRECTS, ROLL_IN, ROLL_OUT -> nGramStats.getTotalTrigramsCount();
-                default -> {
-                    System.out.println("Error: metrika nema zadefinovany prepoct na percenta. See LayoutStats.");
-                    yield nGramStats.getTotalMonogramsCount();
-                }
             };
 
             // Výpočet percent s poistkou proti deleniu nulou
@@ -153,13 +153,17 @@ public final class LayoutStats {
     }
 
     private void computeCoefficients() {
+        // Používame METRICS_CACHE, žiadne klonovanie polí za behu
         for (int i = 0; i < METRIC_COUNT; i++) {
-            MetricType type = MetricType.values()[i];
+            MetricType type = METRICS_CACHE[i];
+
             metricCoefficients[i] = weights.calculateCoefficient(type, metricPercents[i]);
         }
-        // 🚀 NOVÉ: Vyriešime 8 prstov pod hlavičkou FINGER_LOAD
-        for (Finger f: Finger.values()) {
-            fingerCoefficients[f.ordinal()] = weights.calculateFingerCoefficient(f, fingerPercents[f.ordinal()]);
+
+        // Používame FINGERS_CACHE
+        for (int i = 0; i < FINGERS_CACHE.length; i++) {
+            Finger f = FINGERS_CACHE[i];
+            fingerCoefficients[i] = weights.calculateFingerCoefficient(f, fingerPercents[i]);
         }
     }
 
