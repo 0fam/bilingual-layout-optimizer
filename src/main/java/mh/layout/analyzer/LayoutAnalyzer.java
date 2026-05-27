@@ -1,10 +1,10 @@
 package mh.layout.analyzer;
 
-import mh.layout.core.evaluator.Evaluator;
-import mh.layout.core.evaluator.Weights;
-import mh.layout.core.stats.LayoutStats;
-import mh.layout.core.stats.NGramStats;
-import mh.layout.core.topology.KeyboardTopology;
+import mh.layout.stats.Evaluator;
+import mh.layout.stats.Weights;
+import mh.layout.stats.LayoutStats;
+import mh.layout.stats.NGramStats;
+import mh.layout.topology.KeyboardTopology;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -23,14 +23,14 @@ public final class LayoutAnalyzer {
         LayoutStats enStats = Evaluator.evaluate(matrix, statsEN, weights);
 
         double enRatio = 1.0 - skRatio;
-        double combinedScore = (skStats.getEliteScore() * skRatio) + (enStats.getEliteScore() * enRatio);
+        double combinedScore = (skStats.getScore() * skRatio) + (enStats.getScore() * enRatio);
 
         System.out.println("\n================================================================");
         System.out.println("📊   FINÁLNY BIOMECHANICKÝ AUDIT BILINGVÁLNEHO LAYOUTU   📊");
         System.out.println("================================================================");
         System.out.printf("👑 KOMBINOVANÉ BILINGVÁLNE ELITE SKÓRE: %.4f\n", combinedScore);
-        System.out.printf("🇸🇰 Slovenská vetva: %.4f (Váha: %.0f%%)\n", skStats.getEliteScore(), skRatio * 100);
-        System.out.printf("🇬🇧 Anglická vetva:   %.4f (Váha: %.0f%%)\n", enStats.getEliteScore(), enRatio * 100);
+        System.out.printf("🇸🇰 Slovenská vetva: %.4f (Váha: %.0f%%)\n", skStats.getGlobalScore(), skRatio * 100);
+        System.out.printf("🇬🇧 Anglická vetva:   %.4f (Váha: %.0f%%)\n", enStats.getGlobalScore(), enRatio * 100);
         System.out.println("----------------------------------------------------------------");
 
         // 2. VYTLAČENIE ANATOMICKÝCH METRÍK (Porovnanie jazykov vedľa seba)

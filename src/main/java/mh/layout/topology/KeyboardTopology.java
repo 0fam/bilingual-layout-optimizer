@@ -1,4 +1,4 @@
-package mh.layout.core.topology;
+package mh.layout.topology;
 
 public final class KeyboardTopology {
 

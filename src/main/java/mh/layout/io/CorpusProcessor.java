@@ -1,6 +1,6 @@
-package mh.layout.core.io;
+package mh.layout.io;
 
-import mh.layout.core.stats.NGramStats;
+import mh.layout.stats.NGramStats;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

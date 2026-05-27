@@ -1,9 +1,8 @@
 package mh.layout.analyzer.stats;
 
-import mh.layout.core.topology.KeyboardTopology;
+import mh.layout.topology.KeyboardTopology;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.TreeMap;
 
 public final class RunStatisticsAnalyzer {
 
@@ -13,7 +12,7 @@ public final class RunStatisticsAnalyzer {
      * @param wordDictionary Mapa slov a ich reálnych frekvencií v texte Map<String, Double>
      */
     public static void analyzeAndPrintRuns(char[] matrix, Map<String, Double> wordDictionary, String label) {
-        // Inicializujeme pole hodnotou -1 (Znak neexistuje na klávesnici)
+        // Fixné lookup pole pre priradenie ruky k znaku (0=Ľavá, 1=Pravá, -1=Nie je na klávesnici)
         int[] charToHand = new int[256];
         Arrays.fill(charToHand, -1);
 
@@ -22,37 +21,43 @@ public final class RunStatisticsAnalyzer {
             charToHand[matrix[i]] = KeyboardTopology.POS_TO_HAND[i];
         }
 
-        Map<Integer, Integer> countByLength = new TreeMap<>();
-        Map<Integer, Double> freqByLength = new TreeMap<>();
-        int totalOneHandedWords = 0;
+        // KĽÚČOVÁ ZMENA: Žiadne mapy! Použijeme fixné polia pre dĺžky slov 0 až 31
+        long[] countByLength = new long[32];
+        double[] freqByLength = new double[32];
 
+        long totalOneHandedWords = 0;
+
+        // Prechádzame slovník
         for (Map.Entry<String, Double> entry : wordDictionary.entrySet()) {
             String word = entry.getKey();
             double freq = entry.getValue();
 
-            if (word.length() < 4) continue;
+            int len = word.length();
+            if (len < 4 || len > 31) continue; // Ignorujeme príliš krátke alebo extrémne dlhé anomálie
 
             if (isPureOneHandedWord(word, charToHand)) {
-                int len = word.length();
-                countByLength.put(len, countByLength.getOrDefault(len, 0) + 1);
-                freqByLength.put(len, freqByLength.getOrDefault(len, 0.0) + freq);
+                countByLength[len]++;          // Inkrementujeme počet unikátnych slov danej dĺžky
+                freqByLength[len] += freq;     // Akumulujeme reálnu frekvenciu z textu
                 totalOneHandedWords++;
             }
         }
 
-        // --- VYTLAČENIE PARÁDNEHO REPORTU PRE ČLOVEKA ---
-        System.out.println("\n=== 🎯 BILINGVÁLNA ŠTATISTIKA JEDNORUČNÝCH BEHOV ===");
+        // --- VÝPIS ČISTÉHO REPORTU ---
+        System.out.println("\n=== 🎯 ŠTATISTIKA JEDNORUČNÝCH BEHOV PRE: " + label + " ===");
         System.out.println("Celkový počet unikátnych jednoručných slov (dĺžka >= 4): " + totalOneHandedWords);
         System.out.println("----------------------------------------------------------------");
-        System.out.printf("%-10s | %-15s | %-15s\n", "Dĺžka slova", "Počet unikátnych", "Celková frekvencia %");
+        System.out.printf("%-10s | %-15s | %-15s\n", "Dĺžka slova", "Počet unikátnych", "Celková frekvencia");
         System.out.println("----------------------------------------------------------------");
 
-        for (int len : countByLength.keySet()) {
-            System.out.printf("%-10d | %-15d | %-15.4f%%\n",
-                    len,
-                    countByLength.get(len),
-                    freqByLength.get(len)
-            );
+        // Prebehneme fixné pole od indexu 4 navrch
+        for (int len = 4; len < 32; len++) {
+            if (countByLength[len] > 0) {
+                System.out.printf("%-10d | %-15d | %-15.4f\n",
+                        len,
+                        countByLength[len],
+                        freqByLength[len]
+                );
+            }
         }
     }
 

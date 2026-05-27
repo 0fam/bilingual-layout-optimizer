@@ -1,8 +1,6 @@
-package mh.layout.core.evaluator;
+package mh.layout.stats;
 
-import mh.layout.core.stats.LayoutStats;
-import mh.layout.core.stats.NGramStats;
-import mh.layout.core.topology.KeyboardTopology;
+import mh.layout.topology.KeyboardTopology;
 
 public final class Evaluator {
 
@@ -10,11 +8,9 @@ public final class Evaluator {
 
     public static LayoutStats evaluate(char[] matrix, NGramStats stats, Weights weights) {
 
-        // --- INICIALIZÁCIA METRÍK ---
+        // --- MERANIE SUROVÝCH FREKVENCIÍ ---
         double stretchScore = 0;
         double homeRowScore = 0;
-        double fingerLoadScore = 0;
-
         double sfbScore = 0;
         double sfsScore = 0;
         double scissorsScore = 0;
@@ -23,10 +19,8 @@ public final class Evaluator {
         double altScore = 0;
         double rollInScore = 0;
         double rollOutScore = 0;
-
         double redirectsScore = 0;
 
-        // Pomocné pole pre priebežnú akumuláciu surovej záťaže prstov
         double[] fingerUsage = new double[8];
 
 
@@ -41,7 +35,7 @@ public final class Evaluator {
             // Výpočet mechanického naťahovania prstov (Stretch) podľa topológie
             stretchScore += freq * KeyboardTopology.POS_STRETCH_WEIGHT[i];
 
-            // Sčítavanie odmeny za udržanie frekventovaných klávesov na domovskom riadku
+            // Sčítavanie skóre za udržanie frekventovaných klávesov na domovskom riadku
             if (KeyboardTopology.POS_TO_ROW[i] == KeyboardTopology.HOME_ROW) {
                 homeRowScore += freq;
             }
@@ -59,21 +53,7 @@ public final class Evaluator {
         for (int f = 0; f < 8; f++) {
             totalKeystrokes += fingerUsage[f];
         }
-
-        if (totalKeystrokes > 0) {
-            for (int f = 0; f < 8; f++) {
-                // Prerátame surovú prácu prsta na čisté percentá
-                double fingerPercent = (fingerUsage[f] / totalKeystrokes) * 100.0;
-
-                // Vytiahneme z topológie maximálny strop, ktorý tento prst znesie
-                double maxAllowedCeiling = KeyboardTopology.FINGER_MAX_CEILING_PCT[f];
-
-                // Ak layout naložil na prst viac, než je zdravé, tvrdo trestáme každý kúsok navyše
-                if (fingerPercent > maxAllowedCeiling) {
-                    fingerLoadScore += (fingerPercent - maxAllowedCeiling) * weights.getFingerLoad();
-                }
-            }
-        }
+        if (totalKeystrokes == 0) return new LayoutStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 
         // =========================================================================
@@ -106,8 +86,7 @@ public final class Evaluator {
                     if (finger1 == finger2) {
                         if (bFreq > 0) sfbScore += bFreq;
                         if (sFreq > 0) sfsScore += sFreq;
-                    }
-                    else {
+                    } else {
                         // SCISSORS: Susedné prsty, kde jeden letí hore a druhý sa krčí dole (rozdiel riadkov = 2)
                         if (bFreq > 0 && Math.abs(finger1 - finger2) == 1 && Math.abs(row1 - row2) == 2) {
                             scissorsScore += bFreq;
@@ -173,10 +152,9 @@ public final class Evaluator {
                     if (trigramFreq == 0) continue;
 
                     int hand3   = KeyboardTopology.POS_TO_HAND[k];
-                    int finger3 = KeyboardTopology.POS_TO_FINGER[k];
-
                     // Ak sa smer pohybu prstov medzi údermi zlomil (napr. prstenník -> ukazovák -> prostredník)
                     if (hand2 == hand3) {
+                        int finger3 = KeyboardTopology.POS_TO_FINGER[k];
                         if ((finger1 < finger2 && finger2 > finger3) ||
                                 (finger1 > finger2 && finger2 < finger3)) {
                             redirectsScore += trigramFreq;
@@ -188,31 +166,65 @@ public final class Evaluator {
 
 
         // =========================================================================
-        // 🏆 5. FINÁLNE ZÚČTOVANIE: Výpočet bilingválneho ELITE skóre
+        // 📈 5. NORMALIZÁCIA NA ČISTÉ PERCENTÁ & VÝPOČET KOEFICIENTOV
         // =========================================================================
 
-        // Pozitívne biomechanické vlastnosti (Odmeny pripočítavame)
-        double rewards = (homeRowScore * weights.getHomeRow())
-                + (altScore     * weights.getAlt())
-                + (rollInScore  * weights.getRollIn())
-                + (rollOutScore * weights.getRollOut());
+// Prevod základných motorických pilierov na reálne percentá z textu
+        double homeRowPct   = totalMonograms == 0 ? 0 : (homeRowScore * 100.0) / totalMonograms;
+        double altPct       = totalBigrams == 0   ? 0 : (altScore * 100.0) / totalBigrams;
+        double rollInPct    = totalTrigrams == 0  ? 0 : (rollInScore * 100.0) / totalTrigrams;
+        double rollOutPct   = totalTrigrams == 0  ? 0 : (rollOutScore * 100.0) / totalTrigrams;
 
-        // Negatívne biomechanické vlastnosti (Tresty odpočítavame)
-        double penalties = (stretchScore   * weights.getStretch())
-                + (fingerLoadScore * weights.getFingerLoad())
-                + (sfbScore       * weights.getSfb())
-                + (sfsScore       * weights.getSfs())
-                + (scissorsScore  * weights.getScissors())
-                + (redirectsScore * weights.getRedirects())
-                + (lsbScore       * weights.getLsb())
-                + (lhbScore       * weights.getLhb());
+// Základné skóre komfortu (Čistá esenia pozitívnych vlastností rozloženia)
+        double baseComfortScore = homeRowPct + altPct + (rollInPct * 0.5);
 
-        double finalEliteScore = rewards - penalties;
+// Prevod negatívnych hriechov na percentá a bleskový výpočet cez našu metódu
+        double sfbPct       = totalBigrams == 0   ? 0 : (sfbScore * 100.0) / totalBigrams;
+        double sfsPct       = totalSkipgrams == 0 ? 0 : (sfsScore * 100.0) / totalSkipgrams;
+        double stretchPct   = totalMonograms == 0 ? 0 : (stretchScore * 100.0) / totalMonograms;
+        double scissorsPct  = totalBigrams == 0   ? 0 : (scissorsScore * 100.0) / totalBigrams;
+        double redirectsPct = totalTrigrams == 0  ? 0 : (redirectsScore * 100.0) / totalTrigrams;
+        double lsbPct       = totalBigrams == 0   ? 0 : (lsbScore * 100.0) / totalBigrams;
+        double lhbPct       = totalBigrams == 0   ? 0 : (lhbScore * 100.0) / totalBigrams;
+//        double runsPct      = totalMonograms == 0 ? 0 : (runsScore * 100.0) / totalMonograms; // runs nevyhodnocujeme do skore, bude iba v statistickom vypise
 
-        // Zabalenie kompletných výsledkov do prepravného kontajnera
+        // Pri stretchScore (priemerný stretch na jeden kláves) nepotrebujeme násobiť 100
+        double avgStretch   = stretchScore / totalKeystrokes;
+
+        // Spustenie jednotného filtra koeficientov (Všetky zóny záchrany a práva veta v jednom bloku)
+        double sfbCoeff       = weights.calculateCoefficient(sfbPct, weights.getSfbGood(), weights.getSfbDead(), 1.10);
+        double scissorsCoeff  = weights.calculateCoefficient(scissorsPct,  weights.getScissorsGood(),  weights.getScissorsDead(),  1.05);
+        double redirectsCoeff = weights.calculateCoefficient(redirectsPct, weights.getRedirectsGood(), weights.getRedirectsDead(), 1.05);
+        double stretchCoeff   = weights.calculateCoefficient(avgStretch,   weights.getStretchGood(),   weights.getStretchDead(),   1.10);
+
+        // ANATOMICKÉ STROPY PRSTOV: Využijú presne tú istú metódu!
+        double fingerLoadCoeff = 1.0;
+        for (int f = 0; f < 8; f++) {
+            double fingerPercent = (fingerUsage[f] / totalKeystrokes) * 100.0;
+            double maxAllowed = KeyboardTopology.FINGER_MAX_CEILING_PCT[f];
+
+            // Ak prst prekročí strop o viac ako 5 %, naša metóda mu automaticky napáli 0.01 (Veto)
+            double fCoeff = calculateCoefficient(fingerPercent, maxAllowed, maxAllowed + 5.0, 1.0);
+            fingerLoadCoeff *= fCoeff;
+        }
+
+
+        // =========================================================================
+        // 🏆 6. MULTIPLIKATÍVNE FINÁLNE SKÓRE
+        // =========================================================================
+        double poweredProduct = baseComfortScore
+                * sfbCoeff
+                * scissorsCoeff
+                * redirectsCoeff
+                * stretchCoeff
+                * fingerLoadCoeff;
+
+        double finalScore = Math.pow(poweredProduct, 1.0 / totalWeight) * 100.0; // toto je priemer n-rozmerneho telesa, namiesto objemu
+
         return new LayoutStats(
-                finalEliteScore, sfbScore, sfsScore, stretchScore, scissorsScore, redirectsScore,
-                fingerLoadScore, lsbScore, lhbScore, homeRowScore, altScore, rollInScore, rollOutScore
+                sfbScore, sfsScore, stretchScore, scissorsScore, redirectsScore,
+                0, lsbScore, lhbScore, homeRowScore, altScore, rollInScore, rollOutScore
         );
     }
+
 }

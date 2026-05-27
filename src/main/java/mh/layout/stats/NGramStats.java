@@ -1,4 +1,4 @@
-package mh.layout.core.stats;
+package mh.layout.stats;
 
 import java.util.HashMap;
 import java.util.Map;

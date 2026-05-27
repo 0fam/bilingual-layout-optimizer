@@ -1,9 +1,9 @@
 package mh.layout.optimizer;
 
-import mh.layout.core.evaluator.Evaluator;
-import mh.layout.core.evaluator.Weights;
-import mh.layout.core.stats.LayoutStats;
-import mh.layout.core.stats.NGramStats;
+import mh.layout.stats.Evaluator;
+import mh.layout.stats.Weights;
+import mh.layout.stats.LayoutStats;
+import mh.layout.stats.NGramStats;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -84,7 +84,7 @@ public final class ParallelOptimizer {
             LayoutStats enStats = Evaluator.evaluate(localMatrix, statsEN, weights);
 
             // Spojíme výsledky do jednej kombinovanej bilingválnej pravdy
-            double combinedScore = (skStats.getEliteScore() * skRatio) + (enStats.getEliteScore() * enRatio);
+            double combinedScore = (skStats.getScore() * skRatio) + (enStats.getScore() * enRatio);
 
             // 3. ROZHODNUTIE (Hill Climbing)
             if (combinedScore > localBestScore) {

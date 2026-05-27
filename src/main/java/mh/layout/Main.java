@@ -1,9 +1,9 @@
 package mh.layout;
 
 import mh.layout.analyzer.stats.RunStatisticsAnalyzer;
-import mh.layout.core.evaluator.Weights;
-import mh.layout.core.io.CorpusProcessor;
-import mh.layout.core.stats.NGramStats;
+import mh.layout.stats.Weights;
+import mh.layout.io.CorpusProcessor;
+import mh.layout.stats.NGramStats;
 import mh.layout.optimizer.ParallelOptimizer;
 import java.io.IOException;
 import java.util.Map;
