@@ -1,182 +1,145 @@
 package mh.layout.optimizer;
 
 import mh.layout.evaluator.Evaluator;
+import mh.layout.evaluator.Weights;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.NGramStats;
 import mh.layout.topology.KeyboardTopology;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ParallelOptimizer {
 
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ExecutorService threadPool;
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    // Globálny šampión
+    // Globálne najlepšie výsledky, ktoré zdieľajú všetky vlákna
     private char[] globalBestMatrix;
-    private double globalBestScore = -Double.MAX_VALUE;
+    private double globalBestScore = -1.0;
+    private final Object lock = new Object();
 
-    private final Object globalLock = new Object();   // Zámok pre hľadanie absolútneho víťaza
-    private final Object journalLock = new Object();  // Samostatný zámok pre disk (Záchrana výkonu!)
+    // Počítadlo celkového počtu otestovaných layoutov (pre tvoju informáciu o rýchlosti)
+    private long totalEvaluations = 0;
 
-    private static final String JOURNAL_FILE = "layout_journal.txt";
+    public void startOptimization(char[] initialMatrix, NGramStats ngStats, Weights weights) {
+        if (isRunning.get()) return;
+        isRunning.set(true);
 
-    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
-        this.globalBestMatrix = initialMatrix.clone();
-        this.running.set(true);
+        this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
+        this.globalBestScore = Evaluator.evaluate(globalBestMatrix, ngStats, weights).getScore();
 
         int cores = Runtime.getRuntime().availableProcessors();
-        this.threadPool = Executors.newFixedThreadPool(cores);
-
-        System.out.println("🔥 Štartujem bilingválne Simulované Žíhanie na " + cores + " jadrách...");
-        System.out.println("📊 Pomer jazykov: " + (skRatio * 100) + "% SK / " + ((1.0 - skRatio) * 100) + "% EN");
-        System.out.println("📝 Denník layoutov (SK > 80, EN > 70) bude priebežne dopĺňaný do: " + JOURNAL_FILE);
+        System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
-            threadPool.submit(() -> runWorker(threadId, statsSK, statsEN, weights, skRatio));
+            Thread worker = new Thread(() -> runAnnealingWorker(threadId, initialMatrix, ngStats, weights));
+            worker.setDaemon(true);
+            worker.start();
         }
     }
 
-    private void runWorker(int threadId, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
-        Random rand = new Random();
-        char[] localMatrix;
+    public void stop() {
+        isRunning.set(false);
+    }
 
-        synchronized (globalLock) {
-            localMatrix = globalBestMatrix.clone();
+    public char[] getBestMatrix() {
+        synchronized (lock) {
+            return Arrays.copyOf(globalBestMatrix, globalBestMatrix.length);
         }
+    }
 
-        // Východisková evaluácia
-        LayoutStats skStats = Evaluator.evaluate(localMatrix, statsSK, weights);
-        LayoutStats enStats = Evaluator.evaluate(localMatrix, statsEN, weights);
+    public double getBestScore() {
+        synchronized (lock) {
+            return globalBestScore;
+        }
+    }
 
-        double enRatio = 1.0 - skRatio;
-        double localBestScore = (skStats.getScore() * skRatio) + (enStats.getScore() * enRatio);
-        double currentScore = localBestScore;
+    public long getTotalEvaluations() {
+        return totalEvaluations;
+    }
 
-        long iterations = 0;
+    // =========================================================================
+    // ⚙️ JADRO ŽÍHANIA: Spúšťa sa samostatne v každom vlákne
+    // =========================================================================
+    private void runAnnealingWorker(int threadId, char[] startMatrix, NGramStats ngStats, Weights weights) {
+        Random rand = new Random();
+        char[] currentMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
+        LayoutStats currentStats = Evaluator.evaluate(currentMatrix, ngStats, weights);
+        double currentScore = currentStats.getScore();
 
-        // 🌡️ PARAMETRE ŽÍHANIA
+        // 🌡️ PARAMETRE ŽÍHANIA (Tieto čísla definujú kvalitu vyhľadávania)
         double temperature = 100.0;
-        final double coolingRate = 0.00002;
+        final double coolingRate = 0.00005; // Ako rýchlo klesá teplota (menšie číslo = dôkladnejšie hľadanie)
 
-        while (running.get()) {
-            iterations++;
+        long localEvaluations = 0;
 
-            // Re-heating (Ak systém úplne vychladne, zapneme pec znova pre novú trasu)
-            if (temperature < 0.1) {
+        while (isRunning.get()) { // && temperature > 0.1) {
+
+            // 🌡️ RE-HEATING: Ak pec vyhasla, zapálime ju znova a hľadáme novú trasu
+            if (temperature <= 0.1) {
                 temperature = 100.0;
             }
 
-            // 1. MUTÁCIA (Využíva tvoj fixný KEY_COUNT)
+            // 1. Náhodný výber dvoch pozícií na prehodenie (Swapping)
             int pos1 = rand.nextInt(KeyboardTopology.KEY_COUNT);
             int pos2 = rand.nextInt(KeyboardTopology.KEY_COUNT);
             if (pos1 == pos2) continue;
 
-            // Fyzický swap
-            char temp = localMatrix[pos1];
-            localMatrix[pos1] = localMatrix[pos2];
-            localMatrix[pos2] = temp;
+            // 2. Vykonaj swap (krok vpred)
+            char temp = currentMatrix[pos1];
+            currentMatrix[pos1] = currentMatrix[pos2];
+            currentMatrix[pos2] = temp;
 
-            // 2. BILINGVÁLNA EVALUÁCIA
-            LayoutStats nextSk = Evaluator.evaluate(localMatrix, statsSK, weights);
-            LayoutStats nextEn = Evaluator.evaluate(localMatrix, statsEN, weights);
+            // 3. Ohodnoť nový layout
+            LayoutStats nextStats = Evaluator.evaluate(currentMatrix, ngStats, weights);
+            double nextScore = nextStats.getScore();
+            localEvaluations++;
 
-            double nextScore = (nextSk.getScore() * skRatio) + (nextEn.getScore() * enRatio);
-
-            // 3. ROZHODNUTIE (Simulované žíhanie)
-            boolean accept = false;
-
+            // 4. Rozhodovacia matematika (Metropolisovo kritérium)
+            // Kedže máme skóre od 0 do 100 (kde 100 je top), chceme skóre maximalizovať!
             if (nextScore > currentScore) {
-                accept = true;
-            } else {
-                // Matematika úniku z pasce lokálneho minima
-                double delta = currentScore - nextScore;
-                double acceptanceProbability = Math.exp(-delta / temperature);
-                if (rand.nextDouble() < acceptanceProbability) {
-                    accept = true;
-                }
-            }
-
-            if (accept) {
+                // Nový layout je lepší -> jednoznačne prijímame
                 currentScore = nextScore;
 
-                // Ak mutácia prekonala doterajšie maximum tohto konkrétneho jadra
-                if (currentScore > localBestScore) {
-                    localBestScore = currentScore;
-
-                    // 🔍 FILTRÁCIA PRE DENNÍK (Tvoja podmienka)
-                    double skScore = nextSk.getScore();
-                    double enScore = nextEn.getScore();
-                    if (skScore >= 80.0 && enScore >= 70.0) {
-                        appendToJournal(localMatrix, skScore, enScore, localBestScore, threadId);
-                    }
-
-                    // Kontrola celosvetového rekordu aplikácie
-                    synchronized (globalLock) {
-                        if (currentScore > globalBestScore) {
-                            globalBestScore = currentScore;
-                            globalBestMatrix = localMatrix.clone();
-
-                            System.out.printf("[Jadro %d] 🎉 NOVÝ GLOBÁLNY REKORD: %.4f (SK: %.2f | EN: %.2f) po %d m. iteráciách\n",
-                                    threadId, globalBestScore, skScore, enScore, (iterations / 1_000_000));
-                        }
-                    }
-                }
+                // Skontrolujeme, či sme neprekonali celosvetový rekord aplikácie
+                checkAndSetGlobalBest(currentMatrix, currentScore);
             } else {
-                // 🚀 OPRAVA: Žiadne nebezpečné inline indexácie. Čistý, bezpečný návrat späť.
-                char undo = localMatrix[pos1];
-                localMatrix[pos1] = localMatrix[pos2];
-                localMatrix[pos2] = undo;
+                // Nový layout je horší -> prijmeme ho iba s určitou pravdepodobnosťou (únik z pasce)
+                double delta = currentScore - nextScore; // Kladné číslo
+                double acceptanceProbability = Math.exp(-delta / temperature);
+
+                if (rand.nextDouble() < acceptanceProbability) {
+                    // Prijímame aj horší krok
+                    currentScore = nextScore;
+                } else {
+                    // Odmietame -> vrátime swap späť
+                    char undo = currentMatrix[pos1];
+                    currentMatrix[pos1] = currentMatrix[pos2];
+                    currentMatrix[pos2] = undo;
+                }
             }
 
-            // Ochladzovanie
+            // 5. Ochladzovanie systému
             temperature *= (1.0 - coolingRate);
 
-            if (iterations % 20_000_000 == 0) {
-                System.out.printf("[Jadro %d] Teplota: %.2f | Iterácie: %d miliónov... \n", threadId, temperature, (iterations / 1_000_000));
+            // Občas pripočítame lokálne výpočty do globálneho počítadla rychlosti
+            if (localEvaluations % 10000 == 0) {
+                synchronized (lock) {
+                    totalEvaluations += 10000;
+                }
             }
         }
     }
 
-    /**
-     * Bezpečný, synchronizovaný zápis elitného layoutu do denníka (Append mode).
-     */
-    private void appendToJournal(char[] matrix, double sk, double en, double combined, int threadId) {
-        synchronized (journalLock) {
-            try (FileWriter fw = new FileWriter(JOURNAL_FILE, true);
-                 BufferedWriter bw = new BufferedWriter(fw);
-                 PrintWriter out = new PrintWriter(bw)) {
-
-                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HK:mm:ss"));
-                String layoutString = new String(matrix);
-
-                // Formát: Layout (30 znakov) | SK skóre | EN skóre | Kombinované | Čas a jadro
-                out.printf("%s | SK: %.4f | EN: %.4f | COMBINED: %.4f | %s (Jadro %d)%n",
-                        layoutString, sk, en, combined, timestamp, threadId);
-
-            } catch (IOException e) {
-                System.err.println("❌ Chyba pri zápise do denníka layoutov: " + e.getMessage());
+    private void checkAndSetGlobalBest(char[] matrix, double score) {
+        synchronized (lock) {
+            if (score > globalBestScore) {
+                globalBestScore = score;
+                globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
+                System.out.printf("🏆 Nový rekord! Skóre: %.4f [%s]%n", score, new String(globalBestMatrix));
             }
-        }
-    }
-
-    public char[] stopAndGetBest() {
-        this.running.set(false);
-        if (threadPool != null) {
-            threadPool.shutdown(); // Správne upratanie vlákien
-        }
-        synchronized (globalLock) {
-            return globalBestMatrix.clone();
         }
     }
 }
