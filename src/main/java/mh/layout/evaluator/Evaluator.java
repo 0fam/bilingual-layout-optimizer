@@ -28,6 +28,11 @@ public final class Evaluator {
         double rawLhb = 0;
         double rawRedirects = 0;
 
+        // Lokálne akumulátory pre presné menovatele layoutu (očistené od balastu korpusu)
+        double totalLayoutBigrams = 0;
+        double totalLayoutSkipgrams = 0;
+        double totalLayoutTrigrams = 0;
+
         // Vytiahneme si bitové pole do CPU registra metódy
         final int[] posInfo = KeyboardTopology.POS_INFO;
 
@@ -56,6 +61,7 @@ public final class Evaluator {
                 // A. SPRACOVANIE BIGRAMOV
                 double bgFreq = ngStats.getBigramFreq(c1, c2);
                 if (bgFreq > 0) {
+                    totalLayoutBigrams += bgFreq; // 🚀 ZBER: Sčítame reálne bigramy layoutu
 
                     if (hand1 != hand2) {
                         rawAlt += bgFreq; // Striedanie rúk
@@ -86,8 +92,12 @@ public final class Evaluator {
 
                 // B. SPRACOVANIE SKIPGRAMOV (Sendviče - SFS)
                 double sgFreq = ngStats.getSkipgramFreq(c1, c2);
-                if (sgFreq > 0 && hand1 == hand2 && finger1 == finger2 && i != j) {
-                    rawSfs += sgFreq;
+                if (sgFreq > 0) {
+                    totalLayoutSkipgrams += sgFreq; // 🚀 ZBER: Sčítame reálne skipgramy layoutu
+
+                    if (hand1 == hand2 && finger1 == finger2 && i != j) {
+                        rawSfs += sgFreq;
+                    }
                 }
             }
         }
@@ -107,19 +117,19 @@ public final class Evaluator {
                 int hand2 = (info2 >> 9) & 0x1;
                 int f2    = info2 & 0x7;
 
-                // Ak prvé dva klávesy nie sú na rovnakej ruke, jednoručný trigram to už nebude
-                if (hand1 != hand2) continue;
-
                 for (int k = 0; k < KEY_COUNT; k++) {
                     char c3 = matrix[k];
                     int info3 = posInfo[k];
                     int hand3 = (info3 >> 9) & 0x1;
                     int f3    = info3 & 0x7;
 
-                    if (hand2 != hand3) continue; // Celý trigram musí byť na jednej ruke
-
                     double tgFreq = ngStats.getTrigramFreq(c1, c2, c3);
                     if (tgFreq <= 0) continue;
+
+                    totalLayoutTrigrams += tgFreq; // 🚀 ZBER: Sčítame reálne trigramy layoutu
+
+                    // Ak prvé dva klávesy alebo posledné dva nie sú na rovnakej ruke, jednoručný trigram to už nebude
+                    if (hand1 != hand2 || hand2 != hand3) continue;
 
                     // Smer valenia určujeme čistým porovnaním ID prstov (0 až 7 zľava doprava)
                     if (f1 < f2 && f2 < f3) {
@@ -149,7 +159,7 @@ public final class Evaluator {
         double rawHomeRow = 0;
         double rawStretch = 0;
 
-        // 🚀 ZMENA: Dynamický výpočet reálnej základne napísaných znakov (bez medzery)
+        // 🚀 Dynamický výpočet reálnej základne napísaných znakov (bez medzery)
         long totalTypableMonograms = 0;
         for (int i = 0; i < KEY_COUNT; i++) {
             totalTypableMonograms += ngStats.getMonogramFreq(matrix[i]);
@@ -195,11 +205,12 @@ public final class Evaluator {
         for (int i = 0; i < METRICS_CACHE.length; i++) {
             MetricType type = METRICS_CACHE[i];
 
-            long denominator = switch (type) {
-                case HOME_ROW, EFFORT, RUNS -> totalTypableMonograms; // 🚀 ZMENA: Očistený menovateľ
-                case SFB, ALTERNATION, SCISSORS, LSB, LHB -> ngStats.getTotalBigrams();
-                case SFS -> ngStats.getTotalSkipgrams();
-                case REDIRECTS, ROLL_IN, ROLL_OUT -> ngStats.getTotalTrigrams();
+            // 🚀 ZMENA: Menovatele kompletne prepnuté na lokálne očistené akumulátory layoutu
+            double denominator = switch (type) {
+                case HOME_ROW, EFFORT, RUNS -> totalTypableMonograms;
+                case SFB, ALTERNATION, SCISSORS, LSB, LHB -> totalLayoutBigrams;
+                case SFS -> totalLayoutSkipgrams;
+                case REDIRECTS, ROLL_IN, ROLL_OUT -> totalLayoutTrigrams;
             };
 
             double pct = (denominator == 0) ? 0.0 : (raws[i] * 100.0) / denominator;

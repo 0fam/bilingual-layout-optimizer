@@ -15,26 +15,10 @@ public final class CorpusProcessor {
      * Načíta korpus, odmasťuje diakritiku a plní štatistiky pre jeden konkrétny jazyk.
      * * @param filePath Cesta k súboru korpusu (napr. data/slovak_corpus.txt)
      * @param stats    Samostatná dátová schránka pre tento konkrétny jazyk
-     * @param layout   Aktuálny štartovací layout, z ktorého dynamicky vyčítame povolené symboly
      * @return Čistý slovník "písacích kusov" rozdelených medzerami pre záverečný report Analyzátora
      */
-    public static Map<String, Double> processFile(String filePath, NGramStats stats, char[] layout) throws IOException {
+    public static Map<String, Double> processFile(String filePath, NGramStats stats) throws IOException {
         Map<String, Double> wordDictionary = new HashMap<>();
-
-        // --- 1. DYNAMICKÁ MAPA POVOLENÝCH ZNAKOV Z LAYOUTU ---
-        // Vytvoríme si bleskové lookup pole pre všetky ASCII znaky
-        boolean[] allowedOnKeyboard = new boolean[256];
-
-        // Medzerník je na klávesnici vždy povolený, hoci nie je v mriežke 3x10
-        allowedOnKeyboard[' '] = true;
-
-        // Prejdeme tvoj layout a zapíšeme si, ktoré znaky a symboly reálne vlastníš
-        for (char key : layout) {
-            if (key < 256) {
-                // Konvertujeme pre istotu na Upper, keďže aj text normalizujeme na Upper
-                allowedOnKeyboard[Character.toUpperCase(key)] = true;
-            }
-        }
 
         // --- 2. ČÍTANIE SÚBORU RIADOK PO RIADKU ---
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -66,11 +50,13 @@ public final class CorpusProcessor {
                         stats.incrementMonogram(c3);
                     }
 
-                    // KĽÚČOVÁ ZMENA: Žiadny hardcode! Pýtame sa priamo našej vyčítanej mapy
-                    boolean isOnKeyboard = c3 < 256 && allowedOnKeyboard[c3];
+                    // KĽÚČOVÁ ZMENA: Žiadny layout! Pýtame sa priamo platnej abecedy a interpunkcie jazyka
+                    boolean isValidTextChar = (c3 >= 'A' && c3 <= 'Z') || c3 == ' ' ||
+                            c3 == '.' || c3 == ',' || c3 == '?' ||
+                            c3 == '!' || c3 == '-' || c3 == ';';
 
-                    if (!isOnKeyboard) {
-                        // Znak nie je na klávesnici -> reset rytmu a ideme ďalej
+                    if (!isValidTextChar) {
+                        // Znak nepatrí do plynulého textu -> reset rytmu a ideme ďalej
                         idx1 = -1;
                         idx2 = -1;
                         continue; // PRESKAKUJEME výpočet bigramov, trigramov a sendvičov pre tento znak
