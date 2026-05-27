@@ -1,13 +1,16 @@
 package mh.layout.topology;
 
-public final class KeyboardTopology {
+import static mh.layout.topology.Finger.*;
+import static mh.layout.topology.Hand.L;
+import static mh.layout.topology.Hand.R;
 
-    public static final int L_PINKY  = 0, L_RING   = 1, L_MIDDLE = 2, L_INDEX  = 3;
-    public static final int R_INDEX  = 4, R_MIDDLE = 5, R_RING   = 6, R_PINKY  = 7;
+public final class KeyboardTopology {
 
     public static final int LEFT_HAND = 0, RIGHT_HAND = 1;
 
     public static final int TOP_ROW = 0, HOME_ROW = 1, BOTTOM_ROW = 2;
+
+    public static final int KEY_COUNT = 30;
 
     private KeyboardTopology() {}
 
@@ -22,10 +25,10 @@ public final class KeyboardTopology {
      * Mapa rúk
      * 0 = Ľavá ruka, 1 = Pravá ruka
      */
-    public static final int[] POS_TO_HAND = {
-            0, 0, 0, 0, 0,  1, 1, 1, 1, 1,
-            0, 0, 0, 0, 0,  1, 1, 1, 1, 1,
-            0, 0, 0, 0, 0,  1, 1, 1, 1, 1
+    public static final Hand[] POS_TO_HAND = {
+            L, L, L, L, L,  R, R, R, R, R,
+            L, L, L, L, L,  R, R, R, R, R,
+            L, L, L, L, L,  R, R, R, R, R
     };
 
     /**
@@ -39,6 +42,16 @@ public final class KeyboardTopology {
     };
 
     /**
+     * Mapa stĺpcov
+     * 0 až 9 zľava doprava (pre maticu 3x10)
+     */
+    public static final int[] POS_TO_COL = {
+            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+            0, 1, 2, 3, 4,  5, 6, 7, 8, 9
+    };
+
+    /**
      * Mapa prstov
      * ID prstov (0 až 7 zľava doprava):
      * 0 = Ľavý malíček (LP)   |  4 = Pravý ukazovák (RI)
@@ -46,10 +59,10 @@ public final class KeyboardTopology {
      * 2 = Ľavý prostredník (LM)|  6 = Pravý prstenník (RR)
      * 3 = Ľavý ukazovák (LI)  |  7 = Pravý malíček (RP)
      */
-    public static final int[] POS_TO_FINGER = {
-            0, 1, 2, 3, 3,   4, 4, 5, 6, 7,  // Horný riadok (ukazováky majú dva stĺpce)
-            0, 1, 2, 3, 3,   4, 4, 5, 6, 7,  // Domovský riadok
-            0, 1, 2, 3, 3,   4, 4, 5, 6, 7   // Spodný riadok
+    public static final Finger[] POS_TO_FINGER = {
+            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Horný riadok (ukazováky majú dva stĺpce)
+            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Domovský riadok
+            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI   // Spodný riadok
     };
 
     /**
@@ -74,5 +87,4 @@ public final class KeyboardTopology {
             1.90, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.90
     };
 
-    public static final double[] FINGER_MAX_CEILING_PCT = {10.0, 13.0, 17.0, 20.0, 20.0, 17.0, 13.0, 10.0};
 }

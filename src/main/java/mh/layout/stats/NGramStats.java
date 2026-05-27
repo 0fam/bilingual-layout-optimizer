@@ -72,27 +72,4 @@ public final class NGramStats {
         return trigrams[(c1 << 16) | (c2 << 8) | c3];
     }
 
-    // --- 5-GRAMY PRE JEDNORUČNÉ BEHY (Runs) ---
-    /**
-     * Zabalí 5 znakov do jedného 64-bitového longu a uloží frekvenciu.
-     */
-    public void addRun5Gram(char c1, char c2, char c3, char c4, char c5, double freq) {
-        long key = ((long) c1 << 32) | ((long) c2 << 24) | (c3 << 16) | (c4 << 8) | c5;
-        runs5Grams.put(key, freq);
-    }
-
-    /**
-     * Bleskové vytiahnutie frekvencie 5-gramu pomocou zabaleného long kľúča.
-     */
-    public double getRun5GramFreq(char c1, char c2, char c3, char c4, char c5) {
-        long key = ((long) c1 << 32) | ((long) c2 << 24) | (c3 << 16) | (c4 << 8) | c5;
-        return runs5Grams.getOrDefault(key, 0.0);
-    }
-
-    /**
-     * Umožní analyzátoru alebo prekladaču prejsť všetky zaznamenané 5-gramy pre detailný report.
-     */
-    public Map<Long, Double> getAllRun5Grams() {
-        return runs5Grams;
-    }
 }

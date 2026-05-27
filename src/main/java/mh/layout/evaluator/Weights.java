@@ -1,4 +1,7 @@
-package mh.layout.stats;
+package mh.layout.evaluator;
+
+import mh.layout.stats.MetricType;
+import mh.layout.topology.Finger;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -12,45 +15,51 @@ public final class Weights {
     ) {
     }
 
-    private final Map<MetricType, LimitParam> registry = new EnumMap<>(MetricType.class);
+    private final Map<MetricType, LimitParam> metricRegistry = new EnumMap<>(MetricType.class);
+    private final Map<Finger, LimitParam> fingerRegistry = new EnumMap<>(Finger.class);
 
     public Weights() {
 
         // Pozitívne: safe = kedy začína bonus, dead = pod čo layout okamžite zabijeme
-        registry.put(MetricType.HOME_ROW,  new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
+        metricRegistry.put(MetricType.HOME_ROW,  new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
 //        registry.put(MetricType.ALT,       new LimitParam(60.0, 40.0)); // Chceme striedanie rúk nad 35%
 //        registry.put(MetricType.ROLL_IN,   new LimitParam(15.0,  0.0));
 //        registry.put(MetricType.ROLL_OUT,  new LimitParam(10.0,  0.0));
 
         // Negatívne: safe = do koľko % je to ideál, dead = kedy uplatňujeme PRÁVO VETA
-        registry.put(MetricType.SFB,       new LimitParam(1.5,  5.0)); // SFB: Do 1.5% je super elitné, nad 5.0% je kŕč
-        registry.put(MetricType.SFS,       new LimitParam(4.0,  9.0)); // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
-        registry.put(MetricType.SCISSORS,  new LimitParam(0.5,  3.0)); // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
-        registry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
+        metricRegistry.put(MetricType.SFB,       new LimitParam(1.5,  5.0)); // SFB: Do 1.5% je super elitné, nad 5.0% je kŕč
+        metricRegistry.put(MetricType.SFS,       new LimitParam(4.0,  9.0)); // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
+        metricRegistry.put(MetricType.SCISSORS,  new LimitParam(0.5,  3.0)); // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
+        metricRegistry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
 //        registry.put(MetricType.STRETCH,   new LimitParam(1.2,  1.8)); // Priemerný stretch na kláves, touto metrikou som si nie moc isty... je to taky presnejsi home-row + zatazenie prstov, ale vlemi sa to kryje a je otazne ako to nastavit
 
-        // TODO, pocitaj zatazenie nie prstov, ale stlpcov, prsty mame predsa priradene, potom vies z toho rychlo vypocitat aj stretch uplne deatilne
-        // FIXME resp. pocitaj zatazenie jednotlivych klavesov a mas to uplne jednoznacne....
-
         // Každý prst dostane svoj vlastný, natvrdo zadefinovaný safe strop a bod smrti
-        registry.put(MetricType.L_PINKY,  new LimitParam(8.0,  12.0)); // Malíčky: Ideál 0%, bezpečné do 9%, nad 12% je to invalidita
-        registry.put(MetricType.L_RING,   new LimitParam(12.0, 16.0)); // Prstenníky: Spojené s malíčkom. Bezpečné do 20%, nad 24% je to invalidita
-        registry.put(MetricType.L_MIDDLE, new LimitParam(15.0, 20.0)); // Prostredníky: Stabilné piliere. Safe do 22%, smrť na 26%
-        registry.put(MetricType.L_INDEX,  new LimitParam(18.0, 24.0)); // Ukazováky: Najsilnejšie, ale majú aj stredové stĺpce. Safe do 26%, smrť na 30%
-        registry.put(MetricType.R_INDEX,  new LimitParam(18.0, 24.0));
-        registry.put(MetricType.R_MIDDLE, new LimitParam(15.0, 20.0));
-        registry.put(MetricType.R_RING,   new LimitParam(12.0, 16.0));
-        registry.put(MetricType.R_PINKY,  new LimitParam(8.0,  12.0));
+        fingerRegistry.put(Finger.LP, new LimitParam(8.0,  12.0)); // Malíčky: Ideál 0%, bezpečné do 9%, nad 12% je to invalidita
+        fingerRegistry.put(Finger.LR, new LimitParam(12.0, 16.0)); // Prstenníky: Spojené s malíčkom. Bezpečné do 20%, nad 24% je to invalidita
+        fingerRegistry.put(Finger.LM, new LimitParam(15.0, 20.0)); // Prostredníky: Stabilné piliere. Safe do 22%, smrť na 26%
+        fingerRegistry.put(Finger.LI, new LimitParam(18.0, 24.0)); // Ukazováky: Najsilnejšie, ale majú aj stredové stĺpce. Safe do 26%, smrť na 30%
+        fingerRegistry.put(Finger.RI, new LimitParam(18.0, 24.0));
+        fingerRegistry.put(Finger.RM, new LimitParam(15.0, 20.0));
+        fingerRegistry.put(Finger.RR, new LimitParam(12.0, 16.0));
+        fingerRegistry.put(Finger.RP, new LimitParam(8.0,  12.0));
     }
 
     public double calculateCoefficient(MetricType type, double actualValue) {
-        LimitParam p = registry.get(type);
+        LimitParam p = metricRegistry.get(type);
         if (p == null) {
-            System.out.println("Neznámy typ metriky: " + type);
+            // ziaden vypis kvoli vykonu
             return 1.0; // koeficient 1 nezmeni sucin
         }
-
         // vráti hodnotu: bonus (>1.0), záchrana (0.01 až 1.0) alebo veto (0.01)
+        return getCoefficient(actualValue, p.goodEnough, p.notEnough);
+    }
+
+    public double calculateFingerCoefficient(Finger f, double actualValue) {
+        LimitParam p = fingerRegistry.get(f);
+        if (p == null) {
+            // ziaden vypis kvoli vykonu
+            return 1.0; // koeficient 1 nezmeni sucin
+        }
         return getCoefficient(actualValue, p.goodEnough, p.notEnough);
     }
 
@@ -85,7 +94,7 @@ public final class Weights {
     }
 
     public int size() {
-        return registry.size();
+        return metricRegistry.size();
     }
 
 }
