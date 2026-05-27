@@ -12,7 +12,8 @@ public final class KeyboardTopology {
 
     public static final int KEY_COUNT = 30;
 
-    private KeyboardTopology() {}
+    // 🎯 JEDINÉ PLOCHÉ POLE, KTORÉ CPU POTREBUJE PRE ANATÓMIU
+    public static final int[] POS_INFO = new int[KEY_COUNT];
 
     /**
      * Mapa indexov klávesnice (3 riadky x 10 stĺpcov = 30 pozícií):
@@ -86,5 +87,39 @@ public final class KeyboardTopology {
             // Indexy 24 a 25 sú najbrutálnejšie vnútorné spodné diagonály (2.10).
             1.90, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.90
     };
+
+    private KeyboardTopology() {}
+
+    static {
+        // Čitateľné polia pre človeka, ktoré pri štarte bleskovo zabalíme
+        int[] hands = {
+                0, 0, 0, 0, 0,  1, 1, 1, 1, 1,
+                0, 0, 0, 0, 0,  1, 1, 1, 1, 1,
+                0, 0, 0, 0, 0,  1, 1, 1, 1, 1
+        };
+
+        int[] rows = {
+                0, 0, 0, 0, 0,  0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1,  1, 1, 1, 1, 1,
+                2, 2, 2, 2, 2,  2, 2, 2, 2, 2
+        };
+
+        int[] cols = {
+                0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+                0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+                0, 1, 2, 3, 4,  5, 6, 7, 8, 9
+        };
+
+        int[] fingers = {
+                0, 1, 2, 3, 3,  4, 4, 5, 6, 7,
+                0, 1, 2, 3, 3,  4, 4, 5, 6, 7,
+                0, 1, 2, 3, 3,  4, 4, 5, 6, 7
+        };
+
+        // ⚡ BIT-PACKING: Zabalíme 4 informácie do jedného čísla int
+        for (int i = 0; i < KEY_COUNT; i++) {
+            POS_INFO[i] = (hands[i] << 9) | (rows[i] << 7) | (cols[i] << 3) | fingers[i];
+        }
+    }
 
 }

@@ -114,31 +114,51 @@ public final class LayoutStats {
         // 🚀 POISTKA: Vyčistíme stopu prstov pred novým sčítaním pozícií
 //        Arrays.fill(fingerPercents, 0.0);
 
+        double rawHomeRow = 0;
+        double rawStretch = 0;
         long totalMonograms = nGramStats.getTotalMonogramsCount();
 
-        // 🚀 1. DEKONŠTRUKCIA 30 POZÍCIÍ NA PRSTY
+        // =========================================================================
+        // 🚀 CENTRÁLNA DEKONŠTRUKCIA 30 POZÍCIÍ (Monogramový profil)
+        // =========================================================================
         for (int i = 0; i < keyFrequencies.length; i++) {
-            double rawValue = keyFrequencies[i];
+            double rawFreq = keyFrequencies[i];
 
             // Ak sa pozícia v texte vôbec nevyskytla, skočí tam čistá nula
-            if (rawValue < 0) rawValue = 0.0;
+            if (rawFreq < 0) rawFreq = 0.0;
 
-            // Vypočítame reálne percento stlačenia tohto jedného konkrétneho klávesu
-            keyPercents[i] = (totalMonograms == 0) ? 0.0 : (rawValue * 100.0) / totalMonograms;
+            // Vypočítame percento stlačenia konkrétneho klávesu
+            keyPercents[i] = (totalMonograms == 0) ? 0.0 : (rawFreq * 100.0) / totalMonograms;
 
-            Finger f = KeyboardTopology.POS_TO_FINGER[i];
-            // Pripočítame percento klávesu k celkovému zaťaženiu prsta
-            fingerPercents[f.ordinal()] += keyPercents[i];
+            // ⚡ BIT-UNPACKING: Vytiahneme anatómiu pozície priamo z jedného int čísla
+            int info = KeyboardTopology.POS_INFO[i];
+            int fingerId = info & 0x7;               // Maska pre prst (bity 0-2)
+            int rowId = (info >> 7) & 0x3;           // Maska pre riadok (bity 7-8)
+
+            // 1. Ak sme na domovskom riadku, sčítame surovú frekvenciu
+            if (rowId == KeyboardTopology.HOME_ROW) {
+                rawHomeRow += rawFreq;
+            }
+
+            // 2. Vypočítame surový stretch index
+            rawStretch += rawFreq * KeyboardTopology.POS_STRETCH_WEIGHT[i];
+
+            // 3. Pripočítame percento klávesu k celkovému zaťaženiu prsta
+            fingerPercents[fingerId] += keyPercents[i];
         }
 
-        // 🧮 2. PREPOČET OSTATNÝCH METRÍK (Používame superrýchlu METRICS_CACHE)
+        // Zapíšeme skompletizované surové metriky, ktoré predtým počítal Evaluator
+        metrics[MetricType.HOME_ROW.ordinal()] = rawHomeRow;
+        metrics[MetricType.STRETCH.ordinal()] = rawStretch;
+
+        // =========================================================================
+        // 🧮 PREPOČET N-GRAMOVÝCH METRÍK NA PERCENTÁ (SFB, SFS, ALT...)
+        // =========================================================================
         for (int i = 0; i < METRIC_COUNT; i++) {
             MetricType type = METRICS_CACHE[i];
 
             double rawValue = metrics[i];
-            if (rawValue < 0) {
-                continue;
-            }
+            if (rawValue < 0) continue;
 
             long denominator = switch (type) {
                 case HOME_ROW, STRETCH, RUNS -> nGramStats.getTotalMonogramsCount();
