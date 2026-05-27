@@ -1,10 +1,11 @@
 package mh.layout;
 
-import mh.layout.analyzer.stats.RunStatisticsAnalyzer;
+import mh.layout.analyzer.LayoutAnalyzer;
 import mh.layout.stats.Weights;
 import mh.layout.io.CorpusProcessor;
 import mh.layout.stats.NGramStats;
 import mh.layout.optimizer.ParallelOptimizer;
+
 import java.io.IOException;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public final class Main {
         String initialLayoutStr =
                 "QWERTYUIOP" +  // Horný riadok (10 klávesov)
                         "ASDFGHJKL;" +  // Domovský riadok (10 klávesov)
-                        "ZXCVB.?!-";    // Spodný riadok (10 klávesov)
+                        "ZXCVBNM,./";   // Spodný riadok (10 klávesov)
 
         // Blesková konverzia stringu na ploché pole char[]
         char[] initialLayout = initialLayoutStr.toCharArray();
@@ -97,19 +98,27 @@ public final class Main {
         printLayoutMatrix(bestLayout);
 
         // =========================================================================
-        // 📊 8. SPUSTENIE TVOJICH NOVÝCH ANALÝZ JEDNORUČNÝCH BEHOV
+        // 📊 8. SPUSTENIE NOVÉHO DIGITÁLNEHO RÖNTGENU (LayoutAnalyzer)
         // =========================================================================
-        System.out.println("\n🔍 Spúšťam detailnú hĺbkovú analýzu behov...");
+        System.out.println("\n🔍 Generujem kompletný biomechanický audit a rebríčky slov...");
 
-        // Zavoláme tvoju upravenú triedu pre slovenský slovník
-        RunStatisticsAnalyzer.analyzeAndPrintRuns(
-                bestLayout, slovakDictionary, "SLOVENČINA (SK)"
+        // 1. Spustíme hĺbkovú analýzu nad slovníkmi bez diakritiky
+        LayoutAnalyzer.AnalysisReport report = LayoutAnalyzer.generateReport(
+                bestLayout, statsSK, statsEN, slovakDictionary, englishDictionary, weights, slovakRatio
         );
 
-        // Zavoláme ju znova pre anglický slovník
-        RunStatisticsAnalyzer.analyzeAndPrintRuns(
-                bestLayout, englishDictionary, "ANGLIČTINA (EN)"
-        );
+        // 2. Vytlačíme vygenerovaný report priamo do konzoly pre okamžitú kontrolu
+        System.out.println(report.toString());
+
+        // 3. Bezpečne zapíšeme celý report do textového súboru na disk pre históriu
+        try {
+            String reportPath = "data/audit_report.txt";
+            report.saveToFile(reportPath);
+            System.out.println("💾 Biomechanický audit bol úspešne uložený do: " + reportPath);
+        } catch (IOException e) {
+            System.err.println("⚠️ Nepodarilo sa uložiť textový report na disk!");
+            e.printStackTrace();
+        }
     }
 
     private static void printLayoutMatrix(char[] matrix) {

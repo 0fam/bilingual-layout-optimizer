@@ -1,5 +1,7 @@
 package mh.layout.stats;
 
+import lombok.Getter;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,8 +21,21 @@ public final class NGramStats {
     // Použijeme mapu, kde kľúčom je 5 znakov bleskovo zabalených do jedného objektu Long.
     private final Map<Long, Double> runs5Grams = new HashMap<>();
 
+    // 📈 NOVÉ: Globálne počítadlá pre celý statický text (korpus)
+    // 🔍 NOVÉ: Čisté, bleskové gettery pre Evaluator a LayoutStats
+    @Getter
+    private long totalMonogramsCount = 0;
+    @Getter
+    private long totalBigramsCount = 0;
+    @Getter
+    private long totalSkipgramsCount = 0;
+    @Getter
+    private long totalTrigramsCount = 0;
+
+    // --- MONOGRAMY ---
     public void incrementMonogram(char c) {
         monograms[c]++;
+        totalMonogramsCount++; // <- Tu
     }
 
     public double getMonogramFreq(char c) {
@@ -30,6 +45,7 @@ public final class NGramStats {
     // --- BIGRAMY ---
     public void incrementBigram(char c1, char c2) {
         bigrams[(c1 << 8) | c2]++;
+        totalBigramsCount++;   // <- Tu
     }
 
     public double getBigramFreq(char c1, char c2) {
@@ -39,6 +55,7 @@ public final class NGramStats {
     // --- SKIPGRAMY (SFS - Sendviče) ---
     public void incrementSkipgram(char c1, char c2) {
         skipgrams[(c1 << 8) | c2]++;
+        totalSkipgramsCount++; // <- Tu
     }
 
     public double getSkipgramFreq(char c1, char c2) {
@@ -48,6 +65,7 @@ public final class NGramStats {
     // --- TRIGRAMY (Redirects / Pinbally) ---
     public void incrementTrigram(char c1, char c2, char c3) {
         trigrams[(c1 << 16) | (c2 << 8) | c3]++;
+        totalTrigramsCount++;  // <- Tu
     }
 
     public double getTrigramFreq(char c1, char c2, char c3) {
