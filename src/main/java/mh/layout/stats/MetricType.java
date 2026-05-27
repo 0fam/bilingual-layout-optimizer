@@ -8,8 +8,8 @@ public enum MetricType {
     REDIRECTS,     // Zmeny smeru v trigramoch (pinbally)
     LSB,           // Lateral Stretch Bigram (vychýlenie ukazováka)
     LHB,           // Lateral Hand Bigram (únava malíček-prstenník)
-    STRETCH,       // ? tu co chceme merat
-    RUNS,
+    EFFORT,        // celkova namaha
+    RUNS,          // single hand runs, slova na jednej ruke
 
     // 🟢 POZITÍVNE METRIKY (Čím viac %, tým vyšší koeficient / bonus)
     HOME_ROW,      // Odmena za udržanie prstov na základnom riadku

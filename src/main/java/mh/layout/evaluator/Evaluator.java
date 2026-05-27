@@ -3,17 +3,21 @@ package mh.layout.evaluator;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.stats.NGramStats;
+import mh.layout.topology.Finger;
 import mh.layout.topology.KeyboardTopology;
 
 public final class Evaluator {
 
     private static final int KEY_COUNT = KeyboardTopology.KEY_COUNT;
 
+    // 🚀 ULTRA-OPTIMALIZÁCIA: Statické cache pre horúcu slučku
+    private static final MetricType[] METRICS_CACHE = MetricType.values();
+    private static final Finger[] FINGERS_CACHE = Finger.values();
+    private static final int FINGER_COUNT = FINGERS_CACHE.length;
+
     private Evaluator() {}
 
-    public static LayoutStats evaluate(char[] matrix, NGramStats nGramStats, Weights weights) {
-        LayoutStats layoutStats = new LayoutStats(weights, nGramStats);
-
+    public static LayoutStats evaluate(char[] matrix, NGramStats ngStats, Weights weights) {
         double rawSfb = 0;
         double rawSfs = 0;
         double rawAlt = 0;
@@ -28,14 +32,7 @@ public final class Evaluator {
         final int[] posInfo = KeyboardTopology.POS_INFO;
 
         // =========================================================================
-        // 🟢 1. MONOGRAMY: Iba zber surových dát (Tvoj skvelý nápad!)
-        // =========================================================================
-        for (int i = 0; i < KEY_COUNT; i++) {
-            layoutStats.setKeyFrequency(i, nGramStats.getMonogramFreq(matrix[i]));
-        }
-
-        // =========================================================================
-        // 🔴 2. BIGRAMY & SKIPGRAMY (30 x 30 = 900 prechodov)
+        // 🔴 BIGRAMY & SKIPGRAMY (30 x 30 = 900 prechodov)
         // =========================================================================
         for (int i = 0; i < KEY_COUNT; i++) {
             char c1 = matrix[i];
@@ -57,7 +54,7 @@ public final class Evaluator {
                 int finger2 = info2 & 0x7;
 
                 // A. SPRACOVANIE BIGRAMOV
-                double bgFreq = nGramStats.getBigramFreq(c1, c2);
+                double bgFreq = ngStats.getBigramFreq(c1, c2);
                 if (bgFreq > 0) {
 
                     if (hand1 != hand2) {
@@ -75,19 +72,20 @@ public final class Evaluator {
                         }
 
                         // LSB (Lateral Stretch: zásah do stredových stĺpcov 4 alebo 5 ukazovákmi 3 alebo 4)
-                        if ((col1 == 4 || col1 == 5 || col2 == 4 || col2 == 5) && (finger1 == 3 || finger1 == 4)) {
+                        if (col1 == 4 || col1 == 5 || col2 == 4 || col2 == 5) {
                             rawLsb += bgFreq;
                         }
 
                         // LHB (Lateral Hand Bigram: únava malíček [0,7] + prstenník [1,6])
-                        if ((finger1 == 0 && finger2 == 1) || (finger1 == 7 && finger2 == 6)) {
+                        if ((finger1 == 0 && finger2 == 1) || (finger1 == 1 && finger2 == 0) ||
+                                (finger1 == 7 && finger2 == 6) || (finger1 == 6 && finger2 == 7)) {
                             rawLhb += bgFreq;
                         }
                     }
                 }
 
                 // B. SPRACOVANIE SKIPGRAMOV (Sendviče - SFS)
-                double sgFreq = nGramStats.getSkipgramFreq(c1, c2);
+                double sgFreq = ngStats.getSkipgramFreq(c1, c2);
                 if (sgFreq > 0 && hand1 == hand2 && finger1 == finger2 && i != j) {
                     rawSfs += sgFreq;
                 }
@@ -95,7 +93,7 @@ public final class Evaluator {
         }
 
         // =========================================================================
-        // 🟡 3. TRIGRAMY (27 000 prechodov) - Valenie a Otočky
+        // 🟡 TRIGRAMY (27 000 prechodov) - Valenie a Otočky
         // =========================================================================
         for (int i = 0; i < KEY_COUNT; i++) {
             char c1 = matrix[i];
@@ -120,17 +118,17 @@ public final class Evaluator {
 
                     if (hand2 != hand3) continue; // Celý trigram musí byť na jednej ruke
 
-                    double tgFreq = nGramStats.getTrigramFreq(c1, c2, c3);
+                    double tgFreq = ngStats.getTrigramFreq(c1, c2, c3);
                     if (tgFreq <= 0) continue;
 
                     // Smer valenia určujeme čistým porovnaním ID prstov (0 až 7 zľava doprava)
                     if (f1 < f2 && f2 < f3) {
-                        if (hand1 == KeyboardTopology.LEFT_HAND) rawRollOut += tgFreq;
-                        else rawRollIn += tgFreq;
-                    }
-                    else if (f1 > f2 && f2 > f3) {
                         if (hand1 == KeyboardTopology.LEFT_HAND) rawRollIn += tgFreq;
                         else rawRollOut += tgFreq;
+                    }
+                    else if (f1 > f2 && f2 > f3) {
+                        if (hand1 == KeyboardTopology.LEFT_HAND) rawRollOut += tgFreq;
+                        else rawRollIn += tgFreq;
                     }
                     // REDIRECTS (Otočky)
                     else if ((f1 < f2 && f2 > f3) || (f1 > f2 && f2 < f3)) {
@@ -142,19 +140,90 @@ public final class Evaluator {
             }
         }
 
-        // =========================================================================
-        // 📦 4. ZASYPANIE N-GRAMOVÝCH DÁT DO SCHRÁNKY
-        // =========================================================================
-        layoutStats.set(MetricType.SFB,         rawSfb);
-        layoutStats.set(MetricType.SFS,         rawSfs);
-        layoutStats.set(MetricType.ALTERNATION, rawAlt);
-        layoutStats.set(MetricType.ROLL_IN,     rawRollIn);
-        layoutStats.set(MetricType.ROLL_OUT,    rawRollOut);
-        layoutStats.set(MetricType.SCISSORS,    rawScissors);
-        layoutStats.set(MetricType.LSB,         rawLsb);
-        layoutStats.set(MetricType.LHB,         rawLhb);
-        layoutStats.set(MetricType.REDIRECTS,   rawRedirects);
+        LayoutStats result = new LayoutStats();
 
-        return layoutStats;
+        // =========================================================================
+        // 🟢 MONOGRAMY: Zber surových dát a dekonštrukcia prstov
+        // =========================================================================
+        double[] localFingerPercents = new double[FINGER_COUNT];
+        double rawHomeRow = 0;
+        double rawStretch = 0;
+        long totalMonograms = ngStats.getTotalMonograms();
+
+        for (int i = 0; i < KEY_COUNT; i++) {
+            double rawFreq = ngStats.getMonogramFreq(matrix[i]);
+            double pct = (totalMonograms == 0) ? 0.0 : (rawFreq * 100.0) / totalMonograms;
+
+            result.setKeyPercent(i, pct);
+
+            int info = posInfo[i];
+            localFingerPercents[info & 0x7] += pct;
+
+            if (((info >> 7) & 0x3) == KeyboardTopology.HOME_ROW) rawHomeRow += rawFreq;
+            rawStretch += rawFreq * KeyboardTopology.POS_STRETCH_WEIGHT[i];
+        }
+
+        // 🚀 OPTIMALIZOVANÉ: Prsty plníme cez lokálnu cache, žiadne klonovanie poľa
+        for (int f = 0; f < FINGER_COUNT; f++) {
+            result.setFingerPercent(f, localFingerPercents[f]);
+        }
+
+        // =========================================================================
+        // 🧮 3. PREPOČET METRÍK NA PERCENTÁ A ZBER KOEFICIENTOV
+        // =========================================================================
+        double totalProduct = 1.0;
+        long totalCount = 0;
+
+        double[] raws = new double[METRICS_CACHE.length];
+        raws[MetricType.SFB.ordinal()] = rawSfb;
+        raws[MetricType.SFS.ordinal()] = rawSfs;
+        raws[MetricType.ALTERNATION.ordinal()] = rawAlt;
+        raws[MetricType.ROLL_IN.ordinal()] = rawRollIn;
+        raws[MetricType.ROLL_OUT.ordinal()] = rawRollOut;
+        raws[MetricType.SCISSORS.ordinal()] = rawScissors;
+        raws[MetricType.LSB.ordinal()] = rawLsb;
+        raws[MetricType.LHB.ordinal()] = rawLhb;
+        raws[MetricType.REDIRECTS.ordinal()] = rawRedirects;
+        raws[MetricType.HOME_ROW.ordinal()] = rawHomeRow;
+        raws[MetricType.EFFORT.ordinal()] = rawStretch;
+
+        for (int i = 0; i < METRICS_CACHE.length; i++) {
+            MetricType type = METRICS_CACHE[i];
+
+            long denominator = switch (type) {
+                case HOME_ROW, EFFORT, RUNS -> totalMonograms;
+                case SFB, ALTERNATION, SCISSORS, LSB, LHB -> ngStats.getTotalBigrams();
+                case SFS -> ngStats.getTotalSkipgrams();
+                case REDIRECTS, ROLL_IN, ROLL_OUT -> ngStats.getTotalTrigrams();
+            };
+
+            double pct = (denominator == 0) ? 0.0 : (raws[i] * 100.0) / denominator;
+            result.setMetricPercent(type, pct);
+
+            double coef = weights.calculateCoefficient(type, pct);
+            if (coef >= 0) {
+                totalProduct *= coef;
+                totalCount++;
+            }
+        }
+
+        // 🚀 OPTIMALIZOVANÉ: Výpočet prstových koeficientov cez statickú cache
+        for (int i = 0; i < FINGER_COUNT; i++) {
+            Finger f = FINGERS_CACHE[i];
+            double coef = weights.calculateFingerCoefficient(f, localFingerPercents[i]);
+            if (coef >= 0) {
+                totalProduct *= coef;
+                totalCount++;
+            }
+        }
+
+        // =========================================================================
+        // 👑 4. FINÁLNE SKÓRE TELESA (Jediné Pow na samom konci)
+        // =========================================================================
+        if (totalCount > 0) {
+            result.setScore(Math.pow(totalProduct, 1.0 / totalCount) * 100.0);
+        }
+
+        return result;
     }
 }

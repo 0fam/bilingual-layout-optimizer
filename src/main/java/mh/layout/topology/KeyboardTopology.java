@@ -15,56 +15,56 @@ public final class KeyboardTopology {
     // 🎯 JEDINÉ PLOCHÉ POLE, KTORÉ CPU POTREBUJE PRE ANATÓMIU
     public static final int[] POS_INFO = new int[KEY_COUNT];
 
-    /**
-     * Mapa indexov klávesnice (3 riadky x 10 stĺpcov = 30 pozícií):
-     *  0  1  2  3  4  |  5  6  7  8  9   <- Horný riadok
-     * 10 11 12 13 14  | 15 16 17 18 19   <- Domovský riadok (Home Row)
-     * 20 21 22 23 24  | 25 26 27 28 29   <- Spodný riadok
-     */
-
-    /**
-     * Mapa rúk
-     * 0 = Ľavá ruka, 1 = Pravá ruka
-     */
-    public static final Hand[] POS_TO_HAND = {
-            L, L, L, L, L,  R, R, R, R, R,
-            L, L, L, L, L,  R, R, R, R, R,
-            L, L, L, L, L,  R, R, R, R, R
-    };
-
-    /**
-     * Map riadkov
-     * 0 = Horný, 1 = Stredný (Home), 2 = Spodný riadok
-     */
-    public static final int[] POS_TO_ROW = {
-            0, 0, 0, 0, 0,  0, 0, 0, 0, 0,
-            1, 1, 1, 1, 1,  1, 1, 1, 1, 1,
-            2, 2, 2, 2, 2,  2, 2, 2, 2, 2
-    };
-
-    /**
-     * Mapa stĺpcov
-     * 0 až 9 zľava doprava (pre maticu 3x10)
-     */
-    public static final int[] POS_TO_COL = {
-            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
-            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
-            0, 1, 2, 3, 4,  5, 6, 7, 8, 9
-    };
-
-    /**
-     * Mapa prstov
-     * ID prstov (0 až 7 zľava doprava):
-     * 0 = Ľavý malíček (LP)   |  4 = Pravý ukazovák (RI)
-     * 1 = Ľavý prstenník (LR) |  5 = Pravý prostredník (RM)
-     * 2 = Ľavý prostredník (LM)|  6 = Pravý prstenník (RR)
-     * 3 = Ľavý ukazovák (LI)  |  7 = Pravý malíček (RP)
-     */
-    public static final Finger[] POS_TO_FINGER = {
-            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Horný riadok (ukazováky majú dva stĺpce)
-            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Domovský riadok
-            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI   // Spodný riadok
-    };
+//    /**
+//     * Mapa indexov klávesnice (3 riadky x 10 stĺpcov = 30 pozícií):
+//     *  0  1  2  3  4  |  5  6  7  8  9   <- Horný riadok
+//     * 10 11 12 13 14  | 15 16 17 18 19   <- Domovský riadok (Home Row)
+//     * 20 21 22 23 24  | 25 26 27 28 29   <- Spodný riadok
+//     */
+//
+//    /**
+//     * Mapa rúk
+//     * 0 = Ľavá ruka, 1 = Pravá ruka
+//     */
+//    public static final Hand[] POS_TO_HAND = {
+//            L, L, L, L, L,  R, R, R, R, R,
+//            L, L, L, L, L,  R, R, R, R, R,
+//            L, L, L, L, L,  R, R, R, R, R
+//    };
+//
+//    /**
+//     * Map riadkov
+//     * 0 = Horný, 1 = Stredný (Home), 2 = Spodný riadok
+//     */
+//    public static final int[] POS_TO_ROW = {
+//            0, 0, 0, 0, 0,  0, 0, 0, 0, 0,
+//            1, 1, 1, 1, 1,  1, 1, 1, 1, 1,
+//            2, 2, 2, 2, 2,  2, 2, 2, 2, 2
+//    };
+//
+//    /**
+//     * Mapa stĺpcov
+//     * 0 až 9 zľava doprava (pre maticu 3x10)
+//     */
+//    public static final int[] POS_TO_COL = {
+//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
+//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9
+//    };
+//
+//    /**
+//     * Mapa prstov
+//     * ID prstov (0 až 7 zľava doprava):
+//     * 0 = Ľavý malíček (LP)   |  4 = Pravý ukazovák (RI)
+//     * 1 = Ľavý prstenník (LR) |  5 = Pravý prostredník (RM)
+//     * 2 = Ľavý prostredník (LM)|  6 = Pravý prstenník (RR)
+//     * 3 = Ľavý ukazovák (LI)  |  7 = Pravý malíček (RP)
+//     */
+//    public static final Finger[] POS_TO_FINGER = {
+//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Horný riadok (ukazováky majú dva stĺpce)
+//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Domovský riadok
+//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI   // Spodný riadok
+//    };
 
     /**
      * Statická penalizácia pozícií, váha nepohodlia/natiahnutia (Effort / Stretch Weight)

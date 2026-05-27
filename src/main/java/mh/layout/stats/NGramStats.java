@@ -24,18 +24,18 @@ public final class NGramStats {
     // 📈 NOVÉ: Globálne počítadlá pre celý statický text (korpus)
     // 🔍 NOVÉ: Čisté, bleskové gettery pre Evaluator a LayoutStats
     @Getter
-    private long totalMonogramsCount = 0;
+    private long totalMonograms = 0;
     @Getter
-    private long totalBigramsCount = 0;
+    private long totalBigrams = 0;
     @Getter
-    private long totalSkipgramsCount = 0;
+    private long totalSkipgrams = 0;
     @Getter
-    private long totalTrigramsCount = 0;
+    private long totalTrigrams = 0;
 
     // --- MONOGRAMY ---
     public void incrementMonogram(char c) {
         monograms[c]++;
-        totalMonogramsCount++; // <- Tu
+        totalMonograms++; // <- Tu
     }
 
     public double getMonogramFreq(char c) {
@@ -45,7 +45,7 @@ public final class NGramStats {
     // --- BIGRAMY ---
     public void incrementBigram(char c1, char c2) {
         bigrams[(c1 << 8) | c2]++;
-        totalBigramsCount++;   // <- Tu
+        totalBigrams++;   // <- Tu
     }
 
     public double getBigramFreq(char c1, char c2) {
@@ -55,7 +55,7 @@ public final class NGramStats {
     // --- SKIPGRAMY (SFS - Sendviče) ---
     public void incrementSkipgram(char c1, char c2) {
         skipgrams[(c1 << 8) | c2]++;
-        totalSkipgramsCount++; // <- Tu
+        totalSkipgrams++; // <- Tu
     }
 
     public double getSkipgramFreq(char c1, char c2) {
@@ -65,7 +65,7 @@ public final class NGramStats {
     // --- TRIGRAMY (Redirects / Pinbally) ---
     public void incrementTrigram(char c1, char c2, char c3) {
         trigrams[(c1 << 16) | (c2 << 8) | c3]++;
-        totalTrigramsCount++;  // <- Tu
+        totalTrigrams++;  // <- Tu
     }
 
     public double getTrigramFreq(char c1, char c2, char c3) {
