@@ -148,11 +148,16 @@ public final class Evaluator {
         double[] localFingerPercents = new double[FINGER_COUNT];
         double rawHomeRow = 0;
         double rawStretch = 0;
-        long totalMonograms = ngStats.getTotalMonograms();
+
+        // 🚀 ZMENA: Dynamický výpočet reálnej základne napísaných znakov (bez medzery)
+        long totalTypableMonograms = 0;
+        for (int i = 0; i < KEY_COUNT; i++) {
+            totalTypableMonograms += ngStats.getMonogramFreq(matrix[i]);
+        }
 
         for (int i = 0; i < KEY_COUNT; i++) {
             double rawFreq = ngStats.getMonogramFreq(matrix[i]);
-            double pct = (totalMonograms == 0) ? 0.0 : (rawFreq * 100.0) / totalMonograms;
+            double pct = (totalTypableMonograms == 0) ? 0.0 : (rawFreq * 100.0) / totalTypableMonograms;
 
             result.setKeyPercent(i, pct);
 
@@ -191,7 +196,7 @@ public final class Evaluator {
             MetricType type = METRICS_CACHE[i];
 
             long denominator = switch (type) {
-                case HOME_ROW, EFFORT, RUNS -> totalMonograms;
+                case HOME_ROW, EFFORT, RUNS -> totalTypableMonograms; // 🚀 ZMENA: Očistený menovateľ
                 case SFB, ALTERNATION, SCISSORS, LSB, LHB -> ngStats.getTotalBigrams();
                 case SFS -> ngStats.getTotalSkipgrams();
                 case REDIRECTS, ROLL_IN, ROLL_OUT -> ngStats.getTotalTrigrams();
