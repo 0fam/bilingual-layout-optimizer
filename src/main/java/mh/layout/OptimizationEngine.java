@@ -1,28 +1,73 @@
 package mh.layout;
 
+import mh.layout.evaluator.Weights;
+import mh.layout.io.CorpusProcessor;
+import mh.layout.optimizer.ParallelOptimizer;
 import mh.layout.stats.NGramStats;
-import mh.layout.stats.Weights;
-import java.util.Map;
+
+import java.io.IOException;
 
 public final class OptimizationEngine {
-    private final Weights weights = new Weights();
-    private final NGramStats statsSK = new NGramStats();
-    private final NGramStats statsEN = new NGramStats();
 
-    private Map<String, Double> dictSK;
-    private Map<String, Double> dictEN;
+    public static void main(String[] args) {
+        System.out.println("====================================================");
+        System.out.println("       BILINGVÁLNY OPTIMIZÉR KLÁVESNICE TOTEM        ");
+        System.out.println("====================================================\n");
 
-    private final double slovakRatio = 0.60;
-    private final long optimizationTimeMs = 10000;
+        // 1. ŠTARTOVACÍ LAYOUT (30 klávesov, mriežka 3x10)
+        String qwertyBase = "QWERTYUIOP" +
+                "ASDFGHJKL;" +
+                "ZXCVBNM,./";
+        char[] initialMatrix = qwertyBase.toCharArray();
 
-    public void run() {
-        // 1. Inicializuj váhy
-        // 2. Volaj CorpusProcessor na načítanie dát
-        // 3. Spusť ParallelOptimizer
-        // 4. Uspi vlákno na stanovený čas (optimizationTimeMs)
-        // 5. Zastav optimizér a vezmi víťaznú maticu
-        // 6. Odovzdaj výsledok do LayoutAnalyzer a ulož na disk
+        // 2. INICIALIZÁCIA SCHRÁNOK PRE ŠTATISTIKY
+        NGramStats statsSK = new NGramStats();
+        NGramStats statsEN = new NGramStats();
+
+        // 3. NAČÍTANIE KORPUSOV (Bez layoutu, čistá pravda o jazyku)
+        System.out.println("📥 Načítavam jazykové korpusy...");
+        try {
+            // Uprav si cesty k súborom podľa tvojho projektu
+            CorpusProcessor.processFile("data/slovak_corpus.txt", statsSK);
+            System.out.println("✅ Slovenský korpus úspešne spracovaný.");
+
+            CorpusProcessor.processFile("data/english_corpus.txt", statsEN);
+            System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
+        } catch (IOException e) {
+            System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
+            return;
+        }
+
+        // 4. INICIALIZÁCIA LIMITOV
+        // Všetky tvoje safe stropy a death gilotíny sa načítajú automaticky z konštruktora
+        Weights weights = new Weights();
+
+        // 5. NASTAVENIE BILINGVÁLNEHO POMERU JAZYKOV
+        // 0.60 znamená: 60 % dôležitosti má slovenčina, 40 % angličtina
+        double skRatio = 0.80;
+
+        // 6. ODPÁLENIE MULTITHREADOVÉHO MOTORA
+        ParallelOptimizer optimizer = new ParallelOptimizer();
+        optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio);
+
+        // 7. MONITOROVACIA SLUČKA (Tachometer rýchlosti)
+        long lastEvaluations = 0;
+        System.out.println("🚀 Optimizér úspešne naštartovaný.");
+        System.out.println("📊 Sledujem výkon jadier... (Ukonči pomocou CTRL+C)\n");
+
+        while (true) {
+            try {
+                Thread.sleep(1000); // Kontrola každú sekundu
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            long totalEvaluations = optimizer.getTotalEvaluations();
+            long speedPerSecond = totalEvaluations - lastEvaluations;
+            lastEvaluations = totalEvaluations;
+
+            System.out.printf("📊 Rýchlosť: %,d layoutov/s | Celkovo preverených: %,d%n",
+                    speedPerSecond, totalEvaluations);
+        }
     }
-
-    private void configureWeights() {}
 }
