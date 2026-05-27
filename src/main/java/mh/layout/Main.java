@@ -1,5 +1,6 @@
 package mh.layout;
 
+import mh.layout.analyzer.stats.RunStatisticsAnalyzer;
 import mh.layout.core.evaluator.Weights;
 import mh.layout.core.io.CorpusProcessor;
 import mh.layout.core.stats.NGramStats;
@@ -94,6 +95,21 @@ public final class Main {
         System.out.println("\n🛑 Optimalizácia ukončená. Sťahujem dáta z jadier...");
 
         printLayoutMatrix(bestLayout);
+
+        // =========================================================================
+        // 📊 8. SPUSTENIE TVOJICH NOVÝCH ANALÝZ JEDNORUČNÝCH BEHOV
+        // =========================================================================
+        System.out.println("\n🔍 Spúšťam detailnú hĺbkovú analýzu behov...");
+
+        // Zavoláme tvoju upravenú triedu pre slovenský slovník
+        RunStatisticsAnalyzer.analyzeAndPrintRuns(
+                bestLayout, slovakDictionary, "SLOVENČINA (SK)"
+        );
+
+        // Zavoláme ju znova pre anglický slovník
+        RunStatisticsAnalyzer.analyzeAndPrintRuns(
+                bestLayout, englishDictionary, "ANGLIČTINA (EN)"
+        );
     }
 
     private static void printLayoutMatrix(char[] matrix) {

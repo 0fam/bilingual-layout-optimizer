@@ -73,4 +73,6 @@ public final class KeyboardTopology {
             // Indexy 24 a 25 sú najbrutálnejšie vnútorné spodné diagonály (2.10).
             1.90, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.90
     };
+
+    public static final double[] FINGER_MAX_CEILING_PCT = {10.0, 13.0, 17.0, 20.0, 20.0, 17.0, 13.0, 10.0};
 }

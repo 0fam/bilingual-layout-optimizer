@@ -52,20 +52,26 @@ public final class Evaluator {
 
 
         // =========================================================================
-        // ⚖️ 2. ANATOMICKÁ POISTKA: Výpočet špičkového zaťaženia prstov (Finger Load)
+        // ⚖️ 2. ANATOMICKÁ POISTKA: Percentuálne stropy vyťaženia prstov (Finger Load)
         // =========================================================================
+        // Najprv spočítame celkový objem stlačení v tomto layoute, aby sme mali základ pre %
+        double totalKeystrokes = 0;
         for (int f = 0; f < 8; f++) {
-            double usage = fingerUsage[f];
-            double penaltyFactor = 1.0;
+            totalKeystrokes += fingerUsage[f];
+        }
 
-            // Váhové koeficienty: Malíčky a prstenníky unavíš skôr ako silné ukazováky
-            if (f == KeyboardTopology.L_PINKY  || f == KeyboardTopology.R_PINKY)  penaltyFactor = 2.0;
-            if (f == KeyboardTopology.L_RING   || f == KeyboardTopology.R_RING)   penaltyFactor = 1.5;
-            if (f == KeyboardTopology.L_MIDDLE || f == KeyboardTopology.R_MIDDLE) penaltyFactor = 1.1;
+        if (totalKeystrokes > 0) {
+            for (int f = 0; f < 8; f++) {
+                // Prerátame surovú prácu prsta na čisté percentá
+                double fingerPercent = (fingerUsage[f] / totalKeystrokes) * 100.0;
 
-            double calculatedLoad = usage * penaltyFactor;
-            if (calculatedLoad > fingerLoadScore) {
-                fingerLoadScore = calculatedLoad; // Hľadáme najviac preťažený vrchol (Peak stress)
+                // Vytiahneme z topológie maximálny strop, ktorý tento prst znesie
+                double maxAllowedCeiling = KeyboardTopology.FINGER_MAX_CEILING_PCT[f];
+
+                // Ak layout naložil na prst viac, než je zdravé, tvrdo trestáme každý kúsok navyše
+                if (fingerPercent > maxAllowedCeiling) {
+                    fingerLoadScore += (fingerPercent - maxAllowedCeiling) * weights.getFingerLoad();
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package mh.layout.analyzer.stats;
 
 import mh.layout.core.topology.KeyboardTopology;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -8,37 +9,33 @@ public final class RunStatisticsAnalyzer {
 
     /**
      * Zoberie finálny layout a mapu reálnych slov z korpusu a vytvorí presný rozpad jednoručných behov.
-     * * @param matrix Víťazný layout (char[])
+     * @param matrix layout (char[])
      * @param wordDictionary Mapa slov a ich reálnych frekvencií v texte Map<String, Double>
      */
-    public static void analyzeAndPrintRuns(char[] matrix, Map<String, Double> wordDictionary) {
-        // Rýchly lookup: pre každé ASCII písmeno chceme vedieť, na ktorej ruke sedí (0=Ľavá, 1=Pravá)
+    public static void analyzeAndPrintRuns(char[] matrix, Map<String, Double> wordDictionary, String label) {
+        // Inicializujeme pole hodnotou -1 (Znak neexistuje na klávesnici)
         int[] charToHand = new int[256];
+        Arrays.fill(charToHand, -1);
+
+        // Vyčítame reálne ruky pre znaky, ktoré na klávesnici reálne sú
         for (int i = 0; i < 30; i++) {
             charToHand[matrix[i]] = KeyboardTopology.POS_TO_HAND[i];
         }
 
-        // TreeMap nám automaticky zoradí štatistiku podľa dĺžky slova (4, 5, 6...)
         Map<Integer, Integer> countByLength = new TreeMap<>();
         Map<Integer, Double> freqByLength = new TreeMap<>();
-
         int totalOneHandedWords = 0;
 
-        // Prechádzame reálne slová z korpusu (napr. "stewardesses", "the", "cat"...)
         for (Map.Entry<String, Double> entry : wordDictionary.entrySet()) {
             String word = entry.getKey();
             double freq = entry.getValue();
 
-            if (word.length() < 4) continue; // Krátke slová (the, and, sk) nás nezaujímajú, tie sú v pohode
+            if (word.length() < 4) continue;
 
             if (isPureOneHandedWord(word, charToHand)) {
                 int len = word.length();
-
-                // Zapíšeme do štatistiky počtu unikátnych slov
                 countByLength.put(len, countByLength.getOrDefault(len, 0) + 1);
-                // Zapíšeme reálny výskyt (váhu) v texte
                 freqByLength.put(len, freqByLength.getOrDefault(len, 0.0) + freq);
-
                 totalOneHandedWords++;
             }
         }
@@ -65,13 +62,18 @@ public final class RunStatisticsAnalyzer {
     private static boolean isPureOneHandedWord(String word, int[] charToHand) {
         if (word.isEmpty()) return false;
 
+        // Zistíme ruku prvého znaku
         int firstCharHand = charToHand[word.charAt(0)];
+        if (firstCharHand == -1) return false; // Ak prvý znak nie je na klávesnici, nie je to validný beh
 
         for (int i = 1; i < word.length(); i++) {
-            if (charToHand[word.charAt(i)] != firstCharHand) {
-                return false; // Ruky sa vystriedali, toto nie je čistý beh!
+            int currentHand = charToHand[word.charAt(i)];
+
+            // Ak znak na klávesnici nie je (-1), alebo sa ruka v slove reálne zmenila
+            if (currentHand == -1 || currentHand != firstCharHand) {
+                return false;
             }
         }
-        return true; // Celé slovo padlo na jednu ruku
+        return true;
     }
 }
