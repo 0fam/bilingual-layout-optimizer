@@ -29,6 +29,10 @@ public final class ParallelOptimizer {
     private long totalEvaluations = 0;
     private static final String JOURNAL_FILE = "layout_journal.txt";
 
+    // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
+    private double skMono, skBigram, skSkip, skTri;
+    private double enMono, enBigram, enSkip, enTri;
+
     public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
         if (isRunning.get()) return;
         isRunning.set(true);
@@ -36,11 +40,34 @@ public final class ParallelOptimizer {
         double enRatio = 1.0 - skRatio;
         this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
 
-        LayoutStats initSk = Evaluator.evaluate(globalBestMatrix, statsSK, weights);
-        LayoutStats initEn = Evaluator.evaluate(globalBestMatrix, statsEN, weights);
+        // =========================================================================
+        // ⚡ JEDNORAZOVÝ PREDPREČÍTANÝ SÚČET FREKVENCIÍ PRE CELÝ SET ZNAKOV
+        // =========================================================================
+        skMono = 0; skBigram = 0; skSkip = 0; skTri = 0;
+        enMono = 0; enBigram = 0; enSkip = 0; enTri = 0;
+
+        for (int i = 0; i < 30; i++) {
+            skMono += statsSK.getMonogramFreq(initialMatrix[i]);
+            enMono += statsEN.getMonogramFreq(initialMatrix[i]);
+            for (int j = 0; j < 30; j++) {
+                skBigram += statsSK.getBigramFreq(initialMatrix[i], initialMatrix[j]);
+                skSkip   += statsSK.getSkipgramFreq(initialMatrix[i], initialMatrix[j]);
+
+                enBigram += statsEN.getBigramFreq(initialMatrix[i], initialMatrix[j]);
+                enSkip   += statsEN.getSkipgramFreq(initialMatrix[i], initialMatrix[j]);
+                for (int k = 0; k < 30; k++) {
+                    skTri += statsSK.getTrigramFreq(initialMatrix[i], initialMatrix[j], initialMatrix[k]);
+                    enTri += statsEN.getTrigramFreq(initialMatrix[i], initialMatrix[j], initialMatrix[k]);
+                }
+            }
+        }
+
+        // Prvé inicializačné hodnotenie (Miesto 1)
+        LayoutStats initSk = Evaluator.evaluate(globalBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+        LayoutStats initEn = Evaluator.evaluate(globalBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
         this.globalBestScore = (initSk.getScore() * skRatio) + (initEn.getScore() * enRatio);
 
-        int cores = Runtime.getRuntime().availableProcessors();
+        int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
         System.out.println("📝 Denník (SK >= 80, EN >= 70) zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
 
@@ -79,8 +106,9 @@ public final class ParallelOptimizer {
         Random rand = new Random();
         char[] currentMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
 
-        LayoutStats currentSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights);
-        LayoutStats currentEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights);
+        // Hodnotenie pred štartom slučky vo vlákne (Miesto 2)
+        LayoutStats currentSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+        LayoutStats currentEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
 
         double enRatio = 1.0 - skRatio;
         double currentScore = (currentSkStats.getScore() * skRatio) + (currentEnStats.getScore() * enRatio);
@@ -109,9 +137,9 @@ public final class ParallelOptimizer {
             currentMatrix[pos1] = currentMatrix[pos2];
             currentMatrix[pos2] = temp;
 
-            // 3. Ohodnoť nový layout bilingválne
-            LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights);
-            LayoutStats nextEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights);
+            // 3. Ohodnoť nový layout bilingválne s bleskovými Early Exits (Miesto 3 v horúcej slučke)
+            LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+            LayoutStats nextEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
 
             double skScore = nextSkStats.getScore();
             double enScore = nextEnStats.getScore();
@@ -119,19 +147,19 @@ public final class ParallelOptimizer {
 
             localEvaluations++;
 
-            // 🚀 ULTRA-OPTIMALIZÁCIA: Jeden spoločný heartbeat blok
-            if ((localEvaluations & 0x3FFF) == 0) {
+            // 🚀 ULTRA-OPTIMALIZÁCIA: Splachujeme častejšie (každých 4096 iterácií), aby tachometer nežil v nulách
+            if ((localEvaluations & 0x0FFF) == 0) {
                 // 1. Živý výpis do konzoly
                 System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n",
                         threadId, skScore, enScore, temperature);
 
                 // 2. Bezpečné pripočítanie rýchlosti do globálneho počítadla
                 synchronized (lock) {
-                    totalEvaluations += 16384;
+                    totalEvaluations += 4096;
                 }
             }
 
-            // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie
+            // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (skScore >= 80.0 && enScore >= 70.0) {
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
@@ -147,6 +175,7 @@ public final class ParallelOptimizer {
                 if (rand.nextDouble() < acceptanceProbability) {
                     currentScore = nextScore;
                 } else {
+                    // Krok späť (Undo)
                     char undo = currentMatrix[pos1];
                     currentMatrix[pos1] = currentMatrix[pos2];
                     currentMatrix[pos2] = undo;
@@ -176,8 +205,9 @@ public final class ParallelOptimizer {
                  PrintWriter out = new PrintWriter(bw)) {
 
                 String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                out.printf("%s | SK: %.4f | EN: %.4f | COMBINED: %.4f | %s (Jadro %d)%n | %d",
-                        new String(matrix), sk, en, combined, timestamp, threadId,  iteration);
+                // 🚀 FIX: %n presunuté až na úplný koniec riadku, iterácia uprataná plynule do riadku
+                out.printf("%s | SK: %.4f | EN: %.4f | COMBINED: %.4f | %s (Core %d) | Iteration: %d%n",
+                        new String(matrix), sk, en, combined, timestamp, threadId, iteration);
 
             } catch (IOException e) {
                 System.err.println("Chyba zápisu do denníka: " + e.getMessage());

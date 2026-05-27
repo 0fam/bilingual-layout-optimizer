@@ -107,10 +107,30 @@ public final class LayoutAnalysisEngine {
         for (Map.Entry<String, char[]> entry : loadedLayouts) {
             char[] matrix = entry.getValue();
 
-            LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
-            LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights);
+            // 🚀 ABSOLÚTNA POISTKA PROTI ČÍNE: Menovatele počítame pre každú klávesnicu uníkátne priamo v cykle!
+            double skMono = 0, skBigram = 0, skSkip = 0, skTri = 0;
+            double enMono = 0, enBigram = 0, enSkip = 0, enTri = 0;
 
-            // Kombinované bilingválne Elite skóre postavené na našom vzájomnom pomere jazykov
+            for (int i = 0; i < 30; i++) {
+                skMono += statsSK.getMonogramFreq(matrix[i]);
+                enMono += statsEN.getMonogramFreq(matrix[i]);
+                for (int j = 0; j < 30; j++) {
+                    skBigram += statsSK.getBigramFreq(matrix[i], matrix[j]);
+                    skSkip   += statsSK.getSkipgramFreq(matrix[i], matrix[j]);
+
+                    enBigram += statsEN.getBigramFreq(matrix[i], matrix[j]);
+                    enSkip   += statsEN.getSkipgramFreq(matrix[i], matrix[j]);
+                    for (int k = 0; k < 30; k++) {
+                        skTri += statsSK.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
+                        enTri += statsEN.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
+                    }
+                }
+            }
+
+            // Teraz dostane každá klávesnica stopercentne presné, vlastné menovatele
+            LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+            LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
 
             leaderboard.add(new AnalyzedLayout(entry.getKey(), matrix, skRes, enRes, combinedScore));
@@ -123,23 +143,21 @@ public final class LayoutAnalysisEngine {
         printLeaderboardTable(leaderboard);
 
         // =========================================================================
-        // 🔍 HĹBKOVÁ DIGITÁLNA ANALÝZA SLOVNÍKOV PRE ABSOLÚTNEHO VÍŤAZA
+        // 🔍 HĹBKOVÁ DIGITÁLNA ANALÝZA SLOVNÍKOV PRE VŠETKY LAYOUTY
         // =========================================================================
-        if (!leaderboard.isEmpty()) {
-            AnalyzedLayout winner = leaderboard.get(0);
-
-            // LayoutAnalyzer vygeneruje kompletný audit vrátane top 10 najhorších slov pre prsty
+        System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
+        for (AnalyzedLayout layout : leaderboard) {
             LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
-                    winner.matrix, winner.name, statsSK, statsEN, dictSK, dictEN, weights, slovakRatio
+                    layout.matrix, layout.name, statsSK, statsEN, dictSK, dictEN, weights, slovakRatio
             );
 
             try {
                 detailedReport.saveToFile("data/best_layout_audit.txt");
-                System.out.println("\n🎯 Hĺbkový biomechanický audit víťaza bol úspešne pridaný do: data/best_layout_audit.txt");
             } catch (IOException e) {
-                System.err.println("⚠️ Nepodarilo sa uložiť podrobný textový report na disk: " + e.getMessage());
+                System.err.println("⚠️ Nepodarilo sa uložiť audit pre " + layout.name + ": " + e.getMessage());
             }
         }
+        System.out.println("🎯 Audity boli úspešne vygenerované do: data/best_layout_audit.txt");
     }
 
     private void printLeaderboardTable(List<AnalyzedLayout> list) {

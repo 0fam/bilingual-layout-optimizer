@@ -9,7 +9,8 @@ import java.io.IOException;
 
 public final class OptimizationEngine {
 
-    public static void main(String[] args) {
+    // 🎯 ZMENA: Prepnuté zo "static main" na inštančnú metódu "run", aby to sedelo s tvojou triedou Main
+    public void run() {
         System.out.println("====================================================");
         System.out.println("       BILINGVÁLNY OPTIMIZÉR KLÁVESNICE TOTEM        ");
         System.out.println("====================================================\n");
@@ -28,10 +29,10 @@ public final class OptimizationEngine {
         System.out.println("📥 Načítavam jazykové korpusy...");
         try {
             // Uprav si cesty k súborom podľa tvojho projektu
-            CorpusProcessor.processFile("data/slovak_corpus.txt", statsSK);
+            CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt", statsSK);
             System.out.println("✅ Slovenský korpus úspešne spracovaný.");
 
-            CorpusProcessor.processFile("data/english_corpus.txt", statsEN);
+            CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus_en.txt", statsEN);
             System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
         } catch (IOException e) {
             System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
@@ -43,7 +44,7 @@ public final class OptimizationEngine {
         Weights weights = new Weights();
 
         // 5. NASTAVENIE BILINGVÁLNEHO POMERU JAZYKOV
-        // 0.60 znamená: 60 % dôležitosti má slovenčina, 40 % angličtina
+        // 0.80 znamená: 80 % dôležitosti má slovenčina, 20 % angličtina
         double skRatio = 0.80;
 
         // 6. ODPÁLENIE MULTITHREADOVÉHO MOTORA
