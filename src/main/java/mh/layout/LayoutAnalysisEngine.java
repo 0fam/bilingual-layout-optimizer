@@ -22,7 +22,8 @@ public final class LayoutAnalysisEngine {
     private Map<String, Double> dictSK;
     private Map<String, Double> dictEN;
 
-    private final double slovakRatio = 0.60;
+    // 🎯 OPRAVA: Zladené na 0.80, aby to sedelo s OptimizationEngine
+    private final double slovakRatio = 0.80;
 
     // Vnútorný pomocný kontajner pre potreby zoradenia výsledkov
     private record AnalyzedLayout(
@@ -38,22 +39,19 @@ public final class LayoutAnalysisEngine {
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
 
-        // 1. Inicializuj ergonomické váhy (Už sa stalo vo fieldoch triedy pri 'new Weights()')
-
-        // 2. Volaj CorpusProcessor na načítanie štatistík textu (Čistá pravda o jazyku, bez layoutu)
         System.out.println("📥 Načítavam jazykové korpusy a slovníky slov...");
         try {
-            this.dictSK = CorpusProcessor.processFile("data/slovak_corpus.txt", statsSK);
+            this.dictSK = CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt", statsSK);
             System.out.println("✅ Slovenský korpus úspešne spracovaný.");
 
-            this.dictEN = CorpusProcessor.processFile("data/english_corpus.txt", statsEN);
+            this.dictEN = CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus_en.txt", statsEN);
             System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
         } catch (IOException e) {
             System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
             return;
         }
 
-        // 3. Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
+        // Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
         List<Map.Entry<String, char[]>> loadedLayouts = new ArrayList<>();
         File target = new File(targetPath);
 
@@ -99,37 +97,15 @@ public final class LayoutAnalysisEngine {
             return;
         }
 
-        // 4. Každú maticu prežeň cez Evaluator.evaluate(...)
-        // 5. Spáruj názov súboru/layoutu s jeho kombinovaným skóre
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
         double englishRatio = 1.0 - slovakRatio;
 
         for (Map.Entry<String, char[]> entry : loadedLayouts) {
             char[] matrix = entry.getValue();
 
-            // 🚀 ABSOLÚTNA POISTKA PROTI ČÍNE: Menovatele počítame pre každú klávesnicu uníkátne priamo v cykle!
-            double skMono = 0, skBigram = 0, skSkip = 0, skTri = 0;
-            double enMono = 0, enBigram = 0, enSkip = 0, enTri = 0;
-
-            for (int i = 0; i < 30; i++) {
-                skMono += statsSK.getMonogramFreq(matrix[i]);
-                enMono += statsEN.getMonogramFreq(matrix[i]);
-                for (int j = 0; j < 30; j++) {
-                    skBigram += statsSK.getBigramFreq(matrix[i], matrix[j]);
-                    skSkip   += statsSK.getSkipgramFreq(matrix[i], matrix[j]);
-
-                    enBigram += statsEN.getBigramFreq(matrix[i], matrix[j]);
-                    enSkip   += statsEN.getSkipgramFreq(matrix[i], matrix[j]);
-                    for (int k = 0; k < 30; k++) {
-                        skTri += statsSK.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
-                        enTri += statsEN.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
-                    }
-                }
-            }
-
-            // Teraz dostane každá klávesnica stopercentne presné, vlastné menovatele
-            LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-            LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+            // 🚀 ULTRA-ČISTÉ VOLANIE: Trojitý cyklus pre každú inú klávesnicu sa teraz deje vnútri Evaluatora!
+            LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
+            LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights);
 
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
 

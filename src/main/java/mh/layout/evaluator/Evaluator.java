@@ -226,4 +226,24 @@ public final class Evaluator {
 
         return result;
     }
+
+    // Tento overloading pridaj do Evaluator.java
+    public static LayoutStats evaluate(char[] matrix, NGramStats ngStats, Weights weights) {
+        double mono = 0, bigram = 0, skip = 0, tri = 0;
+
+        // Interne si spočíta menovatele na počkanie pre standalone analýzy
+        for (int i = 0; i < 30; i++) {
+            mono += ngStats.getMonogramFreq(matrix[i]);
+            for (int j = 0; j < 30; j++) {
+                bigram += ngStats.getBigramFreq(matrix[i], matrix[j]);
+                skip   += ngStats.getSkipgramFreq(matrix[i], matrix[j]);
+                for (int k = 0; k < 30; k++) {
+                    tri += ngStats.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
+                }
+            }
+        }
+        // Deleguje prácu na hlavné bleskové jadro
+        return evaluate(matrix, ngStats, weights, mono, bigram, skip, tri);
+    }
+
 }

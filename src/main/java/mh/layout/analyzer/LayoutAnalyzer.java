@@ -50,7 +50,7 @@ public final class LayoutAnalyzer {
 
         AnalysisReport report = new AnalysisReport();
 
-        // 1. Spustíme bleskové jadro pre reálne čísla oboch jazykov
+        // 👑 🚀 VOLÁME PREŤAŽENÉ ČISTÉ METÓDY - O menovatele sa postará Evaluator sám vnútri!
         LayoutStats skStats = Evaluator.evaluate(matrix, statsSK, weights);
         LayoutStats enStats = Evaluator.evaluate(matrix, statsEN, weights);
 

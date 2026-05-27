@@ -9,7 +9,6 @@ import java.io.IOException;
 
 public final class OptimizationEngine {
 
-    // 🎯 ZMENA: Prepnuté zo "static main" na inštančnú metódu "run", aby to sedelo s tvojou triedou Main
     public void run() {
         System.out.println("====================================================");
         System.out.println("       BILINGVÁLNY OPTIMIZÉR KLÁVESNICE TOTEM        ");
@@ -28,7 +27,6 @@ public final class OptimizationEngine {
         // 3. NAČÍTANIE KORPUSOV (Bez layoutu, čistá pravda o jazyku)
         System.out.println("📥 Načítavam jazykové korpusy...");
         try {
-            // Uprav si cesty k súborom podľa tvojho projektu
             CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt", statsSK);
             System.out.println("✅ Slovenský korpus úspešne spracovaný.");
 
