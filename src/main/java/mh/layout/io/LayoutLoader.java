@@ -30,19 +30,25 @@ public final class LayoutLoader {
             File[] files = target.listFiles();
             if (files != null) {
                 for (File f : files) {
-                    if (f.isFile()) {
-                        if (f.getName().endsWith(".dof")) {
-                            String dofMatrix = parseDofMatrix(f);
-                            if (dofMatrix != null) {
-                                results.add(new LayoutInput(f.getName(), dofMatrix.toCharArray()));
-                            }
-                        } else {
-                            String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
-                            if (content.length() == 30) {
-                                // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
-                                results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
+                    try {
+                        if (f.isFile()) {
+                            if (f.getName().endsWith(".dof")) {
+                                String dofMatrix = parseDofMatrix(f);
+                                if (dofMatrix != null) {
+                                    results.add(new LayoutInput(f.getName(), dofMatrix.toCharArray()));
+                                }
+                            } else {
+                                String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
+                                if (content.length() == 30) {
+                                    // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
+                                    results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
+                                }
                             }
                         }
+                    } catch (IOException e) {
+                        System.err.println();
+                        System.err.println("❌ Chyba pri načítavaní layoutu [" + f.getName() + "]: " + e.getMessage());
+                        // Pokračujeme na ďalšiu cestu, nevzdávame to kvôli jednému chybnému súboru
                     }
                 }
             }

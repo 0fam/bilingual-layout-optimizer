@@ -88,9 +88,7 @@ public final class LayoutAnalysisEngine {
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
         double englishRatio = 1.0 - slovakRatio;
 
-        long counterDot = 0;
-        long counterLine = 0;
-        long counterTotal = 0;
+        long counter = 0;
         for (LayoutLoader.LayoutInput input : loadedLayouts) {
             char[] matrix = input.matrix();
 
@@ -104,17 +102,11 @@ public final class LayoutAnalysisEngine {
             leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
 
 //            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
-            if (counterDot++ >= 1000) {
-                counterDot = 0;
-                System.out.print(".");
-                if (counterLine++ >= 100) {
-                    counterLine = 0;
-                    counterTotal += 100_000;
-                    System.out.println(counterTotal);
-                }
+            // cislo nasobok 2 na X - 1 potrebujes 0000111111 seriu jednotiek na konci
+            if ((counter++ & 63) == 0) {
+                System.out.print("\r Analyzujem layout " + counter + " " + input.name() + "          ");
             }
         }
-        System.out.println(" " + counterTotal + counterLine * 1000 + counterDot);
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
