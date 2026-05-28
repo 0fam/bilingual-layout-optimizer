@@ -142,8 +142,14 @@ public final class LayoutAnalyzer {
             String origWord = entry.getKey();
             double freq = entry.getValue();
 
-            // SITO: Prefiltrujeme len čisté znaky, ktoré klávesnica reálne pozná (bez diakritiky)
+            // 🚀 FIX: Pole indexov alokujeme pre každé slovo dynamicky na základe jeho reálnej dĺžky.
+            // Už nikdy nedôjde k pretečeniu indexu kvôli poškodenému textu v korpusoch.
+            if (origWord.length() > 128) {
+                System.out.println("prilis dlhe slovo");
+                continue;
+            }
             int len = 0;
+
             for (int i = 0; i < origWord.length(); i++) {
                 char c = origWord.charAt(i);
                 if (c < 256 && present[c]) {

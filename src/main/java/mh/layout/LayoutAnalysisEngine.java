@@ -38,7 +38,7 @@ public final class LayoutAnalysisEngine {
             double combinedScore
     ) {}
 
-    public void runStandalone(List<String> targetPaths) {
+    public void runStandalone(List<String> targetPaths, String skKorpus, String enKorpus, String leaderBoardFile, String analysesFile) {
         System.out.println("========================================================================================");
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
@@ -46,10 +46,10 @@ public final class LayoutAnalysisEngine {
         // 1. Načítanie invariantných štatistík textu (Slovníky pre röntgen prstov)
         System.out.println("📥 Načítavam jazykové korpusy a slovníky slov...");
         try {
-            this.dictSK = CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt", statsSK);
+            this.dictSK = CorpusProcessor.processFile(skKorpus, statsSK);
             System.out.println("✅ Slovenský korpus úspešne spracovaný.");
 
-            this.dictEN = CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus_en.txt", statsEN);
+            this.dictEN = CorpusProcessor.processFile(enKorpus, statsEN);
             System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
         } catch (IOException e) {
             System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
@@ -110,7 +110,7 @@ public final class LayoutAnalysisEngine {
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
 
         // 🚀 EXPORT: Zapíše usporiadanú tabuľku výhradne na disk (Konzolu už neotravuje)
-        saveSortedLeaderboardToFile(leaderboard);
+        saveSortedLeaderboardToFile(leaderboard, leaderBoardFile);
 
         // 🔍 Hĺbkový röntgen layoutov
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
@@ -120,20 +120,18 @@ public final class LayoutAnalysisEngine {
             );
 
             try {
-                detailedReport.saveToFile("data/best_layout_audit.txt");
+                detailedReport.saveToFile(analysesFile);
             } catch (IOException e) {
                 System.err.println("⚠️ Nepodarilo sa uložiť podrobný audit pre " + layout.name + ": " + e.getMessage());
             }
         }
-        System.out.println("🎯 Audity layoutov boli úspešne vygenerované do: data/best_layout_audit.txt");
+        System.out.println("🎯 Audity layoutov boli úspešne vygenerované do: " + analysesFile);
     }
 
     /**
      * 💾 Uloží kompletne zoradený rebríček do textového súboru. Konzola zostáva čistá.
      */
-    private void saveSortedLeaderboardToFile(List<AnalyzedLayout> sortedList) {
-        String outputFilePath = "data/leaderboard.txt";
-
+    private void saveSortedLeaderboardToFile(List<AnalyzedLayout> sortedList, String outputFilePath) {
         File dir = new File("data");
         if (!dir.exists()) dir.mkdirs();
 

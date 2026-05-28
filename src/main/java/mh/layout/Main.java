@@ -11,6 +11,11 @@ public final class Main {
         new LayoutAnalysisEngine().runStandalone(List.of(
                 "c:\\home\\project-personal\\layout-analyzer\\layout_journal.txt",
                 "c:\\home\\project-personal\\layout-analyzer\\totem_rekordy.txt"
-        ));
+        ),
+                "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt",
+                "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus_en.txt",
+                "c:\\home\\project-personal\\layout-analyzer\\leaderboard.txt",
+                "c:\\home\\project-personal\\layout-analyzer\\layout_audit.txt"
+                );
     }
 }
