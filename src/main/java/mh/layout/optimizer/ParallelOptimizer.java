@@ -106,25 +106,32 @@ public final class ParallelOptimizer {
         Random rand = new Random();
         char[] currentMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
 
-        // Hodnotenie pred štartom slučky vo vlákne (Miesto 2)
+        // 🚀 LOKÁLNA PAMÄŤ JADRA: Každé jadro si stráži svoj vlastný lokálny klenot
+        char[] localBestMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
+
         LayoutStats currentSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
         LayoutStats currentEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
 
         double enRatio = 1.0 - skRatio;
         double currentScore = (currentSkStats.getScore() * skRatio) + (currentEnStats.getScore() * enRatio);
+        double localBestScore = currentScore;
 
-        // 🌡️ PARAMETRE ŽÍHANIA (Tieto čísla definujú kvalitu vyhľadávania)
-        double temperature = 100.0;
-        final double coolingRate = 0.00005; // Ako rýchlo klesá teplota (menšie číslo = dôkladnejšie hľadanie)
+        // 🌡️ OPTIMALIZOVANÉ PARAMETRE (Štartujeme nižšie, chladneme pomalšie)
+        double temperature = 5.0; // 5.0 úplne stačí pri tvojej mierke skóre
+        final double coolingRate = 0.00001; // Smerom k nule ideme hlbšie a precíznejšie
 
         long localEvaluations = 0;
 
         // Bežíme do nekonečna (kým isRunning je true)
         while (isRunning.get()) { // && temperature > 0.1) {
 
-            // 🌡️ RE-HEATING: Ak pec vyhasla, zapálime ju znova a hľadáme novú trasu
-            if (temperature <= 0.1) {
-                temperature = 100.0;
+            // 🌡️ INTELIGENTNÝ RE-HEATING (Návrat ku koreňom)
+            if (temperature <= 0.05) {
+                // Pred zážihom vrátime maticu na lokálne maximum tohto jadra
+                currentMatrix = Arrays.copyOf(localBestMatrix, localBestMatrix.length);
+                currentScore = localBestScore;
+                temperature = 3.0; // Prihrejeme len natoľko, aby sme preskočili najbližšiu stenu
+                continue;
             }
 
             // 1. Náhodný výber dvoch pozícií na prehodenie (Swapping)
@@ -160,13 +167,20 @@ public final class ParallelOptimizer {
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (skScore >= thresholdSk && enScore >= thresholdEn) {
-                System.out.println("📝 Zápis do denníka: SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | " + new String(currentMatrix) + " | Jadro: " + threadId);
+                System.out.println("📝 Zápis do denníka: " + formatMatrix(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
 
-            // 4. Rozhodovacia matematika
+            // ROZHODOVACIA MATEMATIKA
             if (nextScore > currentScore) {
                 currentScore = nextScore;
+
+                // 🚀 Ak sme prepísali lokálny rekord jadra, zapíšeme si ho do pamäte
+                if (currentScore > localBestScore) {
+                    localBestScore = currentScore;
+                    localBestMatrix = Arrays.copyOf(currentMatrix, currentMatrix.length);
+                }
+
                 checkAndSetGlobalBest(currentMatrix, currentScore, skScore, enScore);
             } else {
                 double delta = currentScore - nextScore;
@@ -193,7 +207,7 @@ public final class ParallelOptimizer {
                 globalBestScore = score;
                 globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
                 System.out.printf("🏆 Nový bilingválny rekord! Skóre: %.4f (SK: %.2f | EN: %.2f) [%s]%n",
-                        score, sk, en, new String(globalBestMatrix));
+                        score, sk, en, formatMatrix(globalBestMatrix));
             }
         }
     }
@@ -207,11 +221,31 @@ public final class ParallelOptimizer {
                 String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 // 🚀 FIX: %n presunuté až na úplný koniec riadku, iterácia uprataná plynule do riadku
                 out.printf("%s | SK: %.4f | EN: %.4f | COMBINED: %.4f | %s (Core %d) | Iteration: %d%n",
-                        new String(matrix), sk, en, combined, timestamp, threadId, iteration);
+                        formatMatrix(matrix), sk, en, combined, timestamp, threadId, iteration);
 
             } catch (IOException e) {
                 System.err.println("Chyba zápisu do denníka: " + e.getMessage());
             }
         }
     }
+
+    public static String formatMatrix(char[] matrix) {
+        if (matrix == null || matrix.length != 30) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder(37); // Presná dĺžka stringu vrátane medzier
+
+        // Riadok 1 (0-4 | medzera | 5-9) + 2 medzery na oddelenie riadkov
+        sb.append(matrix, 0, 5).append(' ').append(matrix, 5, 5).append("  ");
+
+        // Riadok 2 (10-14 | medzera | 15-19) + 2 medzery na oddelenie riadkov
+        sb.append(matrix, 10, 5).append(' ').append(matrix, 15, 5).append("  ");
+
+        // Riadok 3 (20-24 | medzera | 25-29)
+        sb.append(matrix, 20, 5).append(' ').append(matrix, 25, 5);
+
+        return sb.toString();
+    }
+
 }

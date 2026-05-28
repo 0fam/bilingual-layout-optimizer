@@ -15,9 +15,10 @@ public final class OptimizationEngine {
         System.out.println("====================================================\n");
 
         // 1. ŠTARTOVACÍ LAYOUT (30 klávesov, mriežka 3x10)
-        String qwertyBase = "QWERTYUIOP" +
-                "ASDFGHJKL;" +
-                "ZXCVBNM,./";
+        String qwertyBase = (
+                "q x w h ;  . , l c b" +
+                "o a e i y  v s n t m" +
+                "g u k j '  f z r d p").replace(" ", "").toUpperCase();
         char[] initialMatrix = qwertyBase.toCharArray();
 
         // 2. INICIALIZÁCIA SCHRÁNOK PRE ŠTATISTIKY
