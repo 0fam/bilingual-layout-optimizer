@@ -179,7 +179,8 @@ public class LayoutStats {
                     // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
                     boolean k1Stretch = (k1.col == 4 || k1.col == 5);
                     boolean k2Stretch = (k2.col == 4 || k2.col == 5);
-                    if (k1Stretch != k2Stretch && k1.finger != k2.finger) {
+                    // 🚀 FIX: Používame unifikované prsty (f1Real != f2Real) namiesto k1.finger != k2.finger kvôli zosynchronizovaniu so svetovým štandardom LSB
+                    if (k1Stretch != k2Stretch && f1Real != f2Real) {
                         ls.lsb += fw.freq;
                     }
 
@@ -228,7 +229,10 @@ public class LayoutStats {
                     } else if (r1 > r2 && r2 > r3) {
                         ls.outwardRolls += fw.freq;
                     } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
-                        ls.redirects += fw.freq;
+                        // 🚀 FIX: Pridaná globálna poistka (r1 != r3). Trilly (kmitanie dvoch prstov) sa vyradia a ostanú len čisté Redirects.
+                        if (r1 != r3) {
+                            ls.redirects += fw.freq;
+                        }
                     }
                 }
             }
