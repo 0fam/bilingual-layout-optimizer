@@ -52,9 +52,9 @@ public final class LayoutAnalysisEngine {
         }
 
         // 2. 🚀 Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
-        List<LayoutLoader.LayoutInput> loadedLayouts;
+        List<LayoutLoader.LayoutInput> loadedLayouts = new ArrayList<>();
         try {
-            loadedLayouts = LayoutLoader.loadLayouts(targetPath);
+            loadedLayouts = LayoutLoader.loadLayouts(targetPath, loadedLayouts);
         } catch (IOException e) {
             System.err.println("❌ Chyba pri načítavaní layoutov z disku: " + e.getMessage());
             return;

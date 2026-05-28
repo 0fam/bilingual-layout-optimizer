@@ -17,7 +17,7 @@ public final class LayoutLoader {
     public record LayoutInput(String name, char[] matrix) {}
 
     /**
-     * Načíta 30-znakové layouty z jedného súboru (denníka) alebo z celého priečinka.
+     * Načíta 30-znakové layouty z jedného súboru (denníka) alebo z celého priečinka a pridá ich do existujúceho zoznamu.
      */
     public static List<LayoutInput> loadLayouts(String targetPath, List<LayoutInput> results) throws IOException {
         File target = new File(targetPath);
@@ -42,20 +42,26 @@ public final class LayoutLoader {
         } else if (target.isFile()) {
             // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
             List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
-            int counter = 1;
+
+            // Sledujeme skutočné číslo riadku v súbore pre dokonalú orientáciu
+            int lineNum = 0;
 
             for (String line : lines) {
+                lineNum++;
                 if (line.isBlank() || line.startsWith("#")) continue;
 
-                // 🚀 NEPRIESTRELNÝ PARSER PRE AKÝKOĽVEK FORMÁT:
+                // 🚀 NEPRIESTRELNÝ PARSER S INTELIGENTNÝM MENOVANÍM:
 
-                // 0. Spracovanie nového formátu logu s "Layout:" a vizuálnymi lomkami (/)
+                // 0. Spracovanie formátu logu s "Layout:" a vizuálnymi lomkami (/)
                 if (line.contains("Layout:")) {
                     String[] layoutParts = line.split("Layout:", 2);
-                    // Vymažeme lomky riadkov, očistíme medzery a skontrolujeme dĺžku
                     String maybeLayout = layoutParts[1].replace("/", "").replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
-                        results.add(new LayoutInput("Log_Layout_" + counter++, maybeLayout.toCharArray()));
+                        String iter = extractValue(line, "Iteracia:");
+                        // Vygeneruje napr: L1_I203572_L
+                        String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
+
+                        results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
                         continue;
                     }
                 }
@@ -65,7 +71,11 @@ public final class LayoutLoader {
                     String[] pipeParts = line.split("\\|");
                     String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
-                        results.add(new LayoutInput("Journal_Layout_" + counter++, maybeLayout.toCharArray()));
+                        String iter = extractValue(line, "Iterácia:");
+                        // Vygeneruje napr: L1_I74498_J
+                        String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
+
+                        results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
                         continue;
                     }
                 }
@@ -84,11 +94,38 @@ public final class LayoutLoader {
                 // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
                 String clean = line.replaceAll("\\s+", "");
                 if (clean.length() == 30) {
-                    results.add(new LayoutInput("Layout_" + counter++, clean.toCharArray()));
+                    results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toCharArray()));
                 }
             }
         }
 
         return results;
+    }
+
+    /**
+     * Pomocný extraktor, ktorý bezpečne vytiahne hodnotu za kľúčom (napr. číslo iterácie)
+     */
+    private static String extractValue(String line, String key) {
+        int idx = line.indexOf(key);
+        if (idx == -1) return "";
+
+        int start = idx + key.length();
+
+        // Preskočíme počiatočné medzery za dvojbodkou
+        while (start < line.length() && Character.isWhitespace(line.charAt(start))) {
+            start++;
+        }
+
+        // Čítame znaky, kým nenazrazíme na koniec, rúru alebo prázdny znak
+        int end = start;
+        while (end < line.length()) {
+            char ch = line.charAt(end);
+            if (ch == '|' || Character.isWhitespace(ch)) {
+                break;
+            }
+            end++;
+        }
+
+        return line.substring(start, end);
     }
 }
