@@ -22,7 +22,6 @@ public final class LayoutAnalysisEngine {
     private Map<String, Double> dictSK;
     private Map<String, Double> dictEN;
 
-    // 🎯 OPRAVA: Zladené na 0.80, aby to sedelo s OptimizationEngine
     private final double slovakRatio = 0.80;
 
     // Vnútorný pomocný kontajner pre potreby zoradenia výsledkov
@@ -73,17 +72,37 @@ public final class LayoutAnalysisEngine {
                 // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
                 List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
                 int counter = 1;
+
                 for (String line : lines) {
                     if (line.isBlank() || line.startsWith("#")) continue;
 
+                    // 🚀 NEPRIESTRELNÝ PARSER PRE AKÝKOĽVEK FORMÁT:
+
+                    // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
+                    if (line.contains("|")) {
+                        String[] pipeParts = line.split("\\|");
+                        String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
+                        if (maybeLayout.length() == 30) {
+                            loadedLayouts.add(Map.entry("Journal_Layout_" + counter++, maybeLayout.toCharArray()));
+                            continue;
+                        }
+                    }
+
+                    // 2. Ak je to formát Meno = Layout alebo Meno : Layout (limit 2 chráni časové pečiatky)
+                    if (line.contains(":") || line.contains("=")) {
+                        String[] splitParts = line.split("[:=]", 2);
+                        String name = splitParts[0].trim();
+                        String maybeLayout = splitParts[1].replaceAll("\\s+", "");
+                        if (maybeLayout.length() == 30) {
+                            loadedLayouts.add(Map.entry(name, maybeLayout.toCharArray()));
+                            continue;
+                        }
+                    }
+
+                    // 3. Posledná záchrana: riadok je čistý 30-znakový layout
                     String clean = line.replaceAll("\\s+", "");
                     if (clean.length() == 30) {
-                        loadedLayouts.add(Map.entry("Journal_Layout_" + counter++, clean.toCharArray()));
-                    } else if (line.contains(":") || line.contains("=")) {
-                        String[] parts = line.split("[:=]");
-                        if (parts.length == 2 && parts[1].trim().length() == 30) {
-                            loadedLayouts.add(Map.entry(parts[0].trim(), parts[1].trim().toCharArray()));
-                        }
+                        loadedLayouts.add(Map.entry("Layout_" + counter++, clean.toCharArray()));
                     }
                 }
             }
