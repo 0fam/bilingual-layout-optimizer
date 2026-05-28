@@ -114,7 +114,7 @@ public final class LayoutAnalysisEngine {
                 }
             }
         }
-        System.out.println(" " + counterTotal);
+        System.out.println(" " + counterTotal + counterLine * 1000 + counterDot);
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
