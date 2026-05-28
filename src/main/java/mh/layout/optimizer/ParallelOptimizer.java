@@ -33,7 +33,7 @@ public final class ParallelOptimizer {
     private double skMono, skBigram, skSkip, skTri;
     private double enMono, enBigram, enSkip, enTri;
 
-    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
+    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double thresholdSk, double thresholdEn) {
         if (isRunning.get()) return;
         isRunning.set(true);
 
@@ -73,7 +73,7 @@ public final class ParallelOptimizer {
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
-            Thread worker = new Thread(() -> runAnnealingWorker(threadId, initialMatrix, statsSK, statsEN, weights, skRatio));
+            Thread worker = new Thread(() -> runAnnealingWorker(threadId, initialMatrix, statsSK, statsEN, weights, skRatio, thresholdSk, thresholdEn));
             worker.setDaemon(true);
             worker.start();
         }
@@ -102,7 +102,7 @@ public final class ParallelOptimizer {
     // =========================================================================
     // ⚙️ JADRO ŽÍHANIA: Spúšťa sa samostatne v každom vlákne
     // =========================================================================
-    private void runAnnealingWorker(int threadId, char[] startMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
+    private void runAnnealingWorker(int threadId, char[] startMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double thresholdSk, double thresholdEn) {
         Random rand = new Random();
         char[] currentMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
 
@@ -160,7 +160,7 @@ public final class ParallelOptimizer {
             }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
-            if (skScore >= 80.0 && enScore >= 70.0) {
+            if (skScore >= thresholdSk && enScore >= thresholdEn) {
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
 

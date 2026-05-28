@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public final class OptimizationEngine {
 
-    public void run() {
+    public void run(double thresholdSk, double thresholdEn) {
         System.out.println("====================================================");
         System.out.println("       BILINGVÁLNY OPTIMIZÉR KLÁVESNICE TOTEM        ");
         System.out.println("====================================================\n");
@@ -47,7 +47,7 @@ public final class OptimizationEngine {
 
         // 6. ODPÁLENIE MULTITHREADOVÉHO MOTORA
         ParallelOptimizer optimizer = new ParallelOptimizer();
-        optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio);
+        optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio, thresholdSk, thresholdEn);
 
         // 7. MONITOROVACIA SLUČKA (Tachometer rýchlosti)
         long lastEvaluations = 0;

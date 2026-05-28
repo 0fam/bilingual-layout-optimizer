@@ -103,10 +103,12 @@ public final class LayoutAnalysisEngine {
 
 //            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
             // cislo nasobok 2 na X - 1 potrebujes 0000111111 seriu jednotiek na konci
-            if ((counter++ & 63) == 0) {
+            if ((counter++ & 0x3FF) == 0) {
                 System.out.print("\r Analyzujem layout " + counter + " " + input.name() + "          ");
             }
         }
+        System.out.print("\r                                                "); // vymaz stary zaznam
+        System.out.print("\r"); // zresetuj uroven kurzora
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
