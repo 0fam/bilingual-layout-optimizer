@@ -169,8 +169,8 @@ public class LayoutStats {
                         wordHadSfb = true;
                     }
 
-                    // Scissors (Nožnice) - ponechávame pôvodné indexy stĺpcov pre čistý nožnicový kríž
-                    if (Math.abs(k1.finger.ordinal() - k2.finger.ordinal()) == 1) {
+                    // Scissors (Nožnice) - 🚀 FIX: Teraz už správne používame unifikované prsty (f1Real, f2Real)
+                    if (Math.abs(f1Real - f2Real) == 1) {
                         if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
                             ls.scissors += fw.freq;
                         }
