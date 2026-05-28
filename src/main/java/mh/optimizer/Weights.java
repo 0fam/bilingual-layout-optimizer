@@ -25,7 +25,7 @@ public class Weights {
 
     // --- ODMENOVÉ METRIKY (Čím viac, tým lepšie) ---
     @Builder.Default private double homeRow = 1.0;     // Odmena za udržanie prstov na základnom riadku
-    @Builder.Default private double alt = 0.0;         // Striedanie rúk (rytmika)
+    @Builder.Default private double alt = 1.0;         // Striedanie rúk (rytmika)
     @Builder.Default private double rollIn = 0.0;      // Valivé pohyby smerom k palcu (Plynulosť)
     @Builder.Default private double rollOut = 0.0;     // Valivé pohyby smerom von
     @Builder.Default private double runs = 0.0;        // sekvencie pisane jednou rukou x-znakov za sebou

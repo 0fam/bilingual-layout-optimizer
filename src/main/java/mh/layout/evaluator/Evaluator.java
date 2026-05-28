@@ -211,15 +211,17 @@ public final class Evaluator {
             }
         }
 
+        boolean hasSomeFingers = false;
         // 🚀 OPTIMALIZOVANÉ: Výpočet prstových koeficientov cez statickú cache
         for (int i = 0; i < FINGER_COUNT; i++) {
             Finger f = FINGERS_CACHE[i];
             double coef = weights.calculateFingerCoefficient(f, localFingerPercents[i]);
             if (coef >= 0) {
                 totalProduct *= coef;
-                totalCount++;
+                hasSomeFingers = true;
             }
         }
+        if (hasSomeFingers) totalCount++;
 
         // =========================================================================
         // 👑 4. FINÁLNE SKÓRE TELESA (Jediné Pow na samom konci)

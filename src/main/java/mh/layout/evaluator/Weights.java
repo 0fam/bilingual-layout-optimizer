@@ -26,25 +26,46 @@ public final class Weights {
         metricRegistry.put(MetricType.SCISSORS,  new LimitParam(0.5,  3.0)); // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
         metricRegistry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
         metricRegistry.put(MetricType.LSB,       new LimitParam(1.0,   6.0)); // Lateral Stretch Bigram (vychýlenie ukazováka)
-        metricRegistry.put(MetricType.LHB,       new LimitParam(4.0,   5.0)); // Lateral Hand Bigram (únava malíček-prstenník)
+        metricRegistry.put(MetricType.LHB,       new LimitParam(1.0,   5.0)); // Lateral Hand Bigram (únava malíček-prstenník)
 
 //        metricRegistry.put(MetricType.EFFORT,   new LimitParam(1.2,  1.8)); // Priemerný stretch na kláves, touto metrikou som si nie moc isty... je to taky presnejsi home-row + zatazenie prstov, ale vlemi sa to kryje a je otazne ako to nastavit
 
         // Pozitívne: safe = kedy začína bonus, dead = pod čo layout okamžite zabijeme
-        metricRegistry.put(MetricType.HOME_ROW,  new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
-//        metricRegistry.put(MetricType.ALT,       new LimitParam(60.0, 40.0)); // Chceme striedanie rúk nad 35%
-//        metricRegistry.put(MetricType.ROLL_IN,   new LimitParam(15.0,  0.0));
-//        metricRegistry.put(MetricType.ROLL_OUT,  new LimitParam(10.0,  0.0));
+        metricRegistry.put(MetricType.HOME_ROW,    new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
+        metricRegistry.put(MetricType.ALTERNATION, new LimitParam(50.0, 35.0)); // Chceme striedanie rúk nad 35%. Skvelý balans medzi Rollmi a Ping-Pongom
+//        metricRegistry.put(MetricType.ROLL_IN,     new LimitParam(15.0,  0.0));
+//        metricRegistry.put(MetricType.ROLL_OUT,    new LimitParam(10.0,  0.0));
 
         // Každý prst dostane svoj vlastný, natvrdo zadefinovaný safe strop a bod smrti
-        fingerRegistry.put(Finger.LP, new LimitParam(8.0,  12.0)); // Malíčky: Ideál 0%, bezpečné do 9%, nad 12% je to invalidita
-        fingerRegistry.put(Finger.LR, new LimitParam(12.0, 16.0)); // Prstenníky: Spojené s malíčkom. Bezpečné do 20%, nad 24% je to invalidita
-        fingerRegistry.put(Finger.LM, new LimitParam(15.0, 20.0)); // Prostredníky: Stabilné piliere. Safe do 22%, smrť na 26%
-        fingerRegistry.put(Finger.LI, new LimitParam(18.0, 24.0)); // Ukazováky: Najsilnejšie, ale majú aj stredové stĺpce. Safe do 26%, smrť na 30%
-        fingerRegistry.put(Finger.RI, new LimitParam(18.0, 24.0));
-        fingerRegistry.put(Finger.RM, new LimitParam(15.0, 20.0));
-        fingerRegistry.put(Finger.RR, new LimitParam(12.0, 16.0));
-        fingerRegistry.put(Finger.RP, new LimitParam(8.0,  12.0));
+        // stary Analyzer ma toto:
+//        fingerRegistry.put(Finger.LP, new LimitParam(9.0,  12.0)); // Malíčky: Ideál 0%, bezpečné do 9%, nad 12% je to invalidita
+//        fingerRegistry.put(Finger.LR, new LimitParam(20.0, 24.0)); // Prstenníky: Spojené s malíčkom. Bezpečné do 20%, nad 24% je to invalidita
+//        fingerRegistry.put(Finger.LM, new LimitParam(22.0, 26.0)); // Prostredníky: Stabilné piliere. Safe do 22%, smrť na 26%
+//        fingerRegistry.put(Finger.LI, new LimitParam(26.0, 30.0)); // Ukazováky: Najsilnejšie, ale majú aj stredové stĺpce. Safe do 26%, smrť na 30%
+//        fingerRegistry.put(Finger.RI, new LimitParam(26.0, 30.0));
+//        fingerRegistry.put(Finger.RM, new LimitParam(22.0, 26.0));
+//        fingerRegistry.put(Finger.RR, new LimitParam(20.0, 24.0));
+//        fingerRegistry.put(Finger.RP, new LimitParam(9.0,  12.0));
+        // novy system navrhol toto, co je
+        // Malíček (Optimum max 9% + 3% tlmič)
+        fingerRegistry.put(Finger.LP, new LimitParam(9.0,  12.0));
+        fingerRegistry.put(Finger.RP, new LimitParam(9.0,  12.0));
+        // Prstenník (Optimum max 13% + 4% tlmič)
+        fingerRegistry.put(Finger.LR, new LimitParam(13.0, 17.0));
+        fingerRegistry.put(Finger.RR, new LimitParam(13.0, 17.0));
+        // Prostredník (Optimum max 19% + 4% tlmič)
+        fingerRegistry.put(Finger.LM, new LimitParam(19.0, 23.0));
+        fingerRegistry.put(Finger.RM, new LimitParam(19.0, 23.0));
+        // Ukazovák (Optimum max 22% + 4% tlmič)
+        fingerRegistry.put(Finger.LI, new LimitParam(22.0, 26.0));
+        fingerRegistry.put(Finger.RI, new LimitParam(22.0, 26.0));
+        /*
+        Prst, Biomechanické optimum (Svetový štandard)
+        Malíček (Pinky),       7 % –  9 %
+        Prstenník (Ring),     10 % – 13 %
+        Prostredník (Middle), 16 % – 19 %
+        Ukazovák (Index),     18 % – 22 %
+         */
     }
 
     public double calculateCoefficient(MetricType type, double actualValue) {
@@ -54,6 +75,7 @@ public final class Weights {
             return -1.0; // koeficient 1 nezmeni sucin
         }
         // vráti hodnotu: bonus (>1.0), záchrana (0.01 až 1.0) alebo veto (0.01)
+        System.out.println("Koeficient pre " + type + " s hodnotou " + actualValue + " je: " + getCoefficient(actualValue, p.goodEnough, p.notEnough));
         return getCoefficient(actualValue, p.goodEnough, p.notEnough);
     }
 

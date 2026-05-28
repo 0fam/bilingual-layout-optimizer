@@ -25,7 +25,7 @@ public class Analyzer {
 
         Map<String, Layout> layoutsToTest = new HashMap<>();
         layoutsToTest = FileSystemHelper.readLayoutsFromDir(layoutsDir);
-        RecordParser.loadRecordsToAnalyzer("totem_rekordy.txt", layoutsToTest);
+//        RecordParser.loadRecordsToAnalyzer("totem_rekordy.txt", layoutsToTest);
 
         if (layoutsToTest.isEmpty()) {
             System.err.println("Nenašli sa žiadne platné layouty na testovanie. Končím.");
