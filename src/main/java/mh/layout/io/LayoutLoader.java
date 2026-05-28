@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class LayoutLoader {
@@ -32,74 +31,88 @@ public final class LayoutLoader {
             if (files != null) {
                 for (File f : files) {
                     if (f.isFile()) {
-                        String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
-                        if (content.length() == 30) {
-                            // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
-                            results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
+                        if (f.getName().endsWith(".dof")) {
+                            String dofMatrix = parseDofMatrix(f);
+                            if (dofMatrix != null) {
+                                results.add(new LayoutInput(f.getName(), dofMatrix.toCharArray()));
+                            }
+                        } else {
+                            String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
+                            if (content.length() == 30) {
+                                // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
+                                results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
+                            }
                         }
                     }
                 }
             }
         } else if (target.isFile()) {
             // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
-            List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
-
-            // Sledujeme skutočné číslo riadku v súbore pre dokonalú orientáciu
-            int lineNum = 0;
-
-            for (String line : lines) {
-                lineNum++;
-                if (line.isBlank() || line.startsWith("#")) continue;
-
-                // 🚀 NEPRIESTRELNÝ PARSER S INTELIGENTNÝM MENOVANÍM A FIXOM VEĽKOSTI PÍSMEN:
-
-                // 0. Spracovanie formátu logu s "Layout:" a vizuálnymi lomkami (/)
-                if (line.contains("Layout:")) {
-                    String[] layoutParts = line.split("Layout:", 2);
-                    String maybeLayout = layoutParts[1].replace("/", "").replaceAll("\\s+", "");
-                    if (maybeLayout.length() == 30) {
-                        String iter = extractValue(line, "Iteracia:");
-                        // Vygeneruje napr: L1_I203572_L
-                        String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
-
-                        // 🚀 FIX: Prevod na UpperCase pre log formát
-                        results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
-                        continue;
-                    }
+            if (target.getName().endsWith(".dof")) {
+                String dofMatrix = parseDofMatrix(target);
+                if (dofMatrix != null) {
+                    results.add(new LayoutInput(target.getName(), dofMatrix.toCharArray()));
                 }
+            } else {
+                List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
 
-                // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
-                if (line.contains("|")) {
-                    String[] pipeParts = line.split("\\|");
-                    String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
-                    if (maybeLayout.length() == 30) {
-                        String iter = extractValue(line, "Iterácia:");
-                        // Vygeneruje napr: L1_I74498_J
-                        String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
+                // Sledujeme skutočné číslo riadku v súbore pre dokonalú orientáciu
+                int lineNum = 0;
 
-                        // 🚀 FIX: Prevod na UpperCase pre žurnál formát
-                        results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
-                        continue;
+                for (String line : lines) {
+                    lineNum++;
+                    if (line.isBlank() || line.startsWith("#")) continue;
+
+                    // 🚀 NEPRIESTRELNÝ PARSER S INTELIGENTNÝM MENOVANÍM A FIXOM VEĽKOSTI PÍSMEN:
+
+                    // 0. Spracovanie nového formátu logu s "Layout:" a vizuálnymi lomkami (/)
+                    if (line.contains("Layout:")) {
+                        String[] layoutParts = line.split("Layout:", 2);
+                        String maybeLayout = layoutParts[1].replace("/", "").replaceAll("\\s+", "");
+                        if (maybeLayout.length() == 30) {
+                            String iter = extractValue(line, "Iteracia:");
+                            // Vygeneruje napr: L1_I203572_L
+                            String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
+
+                            // 🚀 FIX: Prevod na UpperCase pre log formát
+                            results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
+                            continue;
+                        }
                     }
-                }
 
-                // 2. Spracovanie formátu kľúč = hodnota (napr. Dvorak = ANAS...)
-                if (line.contains(":") || line.contains("=")) {
-                    String[] splitParts = line.split("[:=]", 2);
-                    String name = splitParts[0].trim();
-                    String maybeLayout = splitParts[1].replaceAll("\\s+", "");
-                    if (maybeLayout.length() == 30) {
-                        // 🚀 FIX: Prevod na UpperCase pre kľúč-hodnota formát
-                        results.add(new LayoutInput(name, maybeLayout.toUpperCase().toCharArray()));
-                        continue;
+                    // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
+                    if (line.contains("|")) {
+                        String[] pipeParts = line.split("\\|");
+                        String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
+                        if (maybeLayout.length() == 30) {
+                            String iter = extractValue(line, "Iterácia:");
+                            // Vygeneruje napr: L1_I74498_J
+                            String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
+
+                            // 🚀 FIX: Prevod na UpperCase pre žurnál formát
+                            results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
+                            continue;
+                        }
                     }
-                }
 
-                // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
-                String clean = line.replaceAll("\\s+", "");
-                if (clean.length() == 30) {
-                    // 🚀 FIX: Prevod na UpperCase pre čistý surový riadok
-                    results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toUpperCase().toCharArray()));
+                    // 2. Spracovanie formátu kľúč = hodnota (napr. Dvorak = ANAS...)
+                    if (line.contains(":") || line.contains("=")) {
+                        String[] splitParts = line.split("[:=]", 2);
+                        String name = splitParts[0].trim();
+                        String maybeLayout = splitParts[1].replaceAll("\\s+", "");
+                        if (maybeLayout.length() == 30) {
+                            // 🚀 FIX: Prevod na UpperCase pre kľúč-hodnota formát
+                            results.add(new LayoutInput(name, maybeLayout.toUpperCase().toCharArray()));
+                            continue;
+                        }
+                    }
+
+                    // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
+                    String clean = line.replaceAll("\\s+", "");
+                    if (clean.length() == 30) {
+                        // 🚀 FIX: Prevod na UpperCase pre čistý surový riadok
+                        results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toUpperCase().toCharArray()));
+                    }
                 }
             }
         }
@@ -132,5 +145,36 @@ public final class LayoutLoader {
         }
 
         return line.substring(start, end);
+    }
+
+    /**
+     * Samostatný bezpečný parser pre súbory *.dof bez externých knižníc
+     */
+    private static String parseDofMatrix(File file) {
+        try {
+            String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+            int mainStart = json.indexOf("\"main\":");
+            if (mainStart != -1) {
+                int startBracket = json.indexOf("[", mainStart);
+                int endBracket = json.indexOf("]", startBracket);
+                if (startBracket != -1 && endBracket != -1) {
+                    String mainContent = json.substring(startBracket + 1, endBracket);
+                    StringBuilder sb = new StringBuilder();
+                    for (String line : mainContent.split("\n")) {
+                        int firstQuote = line.indexOf("\"");
+                        int lastQuote = line.lastIndexOf("\"");
+                        if (firstQuote != -1 && lastQuote != -1 && firstQuote < lastQuote) {
+                            sb.append(line.substring(firstQuote + 1, lastQuote).replaceAll("\\s+", ""));
+                        }
+                    }
+                    if (sb.length() == 30) {
+                        return sb.toString().toUpperCase();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("⚠️ Chyba pri čítaní .dof súboru: " + e.getMessage());
+        }
+        return null;
     }
 }
