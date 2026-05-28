@@ -51,7 +51,7 @@ public final class Weights {
         LimitParam p = metricRegistry.get(type);
         if (p == null) {
             // ziaden vypis kvoli vykonu
-            return 1.0; // koeficient 1 nezmeni sucin
+            return -1.0; // koeficient 1 nezmeni sucin
         }
         // vráti hodnotu: bonus (>1.0), záchrana (0.01 až 1.0) alebo veto (0.01)
         return getCoefficient(actualValue, p.goodEnough, p.notEnough);
