@@ -145,7 +145,7 @@ public final class LayoutAnalyzer {
             // 🚀 FIX: Pole indexov alokujeme pre každé slovo dynamicky na základe jeho reálnej dĺžky.
             // Už nikdy nedôjde k pretečeniu indexu kvôli poškodenému textu v korpusoch.
             if (origWord.length() > 128) {
-                System.out.println("prilis dlhe slovo");
+                System.out.println("prilis dlhe slovo: " + origWord);
                 continue;
             }
             int len = 0;

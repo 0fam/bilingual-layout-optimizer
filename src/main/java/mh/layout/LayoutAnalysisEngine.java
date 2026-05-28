@@ -138,14 +138,15 @@ public final class LayoutAnalysisEngine {
         try (PrintWriter fileOut = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath), StandardCharsets.UTF_8))) {
 
             // Zápis hlavičky výhradne do súboru
-            fileOut.println("=======================================================================================================================================================================================");
-            fileOut.println("                                             VÝSLEDNÁ LISTINA BILINGVÁLNYCH LAYOUTOV (Zoradené podľa: COMBINED ELITE SCORE)");
-            fileOut.println("=======================================================================================================================================================================================");
+            fileOut.println("===================================================================================================================================================================================================================");
+            fileOut.println("                                                              VÝSLEDNÁ LISTINA BILINGVÁLNYCH LAYOUTOV (Zoradené podľa: COMBINED ELITE SCORE)");
+            fileOut.println("===================================================================================================================================================================================================================");
 
-            String headerFormat = "%-4s | %-18s | %-7s | %-8s | %-8s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s%n";
-            String lineSeparator = "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+            // 🚀 ROZŠÍRENIE: Pridaný formát %-41s pre stĺpec vizuálneho layoutu klávesnice
+            String headerFormat = "%-4s | %-18s | %-41s | %-7s | %-8s | %-8s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s%n";
+            String lineSeparator = "-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
 
-            fileOut.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+            fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
             fileOut.print(lineSeparator);
 
             int idx = 0;
@@ -153,7 +154,7 @@ public final class LayoutAnalysisEngine {
                 // Každých 10 riadkov hodíme pod-hlavičku kvôli scannovaniu v textovom editore
                 if (idx > 0 && idx % 10 == 0) {
                     fileOut.print(lineSeparator);
-                    fileOut.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+                    fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
                     fileOut.print(lineSeparator);
                 }
 
@@ -172,13 +173,16 @@ public final class LayoutAnalysisEngine {
 
                 String displayName = res.name.length() > 18 ? res.name.substring(0, 15) + "..." : res.name;
 
-                fileOut.printf("%-4d | %-18s | %7.4f | %8.4f | %8.4f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f%n",
-                        ++idx, displayName, res.combinedScore, res.skStats.getScore(), res.enStats.getScore(),
+                // 🚀 MINIMÁLNA ZMENA: Prevedieme 30 znakovú maticu na čitateľnú mapu prstov a rúk
+                String visualLayout = formatMatrixVisual(res.matrix);
+
+                fileOut.printf("%-4d | %-18s | %-41s | %7.4f | %8.4f | %8.4f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f%n",
+                        ++idx, displayName, visualLayout, res.combinedScore, res.skStats.getScore(), res.enStats.getScore(),
                         avgSfb, avgSfs, avgAlt, avgRollIn, avgRollOut, avgScissors, avgRedirect, avgLsb, avgLhb, avgHome, avgStretch
                 );
             }
 
-            fileOut.println("=======================================================================================================================================================================================");
+            fileOut.println("===================================================================================================================================================================================================================");
 
             // Jediný oznam, ktorý pošleme do konzoly
             System.out.println("\n💾 REBRÍČEK ULOŽENÝ: Usporiadaná výsledná listina je na disku: " + outputFilePath);
@@ -186,5 +190,17 @@ public final class LayoutAnalysisEngine {
         } catch (IOException e) {
             System.err.println("⚠️ Chyba pri zápise rebríčka do súboru: " + e.getMessage());
         }
+    }
+
+    /**
+     * 🚀 POMOCNÁ METÓDA: Transformuje 30-znakový jednorozmerný char[] na vizuálnu trojriadkovú mriežku klávesnice.
+     */
+    private String formatMatrixVisual(char[] m) {
+        if (m == null || m.length != 30) return "";
+        return String.format("%s %s | %s %s | %s %s",
+                new String(m, 0, 5),  new String(m, 5, 5),
+                new String(m, 10, 5), new String(m, 15, 5),
+                new String(m, 20, 5), new String(m, 25, 5)
+        );
     }
 }

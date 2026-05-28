@@ -34,8 +34,8 @@ public final class LayoutLoader {
                     if (f.isFile()) {
                         String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
                         if (content.length() == 30) {
-                            results.add(new LayoutInput(f.getName(), content.toCharArray()));
-//                            System.out.println("✅ Načítaný layout z [" + f.getName() + "]");
+                            // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
+                            results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
                         }
                     }
                 }
@@ -51,7 +51,7 @@ public final class LayoutLoader {
                 lineNum++;
                 if (line.isBlank() || line.startsWith("#")) continue;
 
-                // 🚀 NEPRIESTRELNÝ PARSER S INTELIGENTNÝM MENOVANÍM:
+                // 🚀 NEPRIESTRELNÝ PARSER S INTELIGENTNÝM MENOVANÍM A FIXOM VEĽKOSTI PÍSMEN:
 
                 // 0. Spracovanie formátu logu s "Layout:" a vizuálnymi lomkami (/)
                 if (line.contains("Layout:")) {
@@ -62,8 +62,8 @@ public final class LayoutLoader {
                         // Vygeneruje napr: L1_I203572_L
                         String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
 
-                        results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
-//                        System.out.println("✅ Načítaný layout z logu [" + generatedName + "]");
+                        // 🚀 FIX: Prevod na UpperCase pre log formát
+                        results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
                         continue;
                     }
                 }
@@ -77,8 +77,8 @@ public final class LayoutLoader {
                         // Vygeneruje napr: L1_I74498_J
                         String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
 
-                        results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
-//                        System.out.println("✅ Načítaný layout zo journalu [" + generatedName + "]");
+                        // 🚀 FIX: Prevod na UpperCase pre žurnál formát
+                        results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
                         continue;
                     }
                 }
@@ -89,8 +89,8 @@ public final class LayoutLoader {
                     String name = splitParts[0].trim();
                     String maybeLayout = splitParts[1].replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
-                        results.add(new LayoutInput(name, maybeLayout.toCharArray()));
-//                        System.out.println("✅ Načítaný layout z formátu kľúč=hodnota [" + name + "]");
+                        // 🚀 FIX: Prevod na UpperCase pre kľúč-hodnota formát
+                        results.add(new LayoutInput(name, maybeLayout.toUpperCase().toCharArray()));
                         continue;
                     }
                 }
@@ -98,8 +98,8 @@ public final class LayoutLoader {
                 // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
                 String clean = line.replaceAll("\\s+", "");
                 if (clean.length() == 30) {
-                    results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toCharArray()));
-//                    System.out.println("✅ Načítaný layout z čistého 30-znakového řádku [" + "L" + lineNum + "_Pure" + "]");
+                    // 🚀 FIX: Prevod na UpperCase pre čistý surový riadok
+                    results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toUpperCase().toCharArray()));
                 }
             }
         }
