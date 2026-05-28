@@ -19,8 +19,7 @@ public final class LayoutLoader {
     /**
      * Načíta 30-znakové layouty z jedného súboru (denníka) alebo z celého priečinka.
      */
-    public static List<LayoutInput> loadLayouts(String targetPath) throws IOException {
-        List<LayoutInput> result = new ArrayList<>();
+    public static List<LayoutInput> loadLayouts(String targetPath, List<LayoutInput> results) throws IOException {
         File target = new File(targetPath);
 
         if (!target.exists()) {
@@ -35,7 +34,7 @@ public final class LayoutLoader {
                     if (f.isFile()) {
                         String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
                         if (content.length() == 30) {
-                            result.add(new LayoutInput(f.getName(), content.toCharArray()));
+                            results.add(new LayoutInput(f.getName(), content.toCharArray()));
                         }
                     }
                 }
@@ -50,12 +49,23 @@ public final class LayoutLoader {
 
                 // 🚀 NEPRIESTRELNÝ PARSER PRE AKÝKOĽVEK FORMÁT:
 
+                // 0. Spracovanie nového formátu logu s "Layout:" a vizuálnymi lomkami (/)
+                if (line.contains("Layout:")) {
+                    String[] layoutParts = line.split("Layout:", 2);
+                    // Vymažeme lomky riadkov, očistíme medzery a skontrolujeme dĺžku
+                    String maybeLayout = layoutParts[1].replace("/", "").replaceAll("\\s+", "");
+                    if (maybeLayout.length() == 30) {
+                        results.add(new LayoutInput("Log_Layout_" + counter++, maybeLayout.toCharArray()));
+                        continue;
+                    }
+                }
+
                 // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
                 if (line.contains("|")) {
                     String[] pipeParts = line.split("\\|");
                     String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
-                        result.add(new LayoutInput("Journal_Layout_" + counter++, maybeLayout.toCharArray()));
+                        results.add(new LayoutInput("Journal_Layout_" + counter++, maybeLayout.toCharArray()));
                         continue;
                     }
                 }
@@ -66,7 +76,7 @@ public final class LayoutLoader {
                     String name = splitParts[0].trim();
                     String maybeLayout = splitParts[1].replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
-                        result.add(new LayoutInput(name, maybeLayout.toCharArray()));
+                        results.add(new LayoutInput(name, maybeLayout.toCharArray()));
                         continue;
                     }
                 }
@@ -74,11 +84,11 @@ public final class LayoutLoader {
                 // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
                 String clean = line.replaceAll("\\s+", "");
                 if (clean.length() == 30) {
-                    result.add(new LayoutInput("Layout_" + counter++, clean.toCharArray()));
+                    results.add(new LayoutInput("Layout_" + counter++, clean.toCharArray()));
                 }
             }
         }
 
-        return result;
+        return results;
     }
 }

@@ -27,7 +27,7 @@ public final class ParallelOptimizer {
     private final Object journalLock = new Object();
 
     private long totalEvaluations = 0;
-    private static final String JOURNAL_FILE = "layout_journal.txt";
+    private static final String JOURNAL_FILE = "c:\\home\\project-personal\\layouts\\layout_journal.txt";
 
     // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
     private double skMono, skBigram, skSkip, skTri;
