@@ -4,12 +4,12 @@ import java.util.List;
 
 public final class Main {
     public static void main(String[] args) {
-//        boolean optimize = true;
-        boolean optimize = false;
+        boolean optimize = true;
+//        boolean optimize = false;
 
         if (optimize) {
             // MOŽNOSŤ A: Spustenie optimalizácie (Hľadanie nového šampióna)
-            new OptimizationEngine().run(83, 55);
+            new OptimizationEngine().run(87, 77);
         } else {
             // MOŽNOSŤ B: Standalone analýza a rebríček hotových layoutov z disku
             new LayoutAnalysisEngine().runStandalone(List.of(

@@ -27,7 +27,7 @@ public final class ParallelOptimizer {
     private final Object journalLock = new Object();
 
     private long totalEvaluations = 0;
-    private static final String JOURNAL_FILE = "c:\\home\\project-personal\\layouts\\layout_journal.txt";
+    private static final String JOURNAL_FILE = "c:\\home\\project-personal\\layout-analyzer\\layout_journal.txt";
 
     // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
     private double skMono, skBigram, skSkip, skTri;
@@ -69,7 +69,7 @@ public final class ParallelOptimizer {
 
         int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
-        System.out.println("📝 Denník (SK >= 80, EN >= 70) zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
+        System.out.println("📝 Denník (SK >= " + thresholdSk + ", EN >= " + thresholdEn + ") zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
