@@ -9,7 +9,12 @@ import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.stats.NGramStats;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -69,12 +74,16 @@ public final class LayoutAnalysisEngine {
             return;
         }
 
-        System.out.printf("📦 Celkovo načítaných %d layoutov na hĺbkovú biomechanickú analýzu.%n", loadedLayouts.size());
+        System.out.printf("📦 Celkovo načítaných %d layoutov. Spúšťam analýzu...%n%n", loadedLayouts.size());
 
         // 3. Biomechanické hodnotenie každej jednej načítanej matice (Unikátne menovatele pre každú "inú" klávesnicu)
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
         double englishRatio = 1.0 - slovakRatio;
 
+        long counterDot = 0;
+        long counterLine = 0;
+        long counterTotal = 0;
+        // 🟢 PRIEBEŽNÝ TICKER (Ide iba na obrazovku, aby si videl progres a život jadier)
         for (LayoutLoader.LayoutInput input : loadedLayouts) {
             char[] matrix = input.matrix();
 
@@ -84,16 +93,26 @@ public final class LayoutAnalysisEngine {
 
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
             leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
-            System.out.println("✅ Analyzovaný layout [" + input.name() + "] | Bilingual Elite Score: " + String.format("%.4f", combinedScore));
+
+//            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
+            if (counterDot++ >= 1000) {
+                counterDot = 0;
+                System.out.print(".");
+                if (counterLine++ >= 100) {
+                    counterLine = 0;
+                    counterTotal += 100_000;
+                    System.out.println(counterTotal);
+                }
+            }
         }
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
 
-        // 5. Vykreslenie prehľadnej tabuľky do konzoly
-        printLeaderboardTable(leaderboard);
+        // 🚀 EXPORT: Zapíše usporiadanú tabuľku výhradne na disk (Konzolu už neotravuje)
+        saveSortedLeaderboardToFile(leaderboard);
 
-        // 6. 🔍 Hĺbkový röntgen slovníkov pre celú listinu
+        // 🔍 Hĺbkový röntgen layoutov
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
             LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
@@ -106,63 +125,68 @@ public final class LayoutAnalysisEngine {
                 System.err.println("⚠️ Nepodarilo sa uložiť podrobný audit pre " + layout.name + ": " + e.getMessage());
             }
         }
-        System.out.println("🎯 Audity boli úspešne vygenerované do: data/best_layout_audit.txt");
+        System.out.println("🎯 Audity layoutov boli úspešne vygenerované do: data/best_layout_audit.txt");
     }
 
-    private void printLeaderboardTable(List<AnalyzedLayout> list) {
-        System.out.println("\n=======================================================================================================================================================================================");
-        System.out.println("                                             VÝSLEDNÁ LISTINA BILINGVÁLNYCH LAYOUTOV (Zoradené podľa: COMBINED ELITE SCORE)");
-        System.out.println("=======================================================================================================================================================================================");
+    /**
+     * 💾 Uloží kompletne zoradený rebríček do textového súboru. Konzola zostáva čistá.
+     */
+    private void saveSortedLeaderboardToFile(List<AnalyzedLayout> sortedList) {
+        String outputFilePath = "data/leaderboard.txt";
 
-        String headerFormat = "%-4s | %-18s | %-7s | %-8s | %-8s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s\n";
-        String lineSeparator = "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+        File dir = new File("data");
+        if (!dir.exists()) dir.mkdirs();
 
-        System.out.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
-        System.out.println(lineSeparator);
+        try (PrintWriter fileOut = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath), StandardCharsets.UTF_8))) {
 
-        int idx = 0;
-        for (AnalyzedLayout res : list) {
-            // Každých 10 riadkov znova hodíme hlavičku pre lepšiu prehľadnosť v termináli
-            if (idx > 0 && idx % 10 == 0) {
-                System.out.println(lineSeparator);
-                System.out.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
-                System.out.println(lineSeparator);
+            // Zápis hlavičky výhradne do súboru
+            fileOut.println("=======================================================================================================================================================================================");
+            fileOut.println("                                             VÝSLEDNÁ LISTINA BILINGVÁLNYCH LAYOUTOV (Zoradené podľa: COMBINED ELITE SCORE)");
+            fileOut.println("=======================================================================================================================================================================================");
+
+            String headerFormat = "%-4s | %-18s | %-7s | %-8s | %-8s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s%n";
+            String lineSeparator = "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+
+            fileOut.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+            fileOut.print(lineSeparator);
+
+            int idx = 0;
+            for (AnalyzedLayout res : sortedList) {
+                // Každých 10 riadkov hodíme pod-hlavičku kvôli scannovaniu v textovom editore
+                if (idx > 0 && idx % 10 == 0) {
+                    fileOut.print(lineSeparator);
+                    fileOut.printf(headerFormat, "Idx", "Názov layoutu", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+                    fileOut.print(lineSeparator);
+                }
+
+                // Metriky zobrazujeme ako vyvážený priemer oboch svetov pre čistý tabuľkový prehľad
+                double avgSfb      = (res.skStats.getMetricPercent(MetricType.SFB) + res.enStats.getMetricPercent(MetricType.SFB)) / 2.0;
+                double avgSfs      = (res.skStats.getMetricPercent(MetricType.SFS) + res.enStats.getMetricPercent(MetricType.SFS)) / 2.0;
+                double avgAlt      = (res.skStats.getMetricPercent(MetricType.ALTERNATION) + res.enStats.getMetricPercent(MetricType.ALTERNATION)) / 2.0;
+                double avgRollIn   = (res.skStats.getMetricPercent(MetricType.ROLL_IN) + res.enStats.getMetricPercent(MetricType.ROLL_IN)) / 2.0;
+                double avgRollOut  = (res.skStats.getMetricPercent(MetricType.ROLL_OUT) + res.enStats.getMetricPercent(MetricType.ROLL_OUT)) / 2.0;
+                double avgScissors = (res.skStats.getMetricPercent(MetricType.SCISSORS) + res.enStats.getMetricPercent(MetricType.SCISSORS)) / 2.0;
+                double avgRedirect = (res.skStats.getMetricPercent(MetricType.REDIRECTS) + res.enStats.getMetricPercent(MetricType.REDIRECTS)) / 2.0;
+                double avgLsb      = (res.skStats.getMetricPercent(MetricType.LSB) + res.enStats.getMetricPercent(MetricType.LSB)) / 2.0;
+                double avgLhb      = (res.skStats.getMetricPercent(MetricType.LHB) + res.enStats.getMetricPercent(MetricType.LHB)) / 2.0;
+                double avgHome     = (res.skStats.getMetricPercent(MetricType.HOME_ROW) + res.enStats.getMetricPercent(MetricType.HOME_ROW)) / 2.0;
+                double avgStretch  = (res.skStats.getMetricPercent(MetricType.EFFORT) + res.enStats.getMetricPercent(MetricType.EFFORT)) / 2.0;
+
+                String displayName = res.name.length() > 18 ? res.name.substring(0, 15) + "..." : res.name;
+
+                fileOut.printf("%-4d | %-18s | %7.4f | %8.4f | %8.4f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f%n",
+                        ++idx, displayName, res.combinedScore, res.skStats.getScore(), res.enStats.getScore(),
+                        avgSfb, avgSfs, avgAlt, avgRollIn, avgRollOut, avgScissors, avgRedirect, avgLsb, avgLhb, avgHome, avgStretch
+                );
             }
 
-            // Metriky zobrazujeme ako vyvážený priemer oboch svetov pre čistý tabuľkový prehľad
-            double avgSfb      = (res.skStats.getMetricPercent(MetricType.SFB) + res.enStats.getMetricPercent(MetricType.SFB)) / 2.0;
-            double avgSfs      = (res.skStats.getMetricPercent(MetricType.SFS) + res.enStats.getMetricPercent(MetricType.SFS)) / 2.0;
-            double avgAlt      = (res.skStats.getMetricPercent(MetricType.ALTERNATION) + res.enStats.getMetricPercent(MetricType.ALTERNATION)) / 2.0;
-            double avgRollIn   = (res.skStats.getMetricPercent(MetricType.ROLL_IN) + res.enStats.getMetricPercent(MetricType.ROLL_IN)) / 2.0;
-            double avgRollOut  = (res.skStats.getMetricPercent(MetricType.ROLL_OUT) + res.enStats.getMetricPercent(MetricType.ROLL_OUT)) / 2.0;
-            double avgScissors = (res.skStats.getMetricPercent(MetricType.SCISSORS) + res.enStats.getMetricPercent(MetricType.SCISSORS)) / 2.0;
-            double avgRedirect = (res.skStats.getMetricPercent(MetricType.REDIRECTS) + res.enStats.getMetricPercent(MetricType.REDIRECTS)) / 2.0;
-            double avgLsb      = (res.skStats.getMetricPercent(MetricType.LSB) + res.enStats.getMetricPercent(MetricType.LSB)) / 2.0;
-            double avgLhb      = (res.skStats.getMetricPercent(MetricType.LHB) + res.enStats.getMetricPercent(MetricType.LHB)) / 2.0;
-            double avgHome     = (res.skStats.getMetricPercent(MetricType.HOME_ROW) + res.enStats.getMetricPercent(MetricType.HOME_ROW)) / 2.0;
-            double avgStretch  = (res.skStats.getMetricPercent(MetricType.EFFORT) + res.enStats.getMetricPercent(MetricType.EFFORT)) / 2.0;
+            fileOut.println("=======================================================================================================================================================================================");
 
-            String displayName = res.name.length() > 18 ? res.name.substring(0, 15) + "..." : res.name;
+            // Jediný oznam, ktorý pošleme do konzoly
+            System.out.println("\n💾 REBRÍČEK ULOŽENÝ: Usporiadaná výsledná listina je na disku: " + outputFilePath);
 
-            System.out.printf("%-4d | %-18s | %7.4f | %8.4f | %8.4f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f | %5.2f\n",
-                    ++idx,
-                    displayName,
-                    res.combinedScore,
-                    res.skStats.getScore(),
-                    res.enStats.getScore(),
-                    avgSfb,
-                    avgSfs,
-                    avgAlt,
-                    avgRollIn,
-                    avgRollOut,
-                    avgScissors,
-                    avgRedirect,
-                    avgLsb,
-                    avgLhb,
-                    avgHome,
-                    avgStretch
-            );
+        } catch (IOException e) {
+            System.err.println("⚠️ Chyba pri zápise rebríčka do súboru: " + e.getMessage());
         }
-        System.out.println("=======================================================================================================================================================================================");
     }
 }
