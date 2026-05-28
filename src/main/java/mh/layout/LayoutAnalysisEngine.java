@@ -122,8 +122,8 @@ public final class LayoutAnalysisEngine {
         // 🚀 EXPORT: Zapíše usporiadanú tabuľku výhradne na disk (Konzolu už neotravuje)
         saveSortedLeaderboardToFile(leaderboard, leaderBoardFile);
 
-        // TODO FIXME nechcem detailne statistiky
-        if (true) return;
+        // nechceme detailnu analyzu, napriklad kvoli velkemu poctu layoutov, staci iba leaderboard bez detailov
+        if (analysesFile == null) return;
 
         // 🔍 Hĺbkový röntgen layoutov
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
