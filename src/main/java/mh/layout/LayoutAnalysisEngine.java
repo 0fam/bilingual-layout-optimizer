@@ -4,15 +4,15 @@ import mh.layout.analyzer.LayoutAnalyzer;
 import mh.layout.evaluator.Evaluator;
 import mh.layout.evaluator.Weights;
 import mh.layout.io.CorpusProcessor;
+import mh.layout.io.LayoutLoader;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.stats.NGramStats;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public final class LayoutAnalysisEngine {
     private final Weights weights = new Weights();
@@ -38,6 +38,7 @@ public final class LayoutAnalysisEngine {
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
 
+        // 1. Načítanie invariantných štatistík textu (Slovníky pre röntgen prstov)
         System.out.println("📥 Načítavam jazykové korpusy a slovníky slov...");
         try {
             this.dictSK = CorpusProcessor.processFile("c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt", statsSK);
@@ -50,64 +51,12 @@ public final class LayoutAnalysisEngine {
             return;
         }
 
-        // Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
-        List<Map.Entry<String, char[]>> loadedLayouts = new ArrayList<>();
-        File target = new File(targetPath);
-
+        // 2. 🚀 Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
+        List<LayoutLoader.LayoutInput> loadedLayouts;
         try {
-            if (target.isDirectory()) {
-                // Prípad A: Používateľ poslal cestu k priečinku plnému samostatných layoutov
-                File[] files = target.listFiles();
-                if (files != null) {
-                    for (File f : files) {
-                        if (f.isFile()) {
-                            String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
-                            if (content.length() == 30) {
-                                loadedLayouts.add(Map.entry(f.getName(), content.toCharArray()));
-                            }
-                        }
-                    }
-                }
-            } else if (target.isFile()) {
-                // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
-                List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
-                int counter = 1;
-
-                for (String line : lines) {
-                    if (line.isBlank() || line.startsWith("#")) continue;
-
-                    // 🚀 NEPRIESTRELNÝ PARSER PRE AKÝKOĽVEK FORMÁT:
-
-                    // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
-                    if (line.contains("|")) {
-                        String[] pipeParts = line.split("\\|");
-                        String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
-                        if (maybeLayout.length() == 30) {
-                            loadedLayouts.add(Map.entry("Journal_Layout_" + counter++, maybeLayout.toCharArray()));
-                            continue;
-                        }
-                    }
-
-                    // 2. Ak je to formát Meno = Layout alebo Meno : Layout (limit 2 chráni časové pečiatky)
-                    if (line.contains(":") || line.contains("=")) {
-                        String[] splitParts = line.split("[:=]", 2);
-                        String name = splitParts[0].trim();
-                        String maybeLayout = splitParts[1].replaceAll("\\s+", "");
-                        if (maybeLayout.length() == 30) {
-                            loadedLayouts.add(Map.entry(name, maybeLayout.toCharArray()));
-                            continue;
-                        }
-                    }
-
-                    // 3. Posledná záchrana: riadok je čistý 30-znakový layout
-                    String clean = line.replaceAll("\\s+", "");
-                    if (clean.length() == 30) {
-                        loadedLayouts.add(Map.entry("Layout_" + counter++, clean.toCharArray()));
-                    }
-                }
-            }
+            loadedLayouts = LayoutLoader.loadLayouts(targetPath);
         } catch (IOException e) {
-            System.err.println("❌ Chyba pri čítaní cieľovej cesty layoutov: " + e.getMessage());
+            System.err.println("❌ Chyba pri načítavaní layoutov z disku: " + e.getMessage());
             return;
         }
 
@@ -116,30 +65,28 @@ public final class LayoutAnalysisEngine {
             return;
         }
 
+        // 3. Biomechanické hodnotenie každej jednej načítanej matice (Unikátne menovatele pre každú "inú" klávesnicu)
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
         double englishRatio = 1.0 - slovakRatio;
 
-        for (Map.Entry<String, char[]> entry : loadedLayouts) {
-            char[] matrix = entry.getValue();
+        for (LayoutLoader.LayoutInput input : loadedLayouts) {
+            char[] matrix = input.matrix();
 
-            // 🚀 ULTRA-ČISTÉ VOLANIE: Trojitý cyklus pre každú inú klávesnicu sa teraz deje vnútri Evaluatora!
+            // Využíva naše preťažené evaluate() - samé si vnútri spočíta presný lokálny základ
             LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
             LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights);
 
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
-
-            leaderboard.add(new AnalyzedLayout(entry.getKey(), matrix, skRes, enRes, combinedScore));
+            leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
         }
 
-        // 6. Zorď výsledky zostupne (od najvyššieho skóre po najnižšie)
+        // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
 
-        // 7. Vytlač do konzoly nádherný bilingválny LEADERBOARD
+        // 5. Vykreslenie prehľadnej tabuľky do konzoly
         printLeaderboardTable(leaderboard);
 
-        // =========================================================================
-        // 🔍 HĹBKOVÁ DIGITÁLNA ANALÝZA SLOVNÍKOV PRE VŠETKY LAYOUTY
-        // =========================================================================
+        // 6. 🔍 Hĺbkový röntgen slovníkov pre celú listinu
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
             LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
@@ -149,7 +96,7 @@ public final class LayoutAnalysisEngine {
             try {
                 detailedReport.saveToFile("data/best_layout_audit.txt");
             } catch (IOException e) {
-                System.err.println("⚠️ Nepodarilo sa uložiť audit pre " + layout.name + ": " + e.getMessage());
+                System.err.println("⚠️ Nepodarilo sa uložiť podrobný audit pre " + layout.name + ": " + e.getMessage());
             }
         }
         System.out.println("🎯 Audity boli úspešne vygenerované do: data/best_layout_audit.txt");
@@ -160,7 +107,6 @@ public final class LayoutAnalysisEngine {
         System.out.println("                                             VÝSLEDNÁ LISTINA BILINGVÁLNYCH LAYOUTOV (Zoradené podľa: COMBINED ELITE SCORE)");
         System.out.println("=======================================================================================================================================================================================");
 
-        // Formát tabuľky postavený výhradne na našich reálnych biomechanických metrikách
         String headerFormat = "%-4s | %-18s | %-7s | %-8s | %-8s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s | %-5s\n";
         String lineSeparator = "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
 

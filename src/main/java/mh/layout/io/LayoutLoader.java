@@ -28,7 +28,7 @@ public final class LayoutLoader {
         }
 
         if (target.isDirectory()) {
-            // Prípad A: Používateľ poslal priečinok (napr. JSONy alebo textáky od kamošov)
+            // Prípad A: Používateľ poslal cestu k priečinku plnému samostatných layoutov
             File[] files = target.listFiles();
             if (files != null) {
                 for (File f : files) {
@@ -41,14 +41,16 @@ public final class LayoutLoader {
                 }
             }
         } else if (target.isFile()) {
-            // Prípad B: Čítame náš vygenerovaný žurnál riadok po riadku
+            // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
             List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
             int counter = 1;
 
             for (String line : lines) {
                 if (line.isBlank() || line.startsWith("#")) continue;
 
-                // 1. Spracovanie línie zo žurnálu (oddelenej zvislou čiarou '|')
+                // 🚀 NEPRIESTRELNÝ PARSER PRE AKÝKOĽVEK FORMÁT:
+
+                // 1. Ak je to náš žurnál (obsahuje zvislú čiaru '|'), layout je na indexe 0
                 if (line.contains("|")) {
                     String[] pipeParts = line.split("\\|");
                     String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
