@@ -25,6 +25,9 @@ public final class Weights {
         metricRegistry.put(MetricType.SFS,       new LimitParam(4.0,  9.0)); // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
         metricRegistry.put(MetricType.SCISSORS,  new LimitParam(0.5,  3.0)); // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
         metricRegistry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
+        metricRegistry.put(MetricType.LSB,       new LimitParam(1.0,   6.0)); // Lateral Stretch Bigram (vychýlenie ukazováka)
+        metricRegistry.put(MetricType.LHB,       new LimitParam(4.0,   5.0)); // Lateral Hand Bigram (únava malíček-prstenník)
+
 //        metricRegistry.put(MetricType.EFFORT,   new LimitParam(1.2,  1.8)); // Priemerný stretch na kláves, touto metrikou som si nie moc isty... je to taky presnejsi home-row + zatazenie prstov, ale vlemi sa to kryje a je otazne ako to nastavit
 
         // Pozitívne: safe = kedy začína bonus, dead = pod čo layout okamžite zabijeme

@@ -51,7 +51,8 @@ public final class CorpusProcessor {
                     }
 
                     // KĽÚČOVÁ ZMENA: Žiadny layout! Pýtame sa priamo platnej abecedy a interpunkcie jazyka
-                    boolean isValidTextChar = (c3 >= 'A' && c3 <= 'Z') || c3 == ' ' ||
+                    // 🚀 FIX: Odstránená medzera (c3 == ' '). Medzera teraz natvrdo resetuje okno a n-gramy nepretečú cez slová.
+                    boolean isValidTextChar = (c3 >= 'A' && c3 <= 'Z') ||
                             c3 == '.' || c3 == ',' || c3 == '?' ||
                             c3 == '!' || c3 == '-' || c3 == ';';
 

@@ -14,7 +14,7 @@ public class Weights {
     // --- TRESTNÉ METRIKY (Čím menej, tým lepšie) ---
     @Builder.Default private double sfb = 1.0;       // Kmitanie toho istého prsta po sebe
     @Builder.Default private double sfs = 1.0;       // Sendviče (skipgramy na rovnakom prste)
-    @Builder.Default private double stretch = 1.0;   // Inner Stretch (stredové stĺpce ukazovákov)
+    @Builder.Default private double stretch = 0.0;   // Inner Stretch (stredové stĺpce ukazovákov)
     @Builder.Default private double scissors = 1.0;  // Nožnicové prekríženie (napr. Top -> Bottom na susedných prstoch)
     @Builder.Default private double redirects = 1.0; // Pinbally / zmeny smeru v trigramoch
 
@@ -28,7 +28,7 @@ public class Weights {
     @Builder.Default private double alt = 0.0;         // Striedanie rúk (rytmika)
     @Builder.Default private double rollIn = 0.0;      // Valivé pohyby smerom k palcu (Plynulosť)
     @Builder.Default private double rollOut = 0.0;     // Valivé pohyby smerom von
-    @Builder.Default private double runs = 1.0;        // sekvencie pisane jednou rukou x-znakov za sebou
+    @Builder.Default private double runs = 0.0;        // sekvencie pisane jednou rukou x-znakov za sebou
 
     /**
      * Presný matematický súčet len aktívnych váh.

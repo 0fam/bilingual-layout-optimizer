@@ -68,12 +68,16 @@ public final class Evaluator {
                         }
 
                         // SCISSORS (Nožnice: skok cez riadok na susedných prstoch)
-                        if (Math.abs(row1 - row2) >= 2 && finger1 != finger2) {
+                        // 🚀 FIX: Pridané overenie anatomickej susednosti prstov (rozdiel stĺpcov/prstov je presne 1)
+                        if (Math.abs(row1 - row2) >= 2 && Math.abs(finger1 - finger2) == 1) {
                             rawScissors += bgFreq;
                         }
 
                         // LSB (Lateral Stretch: zásah do stredových stĺpcov 4 alebo 5 ukazovákmi 3 alebo 4)
-                        if (col1 == 4 || col1 == 5 || col2 == 4 || col2 == 5) {
+                        // 🚀 FIX: Podľa svetového štandardu overujeme asymetrické napätie medzi DVOMA ROZDIELNYMI prstami rovnakej ruky
+                        boolean s1 = (col1 == 4 || col1 == 5);
+                        boolean s2 = (col2 == 4 || col2 == 5);
+                        if (s1 != s2 && finger1 != finger2) {
                             rawLsb += bgFreq;
                         }
 

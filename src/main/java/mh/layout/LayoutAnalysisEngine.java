@@ -43,14 +43,22 @@ public final class LayoutAnalysisEngine {
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
 
+        // 🚀 FIX: Detekcia režimu pre jeden jazyk
+        boolean singleLang = enKorpus == null || enKorpus.isBlank() || enKorpus.equals(skKorpus);
+
         // 1. Načítanie invariantných štatistík textu (Slovníky pre röntgen prstov)
         System.out.println("📥 Načítavam jazykové korpusy a slovníky slov...");
         try {
             this.dictSK = CorpusProcessor.processFile(skKorpus, statsSK);
-            System.out.println("✅ Slovenský korpus úspešne spracovaný.");
+            System.out.println("✅ Hlavný korpus úspešne spracovaný.");
 
-            this.dictEN = CorpusProcessor.processFile(enKorpus, statsEN);
-            System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
+            // 🚀 FIX: Druhý korpus načítame len vtedy, ak nie sme v režime jedného jazyka
+            if (!singleLang) {
+                this.dictEN = CorpusProcessor.processFile(enKorpus, statsEN);
+                System.out.println("✅ Anglický korpus úspešne spracovaný.\n");
+            } else {
+                System.out.println("ℹ️ Detegovaný režim pre jeden jazyk. Druhé načítanie preskočené.\n");
+            }
         } catch (IOException e) {
             System.err.println("❌ KRITICKÁ CHYBA: Nepodarilo sa načítať korpusy: " + e.getMessage());
             return;
@@ -88,9 +96,11 @@ public final class LayoutAnalysisEngine {
 
             // Využíva naše preťažené evaluate() - samé si vnútri spočíta presný lokálny základ
             LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
-            LayoutStats enRes = Evaluator.evaluate(matrix, statsEN, weights);
 
-            double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
+            // 🚀 FIX: Ak sme v single režime, evaluate pre EN preskočíme a priradíme referenciu. Šetríme 50% CPU!
+            LayoutStats enRes = singleLang ? skRes : Evaluator.evaluate(matrix, statsEN, weights);
+
+            double combinedScore = singleLang ? skRes.getScore() : (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
             leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
 
 //            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
@@ -112,11 +122,15 @@ public final class LayoutAnalysisEngine {
         // 🚀 EXPORT: Zapíše usporiadanú tabuľku výhradne na disk (Konzolu už neotravuje)
         saveSortedLeaderboardToFile(leaderboard, leaderBoardFile);
 
+        // TODO FIXME nechcem detailne statistiky
+        if (true) return;
+
         // 🔍 Hĺbkový röntgen layoutov
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
+            // 🚀 FIX: Ak bežíme jeden jazyk, pošleme do reportu rovnaké SK/EN sady a váhu 100% pre SK, nech report nehalucinuje
             LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
-                    layout.matrix, layout.name, statsSK, statsEN, dictSK, dictEN, weights, slovakRatio
+                    layout.matrix, layout.name, statsSK, singleLang ? statsSK : statsEN, dictSK, singleLang ? dictSK : dictEN, weights, singleLang ? 1.0 : slovakRatio
             );
 
             try {
