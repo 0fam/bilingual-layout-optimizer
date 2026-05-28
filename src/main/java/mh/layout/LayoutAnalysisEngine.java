@@ -83,7 +83,6 @@ public final class LayoutAnalysisEngine {
         long counterDot = 0;
         long counterLine = 0;
         long counterTotal = 0;
-        // 🟢 PRIEBEŽNÝ TICKER (Ide iba na obrazovku, aby si videl progres a život jadier)
         for (LayoutLoader.LayoutInput input : loadedLayouts) {
             char[] matrix = input.matrix();
 
@@ -105,6 +104,7 @@ public final class LayoutAnalysisEngine {
                 }
             }
         }
+        System.out.println(" " + counterTotal);
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore, l1.combinedScore));
