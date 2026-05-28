@@ -33,7 +33,7 @@ public final class LayoutAnalysisEngine {
             double combinedScore
     ) {}
 
-    public void runStandalone(String targetPath) {
+    public void runStandalone(List<String> targetPaths) {
         System.out.println("========================================================================================");
         System.out.println("               SPÚŠŤAM STANDALONE BIOMECHANICKÚ ANALÝZU LAYOUTOV                        ");
         System.out.println("========================================================================================\n");
@@ -51,19 +51,25 @@ public final class LayoutAnalysisEngine {
             return;
         }
 
-        // 2. 🚀 Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
+        // 2. 🚀 AGREGÁCIA Z VIACERÝCH CIEST: Postupne plníme spoločný Master List
         List<LayoutLoader.LayoutInput> loadedLayouts = new ArrayList<>();
-        try {
-            loadedLayouts = LayoutLoader.loadLayouts(targetPath, loadedLayouts);
-        } catch (IOException e) {
-            System.err.println("❌ Chyba pri načítavaní layoutov z disku: " + e.getMessage());
-            return;
+
+        for (String path : targetPaths) {
+            try {
+                // 🚀 Načítaj súbor (denník) alebo prebehni celú zložku 'targetPath' a vytiahni matice char[]
+                LayoutLoader.loadLayouts(path, loadedLayouts);
+            } catch (IOException e) {
+                System.err.println("❌ Chyba pri načítavaní layoutov z cesty [" + path + "]: " + e.getMessage());
+                // Pokračujeme na ďalšiu cestu, nevzdávame to kvôli jednému chybnému súboru
+            }
         }
 
         if (loadedLayouts.isEmpty()) {
             System.out.println("⚠️ Nenašli sa žiadne platné 30-znakové layouty na analýzu.");
             return;
         }
+
+        System.out.printf("📦 Celkovo načítaných %d layoutov na hĺbkovú biomechanickú analýzu.%n", loadedLayouts.size());
 
         // 3. Biomechanické hodnotenie každej jednej načítanej matice (Unikátne menovatele pre každú "inú" klávesnicu)
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
@@ -78,6 +84,7 @@ public final class LayoutAnalysisEngine {
 
             double combinedScore = (skRes.getScore() * slovakRatio) + (enRes.getScore() * englishRatio);
             leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
+            System.out.println("✅ Analyzovaný layout [" + input.name() + "] | Bilingual Elite Score: " + String.format("%.4f", combinedScore));
         }
 
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre

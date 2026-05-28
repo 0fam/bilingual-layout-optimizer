@@ -35,6 +35,7 @@ public final class LayoutLoader {
                         String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
                         if (content.length() == 30) {
                             results.add(new LayoutInput(f.getName(), content.toCharArray()));
+//                            System.out.println("✅ Načítaný layout z [" + f.getName() + "]");
                         }
                     }
                 }
@@ -62,6 +63,7 @@ public final class LayoutLoader {
                         String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
 
                         results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
+//                        System.out.println("✅ Načítaný layout z logu [" + generatedName + "]");
                         continue;
                     }
                 }
@@ -76,6 +78,7 @@ public final class LayoutLoader {
                         String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
 
                         results.add(new LayoutInput(generatedName, maybeLayout.toCharArray()));
+//                        System.out.println("✅ Načítaný layout zo journalu [" + generatedName + "]");
                         continue;
                     }
                 }
@@ -87,6 +90,7 @@ public final class LayoutLoader {
                     String maybeLayout = splitParts[1].replaceAll("\\s+", "");
                     if (maybeLayout.length() == 30) {
                         results.add(new LayoutInput(name, maybeLayout.toCharArray()));
+//                        System.out.println("✅ Načítaný layout z formátu kľúč=hodnota [" + name + "]");
                         continue;
                     }
                 }
@@ -95,6 +99,7 @@ public final class LayoutLoader {
                 String clean = line.replaceAll("\\s+", "");
                 if (clean.length() == 30) {
                     results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toCharArray()));
+//                    System.out.println("✅ Načítaný layout z čistého 30-znakového řádku [" + "L" + lineNum + "_Pure" + "]");
                 }
             }
         }
