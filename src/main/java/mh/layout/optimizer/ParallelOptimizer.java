@@ -150,17 +150,17 @@ public final class ParallelOptimizer {
             // 🚀 ULTRA-OPTIMALIZÁCIA: Splachujeme častejšie (každých 4096 iterácií), aby tachometer nežil v nulách
             if ((localEvaluations & 0x0FFF) == 0) {
                 // 1. Živý výpis do konzoly
-                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n",
-                        threadId, skScore, enScore, temperature);
+//                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
 
                 // 2. Bezpečné pripočítanie rýchlosti do globálneho počítadla
                 synchronized (lock) {
-                    totalEvaluations += 4096;
+                    totalEvaluations += 0x0FFF;
                 }
             }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (skScore >= thresholdSk && enScore >= thresholdEn) {
+                System.out.println("📝 Zápis do denníka: SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | " + new String(currentMatrix) + " | Jadro: " + threadId);
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
 
