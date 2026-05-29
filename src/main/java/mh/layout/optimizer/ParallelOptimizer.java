@@ -279,6 +279,30 @@ public final class ParallelOptimizer {
         return sb.toString();
     }
 
+//    public static boolean isHumanFriendly(char[] matrix) {
+//        for (int row = 0; row < 3; row++) {
+//            int offset = row * 10;
+//
+//            for (int col = 0; col < 10; col++) {
+//                char ch = matrix[offset + col];
+//
+//                // 1. Ak je to písmeno, nezaujíma nás to
+//                if (ch >= 'A' && ch <= 'Z') continue;
+//
+//                // 2. VOĽNÉ STĹPCE: Tu symbol môže stáť úplne sám
+//                if (col == 0 || col == 4 || col == 5 || col == 9) continue;
+//
+//                // 3. PODMIENENÉ STĹPCE
+//                char left = matrix[offset + col - 1];
+//                if (left < 'A' || left > 'Z') continue;
+//                char right = matrix[offset + col + 1];
+//                if (right < 'A' || right > 'Z') continue;
+//                return false;
+//            }
+//        }
+//        return true; // Všetky symboly sú buď na krajoch/stredoch, alebo v pároch
+//    }
+
     public static boolean isHumanFriendly(char[] matrix) {
         for (int row = 0; row < 3; row++) {
             int offset = row * 10;
@@ -286,21 +310,42 @@ public final class ParallelOptimizer {
             for (int col = 0; col < 10; col++) {
                 char ch = matrix[offset + col];
 
-                // 1. Ak je to písmeno, nezaujíma nás to
-                if (ch >= 'A' && ch <= 'Z') continue;
+                // =========================================================================
+                // 🚨 ŠPECIÁLNA STRÁŽ PRE HOME ROW (Riadok 1) - Koncept prioritných klávesov
+                // =========================================================================
+                if (row == 1) {
+                    // Definuje odpad, ktorý na Home Row nechceme vidieť ani na sekundu
+                    boolean isTrashKey = (ch == 'Q' || ch == 'X' || ch == 'W' || ch == 'J' || ch == 'Z');
 
-                // 2. VOĽNÉ STĹPCE: Tu symbol môže stáť úplne sám
-                if (col == 0 || col == 4 || col == 5 || col == 9) continue;
+                    if (col == 4 || col == 5) {
+                        // STRETCH STĹPCE: Povolené písmená (mimo trashu) ALEBO bodka a čiarka
+                        if (isTrashKey) return false;
+                        if (ch < 'A' || ch > 'Z') {
+                            if (ch != '.' && ch != ',') return false; // Slabé symboly do stredu nepustíme
+                        }
+                    } else {
+                        // HLAVNÉ POZÍCIE PRSTOV: Prísne iba čistá abeceda bez trashu a symbolov
+                        if (ch < 'A' || ch > 'Z' || isTrashKey) return false;
+                    }
+                    continue; // Home row vyriešená, ideme na ďalšiu klávesu
+                }
 
-                // 3. PODMIENENÉ STĹPCE
+                // =========================================================================
+                // 📐 PRAVIDLO PRE HORNÝ A SPODNÝ RIADOK (Riadky 0 a 2)
+                // =========================================================================
+                if (ch >= 'A' && ch <= 'Z') continue; // Písmená hore/dole neriešime
+                if (col == 0 || col == 4 || col == 5 || col == 9) continue; // Voľné stĺpce
+
+                // Podmienené stĺpce hore a dole: symbol musí mať vedľa seba parťáka
                 char left = matrix[offset + col - 1];
                 if (left < 'A' || left > 'Z') continue;
+
                 char right = matrix[offset + col + 1];
                 if (right < 'A' || right > 'Z') continue;
-                return false;
+
+                return false; // Osamotený symbol v riadkoch 0 alebo 2 -> KO
             }
         }
-        return true; // Všetky symboly sú buď na krajoch/stredoch, alebo v pároch
+        return true;
     }
-
 }
