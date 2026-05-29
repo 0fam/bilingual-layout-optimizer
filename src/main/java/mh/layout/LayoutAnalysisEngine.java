@@ -120,8 +120,13 @@ public final class LayoutAnalysisEngine {
         if (analysesFile == null) return;
 
         // 🔍 Hĺbkový röntgen layoutov
+        int counter2 = 0;
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
+            if (counter2++ > 1000) {
+                System.out.println("⚠️ Reporty ukoncene limitom 1000 layoutov");
+                break;
+            }
             // 🚀 FIX: Ak bežíme jeden jazyk, pošleme do reportu rovnaké SK/EN sady a váhu 100% pre SK, nech report nehalucinuje
             LayoutAnalyzer.AnalysisReport detailedReport = LayoutAnalyzer.generateReport(
                     layout.matrix, layout.name, statsSK, singleLang ? statsSK : statsEN, dictSK, singleLang ? dictSK : dictEN, weights, singleLang ? 1.0 : slovakRatio

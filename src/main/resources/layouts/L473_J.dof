@@ -1,0 +1,12 @@
+{
+    "name": "L473_j",
+    "board": "ortho",
+    "layers": {
+        "main": [
+            "J G F , ;  W C R V H",
+            "I O E A .  Z T N S M",
+            "X Y K U '  Q D L B P"
+        ]
+    },
+    "fingering": "traditional"
+}

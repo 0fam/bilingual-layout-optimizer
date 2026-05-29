@@ -20,6 +20,9 @@ public final class ParallelOptimizer {
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
+    public volatile double dynamicThresholdSk = 0.0;
+    public volatile double dynamicThresholdEn = 0.0;
+
     private char[] globalBestMatrix;
     private double globalBestScore = -1.0;
 
@@ -36,6 +39,9 @@ public final class ParallelOptimizer {
     public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double thresholdSk, double thresholdEn) {
         if (isRunning.get()) return;
         isRunning.set(true);
+
+        dynamicThresholdSk = thresholdSk;
+        dynamicThresholdEn = thresholdEn;
 
         double enRatio = 1.0 - skRatio;
         this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
@@ -69,7 +75,7 @@ public final class ParallelOptimizer {
 
         int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
-        System.out.println("📝 Denník (SK >= " + thresholdSk + ", EN >= " + thresholdEn + ") zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
+        System.out.println("📝 Denník (SK >= " + dynamicThresholdSk + ", EN >= " + dynamicThresholdEn + ") zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
@@ -144,6 +150,14 @@ public final class ParallelOptimizer {
             currentMatrix[pos1] = currentMatrix[pos2];
             currentMatrix[pos2] = temp;
 
+            // 🚀 BLESKOVÉ FILTROVANIE: Ak to nie je kognitívne friendly, okamžite to vráť späť
+            if (!isHumanFriendly(currentMatrix)) {
+                char undo = currentMatrix[pos1];
+                currentMatrix[pos1] = currentMatrix[pos2];
+                currentMatrix[pos2] = undo;
+                continue; // Ideme na ďalšiu iteráciu, n-gramový Evaluator vôbec nespúšťame
+            }
+
             // 3. Ohodnoť nový layout bilingválne s bleskovými Early Exits (Miesto 3 v horúcej slučke)
             LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
             LayoutStats nextEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
@@ -166,7 +180,7 @@ public final class ParallelOptimizer {
             }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
-            if (skScore >= thresholdSk && enScore >= thresholdEn) {
+            if (skScore >= dynamicThresholdSk && enScore >= dynamicThresholdEn) {
                 System.out.println("📝 Zápis do denníka: " + formatMatrix(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
@@ -201,13 +215,30 @@ public final class ParallelOptimizer {
         }
     }
 
-    private void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
+//    private void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
+//        synchronized (lock) {
+//            if (score > globalBestScore) {
+//                globalBestScore = score;
+//                globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
+//                System.out.printf("🏆 Nový bilingválny rekord! Skóre: %.4f (SK: %.2f | EN: %.2f) [%s]%n",
+//                        score, sk, en, formatMatrix(globalBestMatrix));
+//            }
+//        }
+//    }
+
+    // Odobrali sme static a synchronized z hlavičky, zamykáme cez inštančný lock
+    public void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
         synchronized (lock) {
             if (score > globalBestScore) {
                 globalBestScore = score;
                 globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
-                System.out.printf("🏆 Nový bilingválny rekord! Skóre: %.4f (SK: %.2f | EN: %.2f) [%s]%n",
-                        score, sk, en, formatMatrix(globalBestMatrix));
+
+                // Dynamické uťahovanie latky pod spoločným zámkom
+                this.dynamicThresholdSk = Math.max(this.dynamicThresholdSk, sk - 0.2);
+                this.dynamicThresholdEn = Math.max(this.dynamicThresholdEn, en - 0.2);
+
+                System.out.printf("%n🏆 NOVÝ GLOBÁLNY REKORD! Skóre: %.4f (SK: %.2f | EN: %.2f) -> Latka zdvihnutá na SK: %.2f EN: %.2f%n",
+                        score, sk, en, this.dynamicThresholdSk, this.dynamicThresholdEn);
             }
         }
     }
@@ -246,6 +277,30 @@ public final class ParallelOptimizer {
         sb.append(matrix, 20, 5).append(' ').append(matrix, 25, 5);
 
         return sb.toString();
+    }
+
+    public static boolean isHumanFriendly(char[] matrix) {
+        for (int row = 0; row < 3; row++) {
+            int offset = row * 10;
+
+            for (int col = 0; col < 10; col++) {
+                char ch = matrix[offset + col];
+
+                // 1. Ak je to písmeno, nezaujíma nás to
+                if (ch >= 'A' && ch <= 'Z') continue;
+
+                // 2. VOĽNÉ STĹPCE: Tu symbol môže stáť úplne sám
+                if (col == 0 || col == 4 || col == 5 || col == 9) continue;
+
+                // 3. PODMIENENÉ STĹPCE
+                char left = matrix[offset + col - 1];
+                if (left < 'A' || left > 'Z') continue;
+                char right = matrix[offset + col + 1];
+                if (right < 'A' || right > 'Z') continue;
+                return false;
+            }
+        }
+        return true; // Všetky symboly sú buď na krajoch/stredoch, alebo v pároch
     }
 
 }

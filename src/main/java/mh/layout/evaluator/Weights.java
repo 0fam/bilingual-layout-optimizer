@@ -32,7 +32,7 @@ public final class Weights {
 
         // Pozitívne: safe = kedy začína bonus, dead = pod čo layout okamžite zabijeme
         metricRegistry.put(MetricType.HOME_ROW,    new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
-        metricRegistry.put(MetricType.ALTERNATION, new LimitParam(50.0, 35.0)); // Chceme striedanie rúk nad 35%. Skvelý balans medzi Rollmi a Ping-Pongom
+//        metricRegistry.put(MetricType.ALTERNATION, new LimitParam(50.0, 35.0)); // len osobna preferencia, vyhadzujeme aby to zbytocne nenahanalo lahke body pre layouty. // Chceme striedanie rúk nad 35%. Skvelý balans medzi Rollmi a Ping-Pongom
 //        metricRegistry.put(MetricType.ROLL_IN,     new LimitParam(15.0,  0.0));
 //        metricRegistry.put(MetricType.ROLL_OUT,    new LimitParam(10.0,  0.0));
 
