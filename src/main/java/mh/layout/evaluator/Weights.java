@@ -21,17 +21,17 @@ public final class Weights {
     public Weights() {
 
         // Negatívne: safe = do koľko % je to ideál, dead = kedy uplatňujeme PRÁVO VETA
-        metricRegistry.put(MetricType.SFB,       new LimitParam(1.5,  5.0)); // SFB: Do 1.5% je super elitné, nad 5.0% je kŕč
-        metricRegistry.put(MetricType.SFS,       new LimitParam(4.0,  9.0)); // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
+        metricRegistry.put(MetricType.SFB,       new LimitParam(1.0,  2.2)); // SFB: Do 1.5% je super elitné, nad 5.0% je kŕč
+//        metricRegistry.put(MetricType.SFS,       new LimitParam(4.0,  12.0)); // SFS: Sendviče do 4.0% ruka zvládne, nad 9.0% už je to zlé
         metricRegistry.put(MetricType.SCISSORS,  new LimitParam(0.5,  3.0)); // Scissors: Brutálne prekríženie, nulová tolerancia, smrť na 3.0%
-        metricRegistry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
-        metricRegistry.put(MetricType.LSB,       new LimitParam(1.0,   6.0)); // Lateral Stretch Bigram (vychýlenie ukazováka)
-        metricRegistry.put(MetricType.LHB,       new LimitParam(1.0,   5.0)); // Lateral Hand Bigram (únava malíček-prstenník)
+//        metricRegistry.put(MetricType.REDIRECTS, new LimitParam(4.0, 15.0)); // Redirects: Pinball neničí šľachy, len brzdí. Do 4.0% ideál, smrť voľnejšie na 15.0%
+//        metricRegistry.put(MetricType.LSB,       new LimitParam(1.0,   6.0)); // Lateral Stretch Bigram (vychýlenie ukazováka)
+//        metricRegistry.put(MetricType.LHB,       new LimitParam(1.0,   5.0)); // Lateral Hand Bigram (únava malíček-prstenník)
 
-//        metricRegistry.put(MetricType.EFFORT,   new LimitParam(1.2,  1.8)); // Priemerný stretch na kláves, touto metrikou som si nie moc isty... je to taky presnejsi home-row + zatazenie prstov, ale vlemi sa to kryje a je otazne ako to nastavit
+        metricRegistry.put(MetricType.EFFORT,   new LimitParam(128,  140)); // Priemerný stretch na kláves, touto metrikou som si nie moc isty... je to taky presnejsi home-row + zatazenie prstov, ale vlemi sa to kryje a je otazne ako to nastavit
 
         // Pozitívne: safe = kedy začína bonus, dead = pod čo layout okamžite zabijeme
-        metricRegistry.put(MetricType.HOME_ROW,    new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
+//        metricRegistry.put(MetricType.HOME_ROW,    new LimitParam(65.0, 45.0)); // Chceme nad 65%, pod 45% je to smrť
 //        metricRegistry.put(MetricType.ALTERNATION, new LimitParam(50.0, 35.0)); // len osobna preferencia, vyhadzujeme aby to zbytocne nenahanalo lahke body pre layouty. // Chceme striedanie rúk nad 35%. Skvelý balans medzi Rollmi a Ping-Pongom
 //        metricRegistry.put(MetricType.ROLL_IN,     new LimitParam(15.0,  0.0));
 //        metricRegistry.put(MetricType.ROLL_OUT,    new LimitParam(10.0,  0.0));

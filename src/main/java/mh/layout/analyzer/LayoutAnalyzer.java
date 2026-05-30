@@ -1,9 +1,5 @@
 package mh.layout.analyzer;
 
-import mh.layout.evaluator.Evaluator;
-import mh.layout.evaluator.Weights;
-import mh.layout.stats.LayoutStats;
-import mh.layout.stats.NGramStats;
 import mh.layout.stats.MetricType;
 import mh.layout.topology.Finger;
 import mh.layout.topology.KeyboardTopology;
@@ -11,7 +7,9 @@ import mh.layout.topology.KeyboardTopology;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class LayoutAnalyzer {
@@ -44,42 +42,36 @@ public final class LayoutAnalyzer {
         }
     }
 
-    public static AnalysisReport generateReport(char[] matrix, String layoutName, NGramStats statsSK, NGramStats statsEN,
+    public static AnalysisReport generateReport(AnalyzedLayout layout,
                                                 Map<String, Double> dictSK, Map<String, Double> dictEN,
-                                                Weights weights, double skRatio) {
+                                                double skRatio) {
 
         AnalysisReport report = new AnalysisReport();
-
-        // 👑 🚀 VOLÁME PREŤAŽENÉ ČISTÉ METÓDY - O menovatele sa postará Evaluator sám vnútri!
-        LayoutStats skStats = Evaluator.evaluate(matrix, statsSK, weights);
-        LayoutStats enStats = Evaluator.evaluate(matrix, statsEN, weights);
-
-        double enRatio = 1.0 - skRatio;
-        double combinedScore = (skStats.getScore() * skRatio) + (enStats.getScore() * enRatio);
+        boolean biLang = layout.enStats() != null;
 
         // --- HLAVIČKA REPORTU ---
         report.append("====================================================================\n");
-        report.append("📊      BIOMECHANICKÝ AUDIT REKORDNÉHO LAYOUTU: %-16s  📊\n", layoutName);
+        report.append("📊      BIOMECHANICKÝ AUDIT REKORDNÉHO LAYOUTU: %-16s  📊\n", layout.name());
         report.append("====================================================================\n");
-        report.append("👑 KOMBINOVANÉ BILINGVÁLNE ELITE SKÓRE: %.4f\n", combinedScore);
-        report.append("🇸🇰 Slovenská vetva: %.4f (Váha: %.0f%%)\n", skStats.getScore(), skRatio * 100);
-        report.append("🇬🇧 Anglická vetva:   %.4f (Váha: %.0f%%)\n", enStats.getScore(), enRatio * 100);
+        report.append("👑 KOMBINOVANÉ BILINGVÁLNE ELITE SKÓRE: %.4f\n", layout.combinedScore());
+        report.append("🇸🇰 Slovenská vetva: %.4f (Váha: %.0f%%)\n", layout.skStats().getScore(), biLang ? skRatio * 100 : 100);
+        if (biLang) report.append("🇬🇧 Anglická vetva:   %.4f (Váha: %.0f%%)\n", layout.enStats().getScore(), (1-skRatio) * 100);
         report.append("--------------------------------------------------------------------\n");
 
         // --- TABUĽKA REÁLNYCH METRÍK ---
         report.append("\n🧠 BIOMECHANICKÉ UKAZOVATELE (Frekvencie výskytu v %%):\n");
         report.append(String.format("%-25s | %-18s | %-18s\n", "Metrika", "Slovenčina (SK)", "Angličtina (EN)"));
         report.append("--------------------------------------------------------------------\n");
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFB (Rovnaký prst)", skStats.getMetricPercent(MetricType.SFB), enStats.getMetricPercent(MetricType.SFB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFS (Sendviče)", skStats.getMetricPercent(MetricType.SFS), enStats.getMetricPercent(MetricType.SFS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ALT (Striedanie rúk)", skStats.getMetricPercent(MetricType.ALTERNATION), enStats.getMetricPercent(MetricType.ALTERNATION)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-In (Valenie dnu)", skStats.getMetricPercent(MetricType.ROLL_IN), enStats.getMetricPercent(MetricType.ROLL_IN)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-Out (Valenie von)", skStats.getMetricPercent(MetricType.ROLL_OUT), enStats.getMetricPercent(MetricType.ROLL_OUT)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Scissors (Nožnice)", skStats.getMetricPercent(MetricType.SCISSORS), enStats.getMetricPercent(MetricType.SCISSORS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Redirects (Otočky)", skStats.getMetricPercent(MetricType.REDIRECTS), enStats.getMetricPercent(MetricType.REDIRECTS)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LSB (Bočné uličky)", skStats.getMetricPercent(MetricType.LSB), enStats.getMetricPercent(MetricType.LSB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LHB (Záťaž malíčkov)", skStats.getMetricPercent(MetricType.LHB), enStats.getMetricPercent(MetricType.LHB)));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", skStats.getMetricPercent(MetricType.EFFORT), enStats.getMetricPercent(MetricType.EFFORT)));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFB (Rovnaký prst)", layout.skStats().getMetricPercent(MetricType.SFB), biLang ? layout.enStats().getMetricPercent(MetricType.SFB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFS (Sendviče)", layout.skStats().getMetricPercent(MetricType.SFS), biLang ? layout.enStats().getMetricPercent(MetricType.SFS) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ALT (Striedanie rúk)", layout.skStats().getMetricPercent(MetricType.ALTERNATION), biLang ? layout.enStats().getMetricPercent(MetricType.ALTERNATION) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-In (Valenie dnu)", layout.skStats().getMetricPercent(MetricType.ROLL_IN), biLang ? layout.enStats().getMetricPercent(MetricType.ROLL_IN) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-Out (Valenie von)", layout.skStats().getMetricPercent(MetricType.ROLL_OUT), biLang ? layout.enStats().getMetricPercent(MetricType.ROLL_OUT) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Scissors (Nožnice)", layout.skStats().getMetricPercent(MetricType.SCISSORS), biLang ? layout.enStats().getMetricPercent(MetricType.SCISSORS) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Redirects (Otočky)", layout.skStats().getMetricPercent(MetricType.REDIRECTS), biLang ? layout.enStats().getMetricPercent(MetricType.REDIRECTS) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LSB (Bočné uličky)", layout.skStats().getMetricPercent(MetricType.LSB), biLang ? layout.enStats().getMetricPercent(MetricType.LSB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LHB (Záťaž malíčkov)", layout.skStats().getMetricPercent(MetricType.LHB), biLang ? layout.enStats().getMetricPercent(MetricType.LHB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", layout.skStats().getMetricPercent(MetricType.EFFORT), biLang ? layout.enStats().getMetricPercent(MetricType.EFFORT) : 0.0));
         report.append("--------------------------------------------------------------------\n");
 
         // --- ZAŤAŽENIE JEDNOTLIVÝCH PRSTOV ---
@@ -88,15 +80,15 @@ public final class LayoutAnalyzer {
                 "Jazyk", "L_Mal", "L_Prs", "L_Pro", "L_Uka", "R_Uka", "R_Pro", "R_Prs", "R_Mal"));
         report.append("--------------------------------------------------------------------\n");
         report.append(String.format("%-12s | %6.2f | %6.2f | %6.2f | %6.2f || %6.2f | %6.2f | %6.2f | %6.2f\n", "Slovenčina",
-                skStats.getFingerPercent(Finger.LP.ordinal()), skStats.getFingerPercent(Finger.LR.ordinal()),
-                skStats.getFingerPercent(Finger.LM.ordinal()), skStats.getFingerPercent(Finger.LI.ordinal()),
-                skStats.getFingerPercent(Finger.RI.ordinal()), skStats.getFingerPercent(Finger.RM.ordinal()),
-                skStats.getFingerPercent(Finger.RR.ordinal()), skStats.getFingerPercent(Finger.RP.ordinal())));
-        report.append(String.format("%-12s | %6.2f | %6.2f | %6.2f | %6.2f || %6.2f | %6.2f | %6.2f | %6.2f\n", "Angličtina",
-                enStats.getFingerPercent(Finger.LP.ordinal()), enStats.getFingerPercent(Finger.LR.ordinal()),
-                enStats.getFingerPercent(Finger.LM.ordinal()), enStats.getFingerPercent(Finger.LI.ordinal()),
-                enStats.getFingerPercent(Finger.RI.ordinal()), enStats.getFingerPercent(Finger.RM.ordinal()),
-                enStats.getFingerPercent(Finger.RR.ordinal()), enStats.getFingerPercent(Finger.RP.ordinal())));
+                layout.skStats().getFingerPercent(Finger.LP.ordinal()), layout.skStats().getFingerPercent(Finger.LR.ordinal()),
+                layout.skStats().getFingerPercent(Finger.LM.ordinal()), layout.skStats().getFingerPercent(Finger.LI.ordinal()),
+                layout.skStats().getFingerPercent(Finger.RI.ordinal()), layout.skStats().getFingerPercent(Finger.RM.ordinal()),
+                layout.skStats().getFingerPercent(Finger.RR.ordinal()), layout.skStats().getFingerPercent(Finger.RP.ordinal())));
+        if (biLang) report.append(String.format("%-12s | %6.2f | %6.2f | %6.2f | %6.2f || %6.2f | %6.2f | %6.2f | %6.2f\n", "Angličtina",
+                layout.enStats().getFingerPercent(Finger.LP.ordinal()), layout.enStats().getFingerPercent(Finger.LR.ordinal()),
+                layout.enStats().getFingerPercent(Finger.LM.ordinal()), layout.enStats().getFingerPercent(Finger.LI.ordinal()),
+                layout.enStats().getFingerPercent(Finger.RI.ordinal()), layout.enStats().getFingerPercent(Finger.RM.ordinal()),
+                layout.enStats().getFingerPercent(Finger.RR.ordinal()), layout.enStats().getFingerPercent(Finger.RP.ordinal())));
 
         // 2. SPRACOVANIE DIGITÁLNEHO RÖNTGENU SLOVNÍKOV
         boolean[] presentOnKeyboard = new boolean[256];
@@ -108,7 +100,7 @@ public final class LayoutAnalyzer {
         // 🚀 FIX: Vyťahujeme anatómiu cez bitové masky z POS_INFO, presne podľa novej topológie
         final int[] posInfo = KeyboardTopology.POS_INFO;
         for (int i = 0; i < 30; i++) {
-            char c = matrix[i];
+            char c = layout.matrix()[i];
             if (c < 256) {
                 presentOnKeyboard[c] = true;
                 int info = posInfo[i];
@@ -124,7 +116,7 @@ public final class LayoutAnalyzer {
         report.append("====================================================================\n");
 
         analyzeLanguageOffenders(report, dictSK, "SLOVENČINA (SK)", presentOnKeyboard, charToHand, charToRow, charToCol, charToFinger);
-        analyzeLanguageOffenders(report, dictEN, "ANGLIČTINA (EN)", presentOnKeyboard, charToHand, charToRow, charToCol, charToFinger);
+        if (dictEN != null) analyzeLanguageOffenders(report, dictEN, "ANGLIČTINA (EN)", presentOnKeyboard, charToHand, charToRow, charToCol, charToFinger);
 
         return report;
     }
