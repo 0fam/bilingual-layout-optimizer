@@ -32,6 +32,14 @@ public final class Evaluator {
         double rawRedirects = 0;
 
         // =========================================================================
+        // 🚀 HACK: Predpočítané multiplikátory pre všetky typy n-gramov
+        // =========================================================================
+        double mgMultiplier = (totalMonograms == 0) ? 0.0 : (100.0 / totalMonograms);
+        double bgMultiplier = (totalBigrams == 0)  ? 0.0 : (100.0 / totalBigrams);
+        double sgMultiplier = (totalSkipgrams == 0) ? 0.0 : (100.0 / totalSkipgrams);
+        double tgMultiplier = (totalTrigrams == 0)  ? 0.0 : (100.0 / totalTrigrams);
+
+        // =========================================================================
         // 🔴 BIGRAMY & SKIPGRAMY (Ploché lookupy bez bit-shiftov a vetvenia)
         // =========================================================================
         for (int i = 0; i < KEY_COUNT; i++) {
@@ -87,11 +95,10 @@ public final class Evaluator {
         double[] localFingerPercents = new double[FINGER_COUNT];
         double rawHomeRow = 0;
         double rawStretch = 0;
-        double pctMultiplier = (totalMonograms == 0) ? 0.0 : (100.0 / totalMonograms);
 
         for (int i = 0; i < KEY_COUNT; i++) {
             double rawFreq = ngStats.getMonogramFreq(matrix[i]);
-            double pct = rawFreq * pctMultiplier;
+            double pct = rawFreq * mgMultiplier;
 
             result.setKeyPercent(i, pct);
 
@@ -112,68 +119,68 @@ public final class Evaluator {
         double totalProduct = 1.0;
         long totalCount = 0;
 
-        // 1. SFB
-        double pctSfb = (totalBigrams == 0) ? 0.0 : (rawSfb * 100.0) / totalBigrams;
+        // 1. SFB (Bigram -> použijeme bgMultiplier)
+        double pctSfb = rawSfb * bgMultiplier; // ⚡ ŽIADNE DELENIE! Čisté rýchle násobenie
         result.setMetricPercent(MetricType.SFB, pctSfb);
         double coefSfb = weights.calculateCoefficient(MetricType.SFB, pctSfb);
         if (coefSfb >= 0) { totalProduct *= coefSfb; totalCount++; }
 
-        // 2. SFS
-        double pctSfs = (totalSkipgrams == 0) ? 0.0 : (rawSfs * 100.0) / totalSkipgrams;
+        // 2. SFS (Skipgram -> použijeme sgMultiplier)
+        double pctSfs = rawSfs * sgMultiplier; // ⚡ Čisté násobenie
         result.setMetricPercent(MetricType.SFS, pctSfs);
         double coefSfs = weights.calculateCoefficient(MetricType.SFS, pctSfs);
         if (coefSfs >= 0) { totalProduct *= coefSfs; totalCount++; }
 
-        // 3. ALTERNATION
-        double pctAlt = (totalBigrams == 0) ? 0.0 : (rawAlt * 100.0) / totalBigrams;
+        // 3. ALTERNATION (Bigram -> bgMultiplier)
+        double pctAlt = rawAlt * bgMultiplier;
         result.setMetricPercent(MetricType.ALTERNATION, pctAlt);
         double coefAlt = weights.calculateCoefficient(MetricType.ALTERNATION, pctAlt);
         if (coefAlt >= 0) { totalProduct *= coefAlt; totalCount++; }
 
-        // 4. ROLL_IN
-        double pctRollIn = (totalTrigrams == 0) ? 0.0 : (rawRollIn * 100.0) / totalTrigrams;
+        // 4. ROLL_IN (Trigram -> použijeme tgMultiplier)
+        double pctRollIn = rawRollIn * tgMultiplier; // ⚡ Čisté násobenie
         result.setMetricPercent(MetricType.ROLL_IN, pctRollIn);
         double coefRollIn = weights.calculateCoefficient(MetricType.ROLL_IN, pctRollIn);
         if (coefRollIn >= 0) { totalProduct *= coefRollIn; totalCount++; }
 
-        // 5. ROLL_OUT
-        double pctRollOut = (totalTrigrams == 0) ? 0.0 : (rawRollOut * 100.0) / totalTrigrams;
+        // 5. ROLL_OUT (Trigram -> tgMultiplier)
+        double pctRollOut = rawRollOut * tgMultiplier;
         result.setMetricPercent(MetricType.ROLL_OUT, pctRollOut);
         double coefRollOut = weights.calculateCoefficient(MetricType.ROLL_OUT, pctRollOut);
         if (coefRollOut >= 0) { totalProduct *= coefRollOut; totalCount++; }
 
-        // 6. SCISSORS
-        double pctScissors = (totalBigrams == 0) ? 0.0 : (rawScissors * 100.0) / totalBigrams;
+        // 6. SCISSORS (Bigram -> bgMultiplier)
+        double pctScissors = rawScissors * bgMultiplier;
         result.setMetricPercent(MetricType.SCISSORS, pctScissors);
         double coefScissors = weights.calculateCoefficient(MetricType.SCISSORS, pctScissors);
         if (coefScissors >= 0) { totalProduct *= coefScissors; totalCount++; }
 
-        // 7. LSB
-        double pctLsb = (totalBigrams == 0) ? 0.0 : (rawLsb * 100.0) / totalBigrams;
+        // 7. LSB (Bigram -> bgMultiplier)
+        double pctLsb = rawLsb * bgMultiplier;
         result.setMetricPercent(MetricType.LSB, pctLsb);
         double coefLsb = weights.calculateCoefficient(MetricType.LSB, pctLsb);
         if (coefLsb >= 0) { totalProduct *= coefLsb; totalCount++; }
 
-        // 8. LHB
-        double pctLhb = (totalBigrams == 0) ? 0.0 : (rawLhb * 100.0) / totalBigrams;
+        // 8. LHB (Bigram -> bgMultiplier)
+        double pctLhb = rawLhb * bgMultiplier;
         result.setMetricPercent(MetricType.LHB, pctLhb);
         double coefLhb = weights.calculateCoefficient(MetricType.LHB, pctLhb);
         if (coefLhb >= 0) { totalProduct *= coefLhb; totalCount++; }
 
-        // 9. REDIRECTS
-        double pctRedirects = (totalTrigrams == 0) ? 0.0 : (rawRedirects * 100.0) / totalTrigrams;
+        // 9. REDIRECTS (Trigram -> tgMultiplier)
+        double pctRedirects = rawRedirects * tgMultiplier;
         result.setMetricPercent(MetricType.REDIRECTS, pctRedirects);
         double coefRedirects = weights.calculateCoefficient(MetricType.REDIRECTS, pctRedirects);
         if (coefRedirects >= 0) { totalProduct *= coefRedirects; totalCount++; }
 
-        // 10. HOME_ROW
-        double pctHome = (totalMonograms == 0) ? 0.0 : (rawHomeRow * 100.0) / totalMonograms;
+        // 10. HOME_ROW (Monogram -> mgMultiplier)
+        double pctHome = rawHomeRow * mgMultiplier;
         result.setMetricPercent(MetricType.HOME_ROW, pctHome);
         double coefHome = weights.calculateCoefficient(MetricType.HOME_ROW, pctHome);
         if (coefHome >= 0) { totalProduct *= coefHome; totalCount++; }
 
-        // 11. EFFORT
-        double pctEffort = (totalMonograms == 0) ? 0.0 : (rawStretch * 100.0) / totalMonograms;
+        // 11. EFFORT (Monogram -> použijeme mgMultiplier)
+        double pctEffort = rawStretch * mgMultiplier;
         result.setMetricPercent(MetricType.EFFORT, pctEffort);
         double coefEffort = weights.calculateCoefficient(MetricType.EFFORT, pctEffort);
         if (coefEffort >= 0) { totalProduct *= coefEffort; totalCount++; }
