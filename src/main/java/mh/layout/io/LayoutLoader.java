@@ -17,6 +17,7 @@ public final class LayoutLoader {
 
     /**
      * Načíta 30-znakové layouty z jedného súboru (denníka) alebo z celého priečinka a pridá ich do existujúceho zoznamu.
+     * Názvy layoutov zo samostatnych suborov automaticky prefixuje prvými dvoma znakmi z názvu zdrojového súboru.
      */
     public static List<LayoutInput> loadLayouts(String targetPath, List<LayoutInput> results) throws IOException {
         File target = new File(targetPath);
@@ -54,10 +55,14 @@ public final class LayoutLoader {
             }
         } else if (target.isFile()) {
             // Prípad B: Používateľ poslal cestu k jednému súboru (napr. layout_journal.txt)
-            if (target.getName().endsWith(".dof")) {
+            // 🚀 BEZPEČNÝ PREFIX PRE SAMOSTATNÝ SÚBOR (napr. "01_")
+            String fileName = target.getName();
+            String prefix = fileName.substring(0, Math.min(fileName.length(), 2)).toUpperCase() + "_";
+
+            if (fileName.endsWith(".dof")) {
                 String dofMatrix = parseDofMatrix(target);
                 if (dofMatrix != null) {
-                    results.add(new LayoutInput(target.getName(), dofMatrix.toCharArray()));
+                    results.add(new LayoutInput(fileName, dofMatrix.toCharArray()));
                 }
             } else {
                 List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
@@ -77,10 +82,10 @@ public final class LayoutLoader {
                         String maybeLayout = layoutParts[1].replace("/", "").replaceAll("\\s+", "");
                         if (maybeLayout.length() == 30) {
                             String iter = extractValue(line, "Iteracia:");
-                            // Vygeneruje napr: L1_I203572_L
-                            String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
+                            // 🎯 Zakomponovaný prefix (napr. SK_L1_I203572_L)
+//                            String generatedName = prefix + "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_L";
+                            String generatedName = prefix + "L" + lineNum + "_L";
 
-                            // 🚀 FIX: Prevod na UpperCase pre log formát
                             results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
                             continue;
                         }
@@ -92,10 +97,10 @@ public final class LayoutLoader {
                         String maybeLayout = pipeParts[0].replaceAll("\\s+", "");
                         if (maybeLayout.length() == 30) {
                             String iter = extractValue(line, "Iterácia:");
-                            // Vygeneruje napr: L1_I74498_J
-                            String generatedName = "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
+                            // 🎯 Zakomponovaný prefix (napr. SK_L1_I74498_J)
+//                            String generatedName = prefix + "L" + lineNum + (iter.isEmpty() ? "" : "_I" + iter) + "_J";
+                            String generatedName = prefix + "L" + lineNum + "_J";
 
-                            // 🚀 FIX: Prevod na UpperCase pre žurnál formát
                             results.add(new LayoutInput(generatedName, maybeLayout.toUpperCase().toCharArray()));
                             continue;
                         }
@@ -107,8 +112,8 @@ public final class LayoutLoader {
                         String name = splitParts[0].trim();
                         String maybeLayout = splitParts[1].replaceAll("\\s+", "");
                         if (maybeLayout.length() == 30) {
-                            // 🚀 FIX: Prevod na UpperCase pre kľúč-hodnota formát
-                            results.add(new LayoutInput(name, maybeLayout.toUpperCase().toCharArray()));
+                            // 🎯 Zakomponovaný prefix pred pôvodný názov (napr. SK_Dvorak)
+                            results.add(new LayoutInput(prefix + name, maybeLayout.toUpperCase().toCharArray()));
                             continue;
                         }
                     }
@@ -116,8 +121,8 @@ public final class LayoutLoader {
                     // 3. Posledná záchrana: Riadok obsahuje iba čistý 30-znakový layout
                     String clean = line.replaceAll("\\s+", "");
                     if (clean.length() == 30) {
-                        // 🚀 FIX: Prevod na UpperCase pre čistý surový riadok
-                        results.add(new LayoutInput("L" + lineNum + "_Pure", clean.toUpperCase().toCharArray()));
+                        // 🎯 Zakomponovaný prefix (napr. SK_L1_Pure)
+                        results.add(new LayoutInput(prefix + "L" + lineNum + "_Pure", clean.toUpperCase().toCharArray()));
                     }
                 }
             }

@@ -149,6 +149,19 @@ public final class ParallelOptimizer {
             currentMatrix[pos1] = currentMatrix[pos2];
             currentMatrix[pos2] = temp;
 
+            localEvaluations++;
+
+            // 🚀 ULTRA-OPTIMALIZÁCIA: Splachujeme častejšie (každých 4096 iterácií), aby tachometer nežil v nulách
+            if ((localEvaluations & 0x0FFF) == 0) {
+                // 1. Živý výpis do konzoly
+//                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
+
+                // 2. Bezpečné pripočítanie rýchlosti do globálneho počítadla
+                synchronized (lock) {
+                    totalEvaluations += 0x0FFF;
+                }
+            }
+
             // 🚀 BLESKOVÉ FILTROVANIE: Ak to nie je kognitívne friendly, okamžite to vráť späť
             if (!isHumanFriendly(currentMatrix)) {
                 char undo = currentMatrix[pos1];
@@ -164,19 +177,6 @@ public final class ParallelOptimizer {
             double skScore = nextSkStats.getScore();
             double enScore = nextEnStats.getScore();
             double nextScore = AnalyzedLayout.combineScore(nextSkStats, nextEnStats, skRatio);
-
-            localEvaluations++;
-
-            // 🚀 ULTRA-OPTIMALIZÁCIA: Splachujeme častejšie (každých 4096 iterácií), aby tachometer nežil v nulách
-            if ((localEvaluations & 0x0FFF) == 0) {
-                // 1. Živý výpis do konzoly
-//                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
-
-                // 2. Bezpečné pripočítanie rýchlosti do globálneho počítadla
-                synchronized (lock) {
-                    totalEvaluations += 0x0FFF;
-                }
-            }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (nextScore >= dynamicThreshold) {
