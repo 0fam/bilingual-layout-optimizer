@@ -278,24 +278,24 @@ public final class ParallelOptimizer {
         return sb.toString();
     }
 
-    public static boolean isHumanFriendly(char[] matrix) {
-        int row = 1;
-        int offset = row * 10;
-
-        for (int col = 0; col < 10; col++) {
-            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
-
-            char ch = matrix[offset + col];
-
-            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
-            if (ch < 'A' || ch > 'Z') return false;
-
-            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
-            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
-        }
-
-        return true;
-    }
+//    public static boolean isHumanFriendly(char[] matrix) {
+//        int row = 1;
+//        int offset = row * 10;
+//
+//        for (int col = 0; col < 10; col++) {
+//            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
+//
+//            char ch = matrix[offset + col];
+//
+//            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
+//            if (ch < 'A' || ch > 'Z') return false;
+//
+//            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
+//            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
+//        }
+//
+//        return true;
+//    }
 
 //    public static boolean isHumanFriendly(char[] matrix) {
 //        for (int row = 0; row < 3; row++) {
@@ -366,5 +366,79 @@ public final class ParallelOptimizer {
 //        }
 //        return true;
 //    }
+
+    public boolean isHumanFriendly(char[] matrix) {
+        int[] idx = new int[4];
+        int count = 0;
+
+        // 1. Rýchly zber indexov, kde sa nachádzajú tvoje 4 symboly (, . - ')
+        for (int i = 0; i < matrix.length; i++) {
+            char c = matrix[i];
+            if (c == ',' || c == '.' || c == '-' || c == '\'') {
+                if (count < 4) idx[count++] = i;
+            }
+        }
+        if (count < 4) return false;
+
+        // Zoradenie indexov nám brutálne uľahčí geometrickú detekciu
+        Arrays.sort(idx);
+
+        // =========================================================================
+        // NOVÝ VZOREC: Centrálny pilier (Ukazovákové stretch pozície proti sebe)
+        // =========================================================================
+        // Možnosť A: Horný riadok + Domovský riadok (indexy 4, 5 a 14, 15)
+        if (idx[0] == 4 && idx[1] == 5 && idx[2] == 14 && idx[3] == 15) {
+            return true;
+        }
+        // Možnosť B: Domovský riadok + Spodný riadok (indexy 14, 15 a 24, 25)
+        if (idx[0] == 14 && idx[1] == 15 && idx[2] == 24 && idx[3] == 25) {
+            return true;
+        }
+
+        // Prevedieme indexy na súradnice [Row, Column] pre ostatné voľné symetrie
+        int[] r = new int[4];
+        int[] c = new int[4];
+        for (int i = 0; i < 4; i++) {
+            r[i] = idx[i] / 10;
+            c[i] = idx[i] % 10;
+        }
+
+        // =========================================================================
+        // VZOREC 1: 4 symboly v jednom riadku lineárne vedľa seba (kdekoľvek)
+        // =========================================================================
+        if (r[0] == r[1] && r[1] == r[2] && r[2] == r[3]) {
+            if (c[1] == c[0] + 1 && c[2] == c[1] + 1 && c[3] == c[2] + 1) {
+                return true;
+            }
+        }
+
+        // =========================================================================
+        // VZOREC 2: Vertikálna symetria (Dvojičky nad sebou v rovnakých stĺpcoch)
+        // =========================================================================
+        if (c[0] == c[1] && c[2] == c[3] && r[0] != r[1] && r[2] != r[3]) {
+            return true;
+        }
+        if (c[0] == c[2] && c[1] == c[3] && r[0] != r[2] && r[1] != r[3]) {
+            return true;
+        }
+
+        // =========================================================================
+        // VZOREC 3: Horizontálne zrkadlo (2 symboly na ľavej ruke, 2 na pravej ruke)
+        // Symetria podľa stredovej osi: col_left = 9 - col_right
+        // =========================================================================
+        if (c[0] < 5 && c[1] < 5 && c[2] >= 5 && c[3] >= 5) {
+            // Možnosť A: Krajné sa zrkadlia (0 s 3) a vnútorné sa zrkadlia (1 s 2)
+            if (r[0] == r[3] && c[0] == 9 - c[3] && r[1] == r[2] && c[1] == 9 - c[2]) {
+                return true;
+            }
+            // Možnosť B: Paralelné dvojičky (0 s 2) and (1 s 3)
+            if (r[0] == r[2] && c[0] == 9 - c[2] && r[1] == r[3] && c[1] == 9 - c[3]) {
+                return true;
+            }
+        }
+
+        // Ak layout nepasuje do žiadnej kognitívnej šablóny, filter ho zahodí
+        return false;
+    }
 
 }
