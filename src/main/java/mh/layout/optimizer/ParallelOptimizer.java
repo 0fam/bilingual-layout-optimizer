@@ -1,5 +1,6 @@
 package mh.layout.optimizer;
 
+import mh.layout.analyzer.AnalyzedLayout;
 import mh.layout.evaluator.Evaluator;
 import mh.layout.evaluator.Weights;
 import mh.layout.stats.LayoutStats;
@@ -20,8 +21,7 @@ public final class ParallelOptimizer {
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    public volatile double dynamicThresholdSk = 0.0;
-    public volatile double dynamicThresholdEn = 0.0;
+    public volatile double dynamicThreshold = 0.0;
 
     private char[] globalBestMatrix;
     private double globalBestScore = -1.0;
@@ -36,12 +36,11 @@ public final class ParallelOptimizer {
     private double skMono, skBigram, skSkip, skTri;
     private double enMono, enBigram, enSkip, enTri;
 
-    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double thresholdSk, double thresholdEn) {
+    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double threshold) {
         if (isRunning.get()) return;
         isRunning.set(true);
 
-        dynamicThresholdSk = thresholdSk;
-        dynamicThresholdEn = thresholdEn;
+        dynamicThreshold = threshold;
 
         double enRatio = 1.0 - skRatio;
         this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
@@ -75,11 +74,11 @@ public final class ParallelOptimizer {
 
         int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
-        System.out.println("📝 Denník (SK >= " + dynamicThresholdSk + ", EN >= " + dynamicThresholdEn + ") zapisuje bez ohľadu na zlepšenie do: " + JOURNAL_FILE);
+        System.out.println("📝 Pociatocny threshold na zapis do dennika " + JOURNAL_FILE + " je " + dynamicThreshold);
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
-            Thread worker = new Thread(() -> runAnnealingWorker(threadId, initialMatrix, statsSK, statsEN, weights, skRatio, thresholdSk, thresholdEn));
+            Thread worker = new Thread(() -> runAnnealingWorker(threadId, initialMatrix, statsSK, statsEN, weights, skRatio));
             worker.setDaemon(true);
             worker.start();
         }
@@ -108,7 +107,7 @@ public final class ParallelOptimizer {
     // =========================================================================
     // ⚙️ JADRO ŽÍHANIA: Spúšťa sa samostatne v každom vlákne
     // =========================================================================
-    private void runAnnealingWorker(int threadId, char[] startMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double thresholdSk, double thresholdEn) {
+    private void runAnnealingWorker(int threadId, char[] startMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
         Random rand = new Random();
         char[] currentMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
 
@@ -164,7 +163,7 @@ public final class ParallelOptimizer {
 
             double skScore = nextSkStats.getScore();
             double enScore = nextEnStats.getScore();
-            double nextScore = (skScore * skRatio) + (enScore * enRatio);
+            double nextScore = AnalyzedLayout.combineScore(nextSkStats, nextEnStats, skRatio);
 
             localEvaluations++;
 
@@ -180,7 +179,7 @@ public final class ParallelOptimizer {
             }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
-            if (skScore >= dynamicThresholdSk && enScore >= dynamicThresholdEn) {
+            if (nextScore >= dynamicThreshold) {
                 System.out.println("📝 Zápis do denníka: " + formatMatrix(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
@@ -226,19 +225,19 @@ public final class ParallelOptimizer {
 //        }
 //    }
 
-    // Odobrali sme static a synchronized z hlavičky, zamykáme cez inštančný lock
+    // Na začiatku aplikácie nastav: globalBestScore = 0.0 a dynamicThreshold = 0.0
     public void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
         synchronized (lock) {
             if (score > globalBestScore) {
                 globalBestScore = score;
                 globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
 
-                // Dynamické uťahovanie latky pod spoločným zámkom
-                this.dynamicThresholdSk = Math.max(this.dynamicThresholdSk, sk - 0.2);
-                this.dynamicThresholdEn = Math.max(this.dynamicThresholdEn, en - 0.2);
+                // 🚀 DYNAMICKÝ REFAKTOR: Latku pre "zaujímavé" layouty odvodíme od celkového skóre.
+                // Povolíme zápis layoutom, ktoré za absolútnym kráľom zaostávajú maximálne o 0.3 bodu.
+                this.dynamicThreshold = score - 0.3;
 
-                System.out.printf("%n🏆 NOVÝ GLOBÁLNY REKORD! Skóre: %.4f (SK: %.2f | EN: %.2f) -> Latka zdvihnutá na SK: %.2f EN: %.2f%n",
-                        score, sk, en, this.dynamicThresholdSk, this.dynamicThresholdEn);
+                System.out.printf("%n🏆 NOVÝ GLOBÁLNY REKORD! Skóre: %.4f (SK: %.2f | EN: %.2f) -> Latka pre zápis posunutá na celkové skóre: %.4f%n",
+                        score, sk, en, this.dynamicThreshold);
             }
         }
     }
@@ -279,6 +278,22 @@ public final class ParallelOptimizer {
         return sb.toString();
     }
 
+    public static boolean isHumanFriendly(char[] matrix) {
+        int row = 1;
+        int offset = row * 10;
+
+        for (int col = 0; col < 10; col++) {
+            if (col == 4 || col == 5) continue; // Stredné stĺpce sú vždy v pohode, nemusíme ich kontrolovat
+
+            char ch = matrix[offset + col];
+
+            // 1. Ak je to písmeno, nezaujíma nás to
+            if (ch < 'A' || ch > 'Z') return false;
+        }
+
+        return true;
+    }
+
 //    public static boolean isHumanFriendly(char[] matrix) {
 //        for (int row = 0; row < 3; row++) {
 //            int offset = row * 10;
@@ -303,49 +318,50 @@ public final class ParallelOptimizer {
 //        return true; // Všetky symboly sú buď na krajoch/stredoch, alebo v pároch
 //    }
 
-    public static boolean isHumanFriendly(char[] matrix) {
-        for (int row = 0; row < 3; row++) {
-            int offset = row * 10;
+//    public static boolean isHumanFriendly(char[] matrix) {
+//        for (int row = 0; row < 3; row++) {
+//            int offset = row * 10;
+//
+//            for (int col = 0; col < 10; col++) {
+//                char ch = matrix[offset + col];
+//
+//                // =========================================================================
+//                // 🚨 ŠPECIÁLNA STRÁŽ PRE HOME ROW (Riadok 1) - Koncept prioritných klávesov
+//                // =========================================================================
+//                if (row == 1) {
+//                    // Definuje odpad, ktorý na Home Row nechceme vidieť ani na sekundu
+//                    boolean isTrashKey = (ch == 'Q' || ch == 'X' || ch == 'W' || ch == 'J' || ch == 'Z');
+//
+//                    if (col == 4 || col == 5) {
+//                        // STRETCH STĹPCE: Povolené písmená (mimo trashu) ALEBO bodka a čiarka
+//                        if (isTrashKey) return false;
+//                        if (ch < 'A' || ch > 'Z') {
+//                            if (ch != '.' && ch != ',') return false; // Slabé symboly do stredu nepustíme
+//                        }
+//                    } else {
+//                        // HLAVNÉ POZÍCIE PRSTOV: Prísne iba čistá abeceda bez trashu a symbolov
+//                        if (ch < 'A' || ch > 'Z' || isTrashKey) return false;
+//                    }
+//                    continue; // Home row vyriešená, ideme na ďalšiu klávesu
+//                }
+//
+//                // =========================================================================
+//                // 📐 PRAVIDLO PRE HORNÝ A SPODNÝ RIADOK (Riadky 0 a 2)
+//                // =========================================================================
+//                if (ch >= 'A' && ch <= 'Z') continue; // Písmená hore/dole neriešime
+//                if (col == 0 || col == 4 || col == 5 || col == 9) continue; // Voľné stĺpce
+//
+//                // Podmienené stĺpce hore a dole: symbol musí mať vedľa seba parťáka
+//                char left = matrix[offset + col - 1];
+//                if (left < 'A' || left > 'Z') continue;
+//
+//                char right = matrix[offset + col + 1];
+//                if (right < 'A' || right > 'Z') continue;
+//
+//                return false; // Osamotený symbol v riadkoch 0 alebo 2 -> KO
+//            }
+//        }
+//        return true;
+//    }
 
-            for (int col = 0; col < 10; col++) {
-                char ch = matrix[offset + col];
-
-                // =========================================================================
-                // 🚨 ŠPECIÁLNA STRÁŽ PRE HOME ROW (Riadok 1) - Koncept prioritných klávesov
-                // =========================================================================
-                if (row == 1) {
-                    // Definuje odpad, ktorý na Home Row nechceme vidieť ani na sekundu
-                    boolean isTrashKey = (ch == 'Q' || ch == 'X' || ch == 'W' || ch == 'J' || ch == 'Z');
-
-                    if (col == 4 || col == 5) {
-                        // STRETCH STĹPCE: Povolené písmená (mimo trashu) ALEBO bodka a čiarka
-                        if (isTrashKey) return false;
-                        if (ch < 'A' || ch > 'Z') {
-                            if (ch != '.' && ch != ',') return false; // Slabé symboly do stredu nepustíme
-                        }
-                    } else {
-                        // HLAVNÉ POZÍCIE PRSTOV: Prísne iba čistá abeceda bez trashu a symbolov
-                        if (ch < 'A' || ch > 'Z' || isTrashKey) return false;
-                    }
-                    continue; // Home row vyriešená, ideme na ďalšiu klávesu
-                }
-
-                // =========================================================================
-                // 📐 PRAVIDLO PRE HORNÝ A SPODNÝ RIADOK (Riadky 0 a 2)
-                // =========================================================================
-                if (ch >= 'A' && ch <= 'Z') continue; // Písmená hore/dole neriešime
-                if (col == 0 || col == 4 || col == 5 || col == 9) continue; // Voľné stĺpce
-
-                // Podmienené stĺpce hore a dole: symbol musí mať vedľa seba parťáka
-                char left = matrix[offset + col - 1];
-                if (left < 'A' || left > 'Z') continue;
-
-                char right = matrix[offset + col + 1];
-                if (right < 'A' || right > 'Z') continue;
-
-                return false; // Osamotený symbol v riadkoch 0 alebo 2 -> KO
-            }
-        }
-        return true;
-    }
 }

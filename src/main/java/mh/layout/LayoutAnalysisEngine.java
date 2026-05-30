@@ -69,8 +69,7 @@ public final class LayoutAnalysisEngine {
             // 🚀 FIX: Ak sme v single režime, evaluate pre EN preskočíme a priradíme referenciu. Šetríme 50% CPU!
             LayoutStats enRes = statsEN == null ? null : Evaluator.evaluate(matrix, statsEN, weights);
 
-            double combinedScore = enRes == null ? skRes.getScore() : combineScore(skRes.getScore(), enRes.getScore(), slovakRatio);
-            leaderboard.add(new AnalyzedLayout(input.name(), matrix, skRes, enRes, combinedScore));
+            leaderboard.add(AnalyzedLayout.instance(input.name(), matrix, skRes, enRes, slovakRatio));
 
 //            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
             // cislo nasobok 2 na X - 1 potrebujes 0000111111 seriu jednotiek na konci

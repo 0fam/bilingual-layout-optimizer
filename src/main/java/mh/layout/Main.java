@@ -43,7 +43,7 @@ public final class Main {
         // 4. ROZCESTNÍK: Už len posúvame hotové dáta (Závislosti) do enginov
         if (optimize) {
             // Optimizéru stačia čisté n-gramové štatistiky, slovníky slov ho nezaujímajú
-            new OptimizationEngine().run(statsSK, statsEN, 80, 70);
+            new OptimizationEngine().run(statsSK, statsEN, 80);
         } else {
             // Analyzátor dostane komplet všetko aj so slovníkmi pre detailný audit
             new LayoutAnalysisEngine().runStandalone(statsSK, statsEN, dictSK, dictEN, List.of(

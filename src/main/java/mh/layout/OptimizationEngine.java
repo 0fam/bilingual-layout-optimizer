@@ -7,17 +7,22 @@ import mh.layout.stats.NGramStats;
 public final class OptimizationEngine {
 
     // 🚀 REFAKTOR: Metóda teraz prijíma už hotové, naplnené štatistiky z Main
-    public void run(NGramStats statsSK, NGramStats statsEN, double thresholdSk, double thresholdEn) {
+    public void run(NGramStats statsSK, NGramStats statsEN, double threshold) {
         System.out.println("====================================================");
         System.out.println("       BILINGVÁLNY OPTIMIZÉR KLÁVESNICE TOTEM        ");
         System.out.println("====================================================\n");
 
         // 1. ŠTARTOVACÍ LAYOUT (30 klávesov, mriežka 3x10)
-        String qwertyBase = (
-                "q x w h ;  . , l c b" +
-                "o a e i y  v s n t m" +
-                "g u k j '  f z r d p").replace(" ", "").toUpperCase();
-        char[] initialMatrix = qwertyBase.toCharArray();
+//        String baseLayout = (
+//                "q x w h ;  . , l c b" +
+//                "o a e i y  v s n t m" +
+//                "g u k j '  f z r d p").replace(" ", "").toUpperCase();
+
+        String baseLayout = (
+                "Z / M V P   W Q F , X" +
+                "S E T K D   L N A O I" +
+                "G ; C B H   J R U . Y").replace(" ", "").toUpperCase();
+        char[] initialMatrix = baseLayout.toCharArray();
 
         // 2. INICIALIZÁCIA LIMITOV
         // Všetky tvoje safe stropy a death gilotíny sa načítajú automaticky z konštruktora
@@ -29,7 +34,7 @@ public final class OptimizationEngine {
 
         // 3. ODPÁLENIE MULTITHREADOVÉHO MOTORA (Dáta idú priamo dnu)
         ParallelOptimizer optimizer = new ParallelOptimizer();
-        optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio, thresholdSk, thresholdEn);
+        optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio, threshold);
 
         // 4. MONITOROVACIA SLUČKA (Tachometer rýchlosti)
         long lastEvaluations = 0;
