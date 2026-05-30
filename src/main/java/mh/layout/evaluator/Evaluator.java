@@ -186,15 +186,13 @@ public final class Evaluator {
         if (coefEffort >= 0) { totalProduct *= coefEffort; totalCount++; }
 
         // 12. PRSTY (Výpočet koeficientov cez statickú cache prstov)
-        boolean hasSomeFingers = false;
         for (int i = 0; i < FINGER_COUNT; i++) {
             double coef = weights.calculateFingerCoefficient(FINGERS_CACHE[i], localFingerPercents[i]);
             if (coef >= 0) {
                 totalProduct *= coef;
-                hasSomeFingers = true;
+                totalCount++;
             }
         }
-        if (hasSomeFingers) totalCount++;
 
         // =========================================================================
         // 👑 FINÁLNE SKÓRE (Jediné Math.pow na úplnom konci výpočtu)

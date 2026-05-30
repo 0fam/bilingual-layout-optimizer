@@ -133,7 +133,7 @@ public final class LayoutAnalysisEngine {
 
     private double combineScore(double sk, double en, double ratioSk) {
         // 🚀 Gilotína: Ak je angličtina čisté utrpenie, layout okamžite diskvalifikujeme
-        if (en < 60.0 || sk < 60.0) {
+        if (en < 75.0 || sk < 50.0) {
             return 10.0; // vyhodiť z rebríčka
         } else {
 //            return (sk * ratioSk) + (en * (1 - ratioSk));
@@ -159,15 +159,17 @@ public final class LayoutAnalysisEngine {
             fileOut.println("=================================================================================================================================================================================================================================================");
 
             String colHeadFormat = bi ? "| %-11s " : "| %-5s ";
-            // 🚀 DYNAMICKÝ REFAKTOR: Pridané stĺpce pre prsty na koniec (24 znakov pre bilingvál, 11 pre single)
-            String fingHeadFormat = bi ? "| %-24s " : "| %-11s ";
 
-            String headerFormat = "%-4s | %-18s | %-41s | %-7s | %-8s | %-8s " + colHeadFormat.repeat(11) + fingHeadFormat.repeat(2) + "%n";
+            // 🚀 DYNAMICKÝ REFAKTOR: Šírka stĺpca presne kopíruje dĺžku nášho nového vizuálu prstov (63 znakov pre bilingvál, 28 pre single)
+            String fingHeadFormat = bi ? "| %-63s " : "| %-28s ";
+
+            // 🚀 FIX: fingHeadFormat je tu už iba JEDENKRÁT (odstránený chybný .repeat(2))
+            String headerFormat = "%-4s | %-18s | %-41s | %-7s | %-8s | %-8s " + colHeadFormat.repeat(11) + fingHeadFormat + "%n";
             String lineSeparator = "-".repeat(bi ? 257 : 195) + "\n"; // Automatická dĺžka oddeľovača
 
             String fingHead = bi
-                    ? "[SK] LP LR LM LI | RI RM RR RP   [EN] LP LR LM LI | RI RM RR RP"
-                    : "SK LP LR LM LI | RI RM RR RP";
+                    ? " LP LR LM LI . RI RM RR RP [SK][EN] LP LR LM LI . RI RM RR RP"
+                    : " LP LR LM LI . RI RM RR RP";
 
             fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH", fingHead);
             fileOut.print(lineSeparator);
@@ -193,12 +195,12 @@ public final class LayoutAnalysisEngine {
                 double[] home     = {res.skStats().getMetricPercent(MetricType.HOME_ROW), bi ? res.enStats().getMetricPercent(MetricType.HOME_ROW) : 0.0};
                 double[] stretch  = {res.skStats().getMetricPercent(MetricType.EFFORT), bi ? res.enStats().getMetricPercent(MetricType.EFFORT) : 0.0};
 
-                // 🚀 VÝPOČET ZÁŤAŽE PRSTOV (Formát: LP LR LM LI RI RM RR RP)
+                // 🚀 VÝPOČET ZÁŤAŽE PRSTOV (Formát: LP LR LM LI • RI RM RR RP)
                 String fingerStr;
 
                 if (bi) {
-                    // 🌍 BILINGVÁLNY VÝPIS: Obe jazykové sady vedľa seba s predelom rúk | a rozostupom jazykov
-                    fingerStr = String.format("[SK] %02.0f %02.0f %02.0f %02.0f | %02.0f %02.0f %02.0f %02.0f   [EN] %02.0f %02.0f %02.0f %02.0f | %02.0f %02.0f %02.0f %02.0f",
+                    // 🌍 BILINGVÁLNY VÝPIS
+                    fingerStr = String.format(" %02.0f %02.0f %02.0f %02.0f • %02.0f %02.0f %02.0f %02.0f   %02.0f %02.0f %02.0f %02.0f • %02.0f %02.0f %02.0f %02.0f",
                             res.skStats().getFingerPercent(Finger.LP.ordinal()), res.skStats().getFingerPercent(Finger.LR.ordinal()),
                             res.skStats().getFingerPercent(Finger.LM.ordinal()), res.skStats().getFingerPercent(Finger.LI.ordinal()),
                             res.skStats().getFingerPercent(Finger.RI.ordinal()), res.skStats().getFingerPercent(Finger.RM.ordinal()),
@@ -208,8 +210,8 @@ public final class LayoutAnalysisEngine {
                             res.enStats().getFingerPercent(Finger.RI.ordinal()), res.enStats().getFingerPercent(Finger.RM.ordinal()),
                             res.enStats().getFingerPercent(Finger.RR.ordinal()), res.enStats().getFingerPercent(Finger.RP.ordinal()));
                 } else {
-                    // 🇸🇰 MONOLINGVÁLNY VÝPIS: Čisté čísla s predelom rúk uprostred
-                    fingerStr = String.format("%02.0f %02.0f %02.0f %02.0f | %02.0f %02.0f %02.0f %02.0f",
+                    // 🇸🇰 MONOLINGVÁLNY VÝPIS: Pridané 3 medzery na začiatok kvôli zarovnaniu pod "SK LP..."
+                    fingerStr = String.format(" %02.0f %02.0f %02.0f %02.0f • %02.0f %02.0f %02.0f %02.0f",
                             res.skStats().getFingerPercent(Finger.LP.ordinal()), res.skStats().getFingerPercent(Finger.LR.ordinal()),
                             res.skStats().getFingerPercent(Finger.LM.ordinal()), res.skStats().getFingerPercent(Finger.LI.ordinal()),
                             res.skStats().getFingerPercent(Finger.RI.ordinal()), res.skStats().getFingerPercent(Finger.RM.ordinal()),
@@ -221,7 +223,9 @@ public final class LayoutAnalysisEngine {
                 String visualLayout = formatMatrixVisual(res.matrix());
 
                 String col = bi ? "| %5.2f %5.2f ": "| %5.2f ";
-                String lineFormat = "%-4d | %-18s | %-41s | %7.4f | %8.4f | %8.4f " + col.repeat(11) + fingHeadFormat.repeat(2) + "%n";
+
+                // 🚀 FIX: lineFormat na konci upravený na čistý fingHeadFormat bez .repeat(2)
+                String lineFormat = "%-4d | %-18s | %-41s | %7.4f | %8.4f | %8.4f " + col.repeat(11) + fingHeadFormat + "%n";
 
                 if (!bi) {
                     fileOut.printf(lineFormat,
