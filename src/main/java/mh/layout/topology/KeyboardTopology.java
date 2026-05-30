@@ -1,70 +1,28 @@
 package mh.layout.topology;
 
-import static mh.layout.topology.Finger.*;
-import static mh.layout.topology.Hand.L;
-import static mh.layout.topology.Hand.R;
-
 public final class KeyboardTopology {
 
     public static final int LEFT_HAND = 0, RIGHT_HAND = 1;
-
     public static final int TOP_ROW = 0, HOME_ROW = 1, BOTTOM_ROW = 2;
-
     public static final int KEY_COUNT = 30;
 
-    // 🎯 JEDINÉ PLOCHÉ POLE, KTORÉ CPU POTREBUJE PRE ANATÓMIU
+    // 🎯 HLAVNÉ BITOVÉ POLE PRE ZÁKLADNÚ ANATÓMIU
     public static final int[] POS_INFO = new int[KEY_COUNT];
 
-//    /**
-//     * Mapa indexov klávesnice (3 riadky x 10 stĺpcov = 30 pozícií):
-//     *  0  1  2  3  4  |  5  6  7  8  9   <- Horný riadok
-//     * 10 11 12 13 14  | 15 16 17 18 19   <- Domovský riadok (Home Row)
-//     * 20 21 22 23 24  | 25 26 27 28 29   <- Spodný riadok
-//     */
-//
-//    /**
-//     * Mapa rúk
-//     * 0 = Ľavá ruka, 1 = Pravá ruka
-//     */
-//    public static final Hand[] POS_TO_HAND = {
-//            L, L, L, L, L,  R, R, R, R, R,
-//            L, L, L, L, L,  R, R, R, R, R,
-//            L, L, L, L, L,  R, R, R, R, R
-//    };
-//
-//    /**
-//     * Map riadkov
-//     * 0 = Horný, 1 = Stredný (Home), 2 = Spodný riadok
-//     */
-//    public static final int[] POS_TO_ROW = {
-//            0, 0, 0, 0, 0,  0, 0, 0, 0, 0,
-//            1, 1, 1, 1, 1,  1, 1, 1, 1, 1,
-//            2, 2, 2, 2, 2,  2, 2, 2, 2, 2
-//    };
-//
-//    /**
-//     * Mapa stĺpcov
-//     * 0 až 9 zľava doprava (pre maticu 3x10)
-//     */
-//    public static final int[] POS_TO_COL = {
-//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
-//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9,
-//            0, 1, 2, 3, 4,  5, 6, 7, 8, 9
-//    };
-//
-//    /**
-//     * Mapa prstov
-//     * ID prstov (0 až 7 zľava doprava):
-//     * 0 = Ľavý malíček (LP)   |  4 = Pravý ukazovák (RI)
-//     * 1 = Ľavý prstenník (LR) |  5 = Pravý prostredník (RM)
-//     * 2 = Ľavý prostredník (LM)|  6 = Pravý prstenník (RR)
-//     * 3 = Ľavý ukazovák (LI)  |  7 = Pravý malíček (RP)
-//     */
-//    public static final Finger[] POS_TO_FINGER = {
-//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Horný riadok (ukazováky majú dva stĺpce)
-//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI,  // Domovský riadok
-//            LP, LR, LM, LI, LI,   RI, RI, RM, RR, RI   // Spodný riadok
-//    };
+    // 🚀 2D LOOKUP MATICE PRE BIGRAMY (Odpája kompletnú logiku z horúcej slučky)
+    public static final boolean[][] IS_ALT = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_SFB = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_SCISSORS = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_LSB = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_LHB = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_SFS = new boolean[KEY_COUNT][KEY_COUNT];
+
+    // 🚀 FLAT POĽA PRE TRIGRAMY (Sťahuje 27 000 iterácií na čistých 6 750)
+    public static int VALID_TRIPLES_COUNT = 0;
+    public static final int[] TRIPLE_I = new int[6750];
+    public static final int[] TRIPLE_J = new int[6750];
+    public static final int[] TRIPLE_K = new int[6750];
+    public static final byte[] TRIPLE_TYPE = new byte[6750]; // 1 = ROLL_IN, 2 = ROLL_OUT, 3 = REDIRECT
 
     /**
      * Statická penalizácia pozícií, váha nepohodlia/natiahnutia (Effort / Stretch Weight)
@@ -120,6 +78,103 @@ public final class KeyboardTopology {
         for (int i = 0; i < KEY_COUNT; i++) {
             POS_INFO[i] = (hands[i] << 9) | (rows[i] << 7) | (cols[i] << 3) | fingers[i];
         }
-    }
 
+        // =========================================================================
+        // 🛠️ PRE-KOMPILÁCIA BIGRAMOV & SKIPGRAMOV (Spustí sa iba raz pri boote)
+        // =========================================================================
+        for (int i = 0; i < KEY_COUNT; i++) {
+            int info1 = POS_INFO[i];
+            int hand1   = (info1 >> 9) & 0x1;
+            int row1    = (info1 >> 7) & 0x3;
+            int col1    = (info1 >> 3) & 0xF;
+            int finger1 = info1 & 0x7;
+
+            for (int j = 0; j < KEY_COUNT; j++) {
+                int info2 = POS_INFO[j];
+                int hand2   = (info2 >> 9) & 0x1;
+                int row2    = (info2 >> 7) & 0x3;
+                int col2    = (info2 >> 3) & 0xF;
+                int finger2 = info2 & 0x7;
+
+                // A. Bigramové predikáty
+                if (hand1 != hand2) {
+                    IS_ALT[i][j] = true;
+                } else {
+                    if (finger1 == finger2 && i != j) {
+                        IS_SFB[i][j] = true;
+                    }
+
+                    if (Math.abs(row1 - row2) >= 2 && Math.abs(finger1 - finger2) == 1) {
+                        IS_SCISSORS[i][j] = true;
+                    }
+
+                    boolean s1 = (col1 == 4 || col1 == 5);
+                    boolean s2 = (col2 == 4 || col2 == 5);
+                    if (s1 != s2 && finger1 != finger2) {
+                        IS_LSB[i][j] = true;
+                    }
+
+                    if ((finger1 == 0 && finger2 == 1) || (finger1 == 1 && finger2 == 0) ||
+                            (finger1 == 7 && finger2 == 6) || (finger1 == 6 && finger2 == 7)) {
+                        IS_LHB[i][j] = true;
+                    }
+                }
+
+                // B. Skipgramové (SFS) predikáty
+                if (hand1 == hand2 && finger1 == finger2 && i != j) {
+                    IS_SFS[i][j] = true;
+                }
+            }
+        }
+
+        // =========================================================================
+        // 🛠️ PRE-KOMPILÁCIA TRIGRAMOV (Vyfiltruje balast a pripraví čisté 1D indexy)
+        // =========================================================================
+        for (int i = 0; i < KEY_COUNT; i++) {
+            int info1 = POS_INFO[i];
+            int hand1 = (info1 >> 9) & 0x1;
+            int f1    = info1 & 0x7;
+
+            for (int j = 0; j < KEY_COUNT; j++) {
+                int info2 = POS_INFO[j];
+                int hand2 = (info2 >> 9) & 0x1;
+                int f2    = info2 & 0x7;
+
+                if (hand1 != hand2) continue; // Early exit z prvej ruky
+
+                for (int k = 0; k < KEY_COUNT; k++) {
+                    int info3 = POS_INFO[k];
+                    int hand3 = (info3 >> 9) & 0x1;
+                    int f3    = info3 & 0x7;
+
+                    if (hand2 != hand3) continue; // Early exit z druhej ruky
+
+                    byte type = 0; // Vlajka pre typ: 1=RollIn, 2=RollOut, 3=Redirect
+
+                    // ROLLS
+                    if (f1 < f2 && f2 < f3) {
+                        type = (byte) (hand1 == LEFT_HAND ? 1 : 2);
+                    }
+                    else if (f1 > f2 && f2 > f3) {
+                        type = (byte) (hand1 == LEFT_HAND ? 2 : 1);
+                    }
+                    // REDIRECTS
+                    else if ((f1 < f2 && f2 > f3) || (f1 > f2 && f2 < f3)) {
+                        if (f1 != f2 && f2 != f3 && f1 != f3) {
+                            type = 3;
+                        }
+                    }
+
+                    // Ak trigram prešiel sitom biomechaniky, zapíšeme ho do 1D flat polí
+                    if (type > 0) {
+                        TRIPLE_I[VALID_TRIPLES_COUNT] = i;
+                        TRIPLE_J[VALID_TRIPLES_COUNT] = j;
+                        TRIPLE_K[VALID_TRIPLES_COUNT] = k;
+                        TRIPLE_TYPE[VALID_TRIPLES_COUNT] = type;
+                        VALID_TRIPLES_COUNT++;
+                    }
+                }
+            }
+        }
+    }
 }
