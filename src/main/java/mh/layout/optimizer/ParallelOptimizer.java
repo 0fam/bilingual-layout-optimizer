@@ -36,14 +36,9 @@ public final class ParallelOptimizer {
     private double skMono, skBigram, skSkip, skTri;
     private double enMono, enBigram, enSkip, enTri;
 
-    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double threshold) {
+    public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
         if (isRunning.get()) return;
         isRunning.set(true);
-
-        dynamicThreshold = threshold;
-
-        double enRatio = 1.0 - skRatio;
-        this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
 
         // =========================================================================
         // ⚡ JEDNORAZOVÝ PREDPREČÍTANÝ SÚČET FREKVENCIÍ PRE CELÝ SET ZNAKOV
@@ -67,10 +62,13 @@ public final class ParallelOptimizer {
             }
         }
 
+        double enRatio = 1.0 - skRatio;
         // Prvé inicializačné hodnotenie (Miesto 1)
+        this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
         LayoutStats initSk = Evaluator.evaluate(globalBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
         LayoutStats initEn = Evaluator.evaluate(globalBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
         this.globalBestScore = (initSk.getScore() * skRatio) + (initEn.getScore() * enRatio);
+        this.dynamicThreshold = this.globalBestScore - 0.3;
 
         int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
@@ -122,8 +120,8 @@ public final class ParallelOptimizer {
         double localBestScore = currentScore;
 
         // 🌡️ OPTIMALIZOVANÉ PARAMETRE (Štartujeme nižšie, chladneme pomalšie)
-        double temperature = 5.0; // 5.0 úplne stačí pri tvojej mierke skóre
-        final double coolingRate = 0.00001; // Smerom k nule ideme hlbšie a precíznejšie
+        double temperature = 3.0; // 5.0 rychle prehladavanie, 3 stredne, 1.5 jemne prehladavanie okolo riesenia
+        final double coolingRate = 0.000005; // 0.00001 bezne chladenie, 0,000005 pomale brusenie najdeneho riesenia
 
         long localEvaluations = 0;
 
@@ -153,10 +151,7 @@ public final class ParallelOptimizer {
 
             // 🚀 ULTRA-OPTIMALIZÁCIA: Splachujeme častejšie (každých 4096 iterácií), aby tachometer nežil v nulách
             if ((localEvaluations & 0x0FFF) == 0) {
-                // 1. Živý výpis do konzoly
-//                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
-
-                // 2. Bezpečné pripočítanie rýchlosti do globálneho počítadla
+                // Bezpečné pripočítanie rýchlosti do globálneho počítadla
                 synchronized (lock) {
                     totalEvaluations += 0x0FFF;
                 }
@@ -178,7 +173,12 @@ public final class ParallelOptimizer {
             double enScore = nextEnStats.getScore();
             double nextScore = AnalyzedLayout.combineScore(nextSkStats, nextEnStats, skRatio);
 
-            // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
+            if ((localEvaluations & 0x0FFFF) == 0) {
+                // Živý výpis do konzoly
+                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
+            }
+
+                // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (nextScore >= dynamicThreshold) {
                 System.out.println("📝 Zápis do denníka: " + formatMatrix(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
                 appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);

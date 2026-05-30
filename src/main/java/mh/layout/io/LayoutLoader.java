@@ -40,6 +40,7 @@ public final class LayoutLoader {
                                 }
                             } else {
                                 String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
+                                content = content.trim();
                                 if (content.length() == 30) {
                                     // 🚀 FIX: Prevod na UpperCase pre priečinok samostatných súborov
                                     results.add(new LayoutInput(f.getName(), content.toUpperCase().toCharArray()));
