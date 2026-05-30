@@ -283,12 +283,15 @@ public final class ParallelOptimizer {
         int offset = row * 10;
 
         for (int col = 0; col < 10; col++) {
-            if (col == 4 || col == 5) continue; // Stredné stĺpce sú vždy v pohode, nemusíme ich kontrolovat
+            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
 
             char ch = matrix[offset + col];
 
-            // 1. Ak je to písmeno, nezaujíma nás to
+            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
             if (ch < 'A' || ch > 'Z') return false;
+
+            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
+            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
         }
 
         return true;
