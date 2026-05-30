@@ -12,12 +12,12 @@ public final class Evaluator {
 
     // 🚀 ULTRA-OPTIMALIZÁCIA: Statické cache pre horúcu slučku
     private static final MetricType[] METRICS_CACHE = MetricType.values();
+    // Predalokované referencie pre bleskovú iteráciu prstov bez volania .values()
     private static final Finger[] FINGERS_CACHE = Finger.values();
     private static final int FINGER_COUNT = FINGERS_CACHE.length;
 
     private Evaluator() {}
 
-    // 🚀 SIGNATÚRA PRIJÍMA PREDPOČÍTANÉ MENOVATELE - ŽIADNY ZBER V HORÚCEJ SLUČKE
     public static LayoutStats evaluate(char[] matrix, NGramStats ngStats, Weights weights,
                                        double totalMonograms, double totalBigrams,
                                        double totalSkipgrams, double totalTrigrams) {
@@ -31,194 +31,157 @@ public final class Evaluator {
         double rawLhb = 0;
         double rawRedirects = 0;
 
-        final int[] posInfo = KeyboardTopology.POS_INFO;
-
         // =========================================================================
-        // 🔴 BIGRAMY & SKIPGRAMY (30 x 30 = 900 prechodov)
+        // 🔴 BIGRAMY & SKIPGRAMY (Ploché lookupy bez bit-shiftov a vetvenia)
         // =========================================================================
         for (int i = 0; i < KEY_COUNT; i++) {
             char c1 = matrix[i];
-            int info1 = posInfo[i]; // Všetko o klávese 1 v jednom čísle
-
-            // Vybalíme anatómiu klávesu 1 pomocou bleskových bitových masiek
-            int hand1   = (info1 >> 9) & 0x1;
-            int row1    = (info1 >> 7) & 0x3;
-            int col1    = (info1 >> 3) & 0xF;
-            int finger1 = info1 & 0x7;
-
             for (int j = 0; j < KEY_COUNT; j++) {
                 char c2 = matrix[j];
-                int info2 = posInfo[j];
-
-                int hand2   = (info2 >> 9) & 0x1;
-                int row2    = (info2 >> 7) & 0x3;
-                int col2    = (info2 >> 3) & 0xF;
-                int finger2 = info2 & 0x7;
 
                 // A. SPRACOVANIE BIGRAMOV
                 double bgFreq = ngStats.getBigramFreq(c1, c2);
                 if (bgFreq > 0) {
-                    if (hand1 != hand2) {
-                        rawAlt += bgFreq; // Striedanie rúk
+                    if (KeyboardTopology.IS_ALT[i][j]) {
+                        rawAlt += bgFreq;
                     } else {
-                        // Sme na rovnakej ruke
-
-                        if (finger1 == finger2 && i != j) {
-                            rawSfb += bgFreq; // SFB (Rovnaký prst)
-                        }
-
-                        // SCISSORS (Nožnice: skok cez riadok na susedných prstoch)
-                        // 🚀 FIX: Pridané overenie anatomickej susednosti prstov (rozdiel stĺpcov/prstov je presne 1)
-                        if (Math.abs(row1 - row2) >= 2 && Math.abs(finger1 - finger2) == 1) {
-                            rawScissors += bgFreq;
-                        }
-
-                        // LSB (Lateral Stretch: zásah do stredových stĺpcov 4 alebo 5 ukazovákmi 3 alebo 4)
-                        // 🚀 FIX: Podľa svetového štandardu overujeme asymetrické napätie medzi DVOMA ROZDIELNYMI prstami rovnakej ruky
-                        boolean s1 = (col1 == 4 || col1 == 5);
-                        boolean s2 = (col2 == 4 || col2 == 5);
-                        if (s1 != s2 && finger1 != finger2) {
-                            rawLsb += bgFreq;
-                        }
-
-                        // LHB (Lateral Hand Bigram: únava malíček [0,7] + prstenník [1,6])
-                        if ((finger1 == 0 && finger2 == 1) || (finger1 == 1 && finger2 == 0) ||
-                                (finger1 == 7 && finger2 == 6) || (finger1 == 6 && finger2 == 7)) {
-                            rawLhb += bgFreq;
-                        }
+                        if (KeyboardTopology.IS_SFB[i][j]) rawSfb += bgFreq;
+                        if (KeyboardTopology.IS_SCISSORS[i][j]) rawScissors += bgFreq;
+                        if (KeyboardTopology.IS_LSB[i][j]) rawLsb += bgFreq;
+                        if (KeyboardTopology.IS_LHB[i][j]) rawLhb += bgFreq;
                     }
                 }
 
-                // B. SPRACOVANIE SKIPGRAMOV (Sendviče - SFS)
+                // B. SPRACOVANIE SKIPGRAMOV
                 double sgFreq = ngStats.getSkipgramFreq(c1, c2);
-                if (sgFreq > 0 && hand1 == hand2 && finger1 == finger2 && i != j) {
+                if (sgFreq > 0 && KeyboardTopology.IS_SFS[i][j]) {
                     rawSfs += sgFreq;
                 }
             }
         }
 
         // =========================================================================
-        // 🟡 TRIGRAMY - S NÁVRATOM AGRESÍVNYCH EARLY EXITS!
+        // 🟡 TRIGRAMY (Ultra-rýchly 1D cyklus: spracováva iba 6750 validných pozícií)
         // =========================================================================
-        for (int i = 0; i < KEY_COUNT; i++) {
-            char c1 = matrix[i];
-            int info1 = posInfo[i];
-            int hand1 = (info1 >> 9) & 0x1;
-            int f1    = info1 & 0x7;
+        for (int x = 0; x < KeyboardTopology.VALID_TRIPLES_COUNT; x++) {
+            double tgFreq = ngStats.getTrigramFreq(
+                    matrix[KeyboardTopology.TRIPLE_I[x]],
+                    matrix[KeyboardTopology.TRIPLE_J[x]],
+                    matrix[KeyboardTopology.TRIPLE_K[x]]
+            );
 
-            for (int j = 0; j < KEY_COUNT; j++) {
-                char c2 = matrix[j];
-                int info2 = posInfo[j];
-                int hand2 = (info2 >> 9) & 0x1;
-                int f2    = info2 & 0x7;
+            if (tgFreq <= 0) continue;
 
-                // 🚀 SKORÁ BRZDA 1: Ak prvé dva klávesy nie sú na rovnakej ruke, ruka sa strieda -> koniec
-                if (hand1 != hand2) continue;
-
-                for (int k = 0; k < KEY_COUNT; k++) {
-                    char c3 = matrix[k];
-                    int info3 = posInfo[k];
-                    int hand3 = (info3 >> 9) & 0x1;
-                    int f3    = info3 & 0x7;
-
-                    // 🚀 SKORÁ BRZDA 2: Celý trigram musí byť na jednej ruke
-                    if (hand2 != hand3) continue;
-
-                    double tgFreq = ngStats.getTrigramFreq(c1, c2, c3);
-                    if (tgFreq <= 0) continue;
-
-                    if (f1 < f2 && f2 < f3) {
-                        if (hand1 == KeyboardTopology.LEFT_HAND) rawRollIn += tgFreq;
-                        else rawRollOut += tgFreq;
-                    }
-                    else if (f1 > f2 && f2 > f3) {
-                        if (hand1 == KeyboardTopology.LEFT_HAND) rawRollOut += tgFreq;
-                        else rawRollIn += tgFreq;
-                    }
-                    // REDIRECTS (Otočky)
-                    else if ((f1 < f2 && f2 > f3) || (f1 > f2 && f2 < f3)) {
-                        if (f1 != f2 && f2 != f3 && f1 != f3) {
-                            rawRedirects += tgFreq;
-                        }
-                    }
-                }
-            }
+            // Typ pre-kompilovaného trigramu: 1 = ROLL_IN, 2 = ROLL_OUT, 3 = REDIRECT
+            int type = KeyboardTopology.TRIPLE_TYPE[x];
+            if (type == 1) rawRollIn += tgFreq;
+            else if (type == 2) rawRollOut += tgFreq;
+            else if (type == 3) rawRedirects += tgFreq;
         }
 
         LayoutStats result = new LayoutStats();
 
         // =========================================================================
-        // 🟢 MONOGRAMY & PRSTY
+        // 🟢 MONOGRAMY & PRSTY (Sčítanie bez delenia v horúcej slučke)
         // =========================================================================
         double[] localFingerPercents = new double[FINGER_COUNT];
         double rawHomeRow = 0;
         double rawStretch = 0;
-        // Vypočítaš pred cyklom - procesor urobí delenie iba raz!
         double pctMultiplier = (totalMonograms == 0) ? 0.0 : (100.0 / totalMonograms);
 
         for (int i = 0; i < KEY_COUNT; i++) {
             double rawFreq = ngStats.getMonogramFreq(matrix[i]);
-            // V hot-loope už len najrýchlejšie možné násobenie
             double pct = rawFreq * pctMultiplier;
 
             result.setKeyPercent(i, pct);
 
-            int info = posInfo[i];
+            int info = KeyboardTopology.POS_INFO[i];
             localFingerPercents[info & 0x7] += pct;
 
             if (((info >> 7) & 0x3) == KeyboardTopology.HOME_ROW) rawHomeRow += rawFreq;
             rawStretch += rawFreq * KeyboardTopology.POS_STRETCH_WEIGHT[i];
         }
 
-        // 🚀 OPTIMALIZOVANÉ: Prsty plníme cez lokálnu cache, žiadne klonovanie poľa
         for (int f = 0; f < FINGER_COUNT; f++) {
             result.setFingerPercent(f, localFingerPercents[f]);
         }
 
         // =========================================================================
-        // 🧮 PREPOČET METRÍK NA PERCENTÁ VIAZANÝ NA PREDPOČÍTANÉ KONŠTANTY
+        // 🧮 LINEÁRNY PREPOČET BEZ ALOKÁCIE POLÍ (Úplné vyradenie 'new double[]' a cyklu)
         // =========================================================================
         double totalProduct = 1.0;
         long totalCount = 0;
 
-        double[] raws = new double[METRICS_CACHE.length];
-        raws[MetricType.SFB.ordinal()] = rawSfb;
-        raws[MetricType.SFS.ordinal()] = rawSfs;
-        raws[MetricType.ALTERNATION.ordinal()] = rawAlt;
-        raws[MetricType.ROLL_IN.ordinal()] = rawRollIn;
-        raws[MetricType.ROLL_OUT.ordinal()] = rawRollOut;
-        raws[MetricType.SCISSORS.ordinal()] = rawScissors;
-        raws[MetricType.LSB.ordinal()] = rawLsb;
-        raws[MetricType.LHB.ordinal()] = rawLhb;
-        raws[MetricType.REDIRECTS.ordinal()] = rawRedirects;
-        raws[MetricType.HOME_ROW.ordinal()] = rawHomeRow;
-        raws[MetricType.EFFORT.ordinal()] = rawStretch;
+        // 1. SFB
+        double pctSfb = (totalBigrams == 0) ? 0.0 : (rawSfb * 100.0) / totalBigrams;
+        result.setMetricPercent(MetricType.SFB, pctSfb);
+        double coefSfb = weights.calculateCoefficient(MetricType.SFB, pctSfb);
+        if (coefSfb >= 0) { totalProduct *= coefSfb; totalCount++; }
 
-        for (int i = 0; i < METRICS_CACHE.length; i++) {
-            MetricType type = METRICS_CACHE[i];
+        // 2. SFS
+        double pctSfs = (totalSkipgrams == 0) ? 0.0 : (rawSfs * 100.0) / totalSkipgrams;
+        result.setMetricPercent(MetricType.SFS, pctSfs);
+        double coefSfs = weights.calculateCoefficient(MetricType.SFS, pctSfs);
+        if (coefSfs >= 0) { totalProduct *= coefSfs; totalCount++; }
 
-            double denominator = switch (type) {
-                case HOME_ROW, EFFORT, RUNS -> totalMonograms;
-                case SFB, ALTERNATION, SCISSORS, LSB, LHB -> totalBigrams;
-                case SFS -> totalSkipgrams;
-                case REDIRECTS, ROLL_IN, ROLL_OUT -> totalTrigrams;
-            };
+        // 3. ALTERNATION
+        double pctAlt = (totalBigrams == 0) ? 0.0 : (rawAlt * 100.0) / totalBigrams;
+        result.setMetricPercent(MetricType.ALTERNATION, pctAlt);
+        double coefAlt = weights.calculateCoefficient(MetricType.ALTERNATION, pctAlt);
+        if (coefAlt >= 0) { totalProduct *= coefAlt; totalCount++; }
 
-            double pct = (denominator == 0) ? 0.0 : (raws[i] * 100.0) / denominator;
-            result.setMetricPercent(type, pct);
+        // 4. ROLL_IN
+        double pctRollIn = (totalTrigrams == 0) ? 0.0 : (rawRollIn * 100.0) / totalTrigrams;
+        result.setMetricPercent(MetricType.ROLL_IN, pctRollIn);
+        double coefRollIn = weights.calculateCoefficient(MetricType.ROLL_IN, pctRollIn);
+        if (coefRollIn >= 0) { totalProduct *= coefRollIn; totalCount++; }
 
-            double coef = weights.calculateCoefficient(type, pct);
-            if (coef >= 0) {
-                totalProduct *= coef;
-                totalCount++;
-            }
-        }
+        // 5. ROLL_OUT
+        double pctRollOut = (totalTrigrams == 0) ? 0.0 : (rawRollOut * 100.0) / totalTrigrams;
+        result.setMetricPercent(MetricType.ROLL_OUT, pctRollOut);
+        double coefRollOut = weights.calculateCoefficient(MetricType.ROLL_OUT, pctRollOut);
+        if (coefRollOut >= 0) { totalProduct *= coefRollOut; totalCount++; }
 
+        // 6. SCISSORS
+        double pctScissors = (totalBigrams == 0) ? 0.0 : (rawScissors * 100.0) / totalBigrams;
+        result.setMetricPercent(MetricType.SCISSORS, pctScissors);
+        double coefScissors = weights.calculateCoefficient(MetricType.SCISSORS, pctScissors);
+        if (coefScissors >= 0) { totalProduct *= coefScissors; totalCount++; }
+
+        // 7. LSB
+        double pctLsb = (totalBigrams == 0) ? 0.0 : (rawLsb * 100.0) / totalBigrams;
+        result.setMetricPercent(MetricType.LSB, pctLsb);
+        double coefLsb = weights.calculateCoefficient(MetricType.LSB, pctLsb);
+        if (coefLsb >= 0) { totalProduct *= coefLsb; totalCount++; }
+
+        // 8. LHB
+        double pctLhb = (totalBigrams == 0) ? 0.0 : (rawLhb * 100.0) / totalBigrams;
+        result.setMetricPercent(MetricType.LHB, pctLhb);
+        double coefLhb = weights.calculateCoefficient(MetricType.LHB, pctLhb);
+        if (coefLhb >= 0) { totalProduct *= coefLhb; totalCount++; }
+
+        // 9. REDIRECTS
+        double pctRedirects = (totalTrigrams == 0) ? 0.0 : (rawRedirects * 100.0) / totalTrigrams;
+        result.setMetricPercent(MetricType.REDIRECTS, pctRedirects);
+        double coefRedirects = weights.calculateCoefficient(MetricType.REDIRECTS, pctRedirects);
+        if (coefRedirects >= 0) { totalProduct *= coefRedirects; totalCount++; }
+
+        // 10. HOME_ROW
+        double pctHome = (totalMonograms == 0) ? 0.0 : (rawHomeRow * 100.0) / totalMonograms;
+        result.setMetricPercent(MetricType.HOME_ROW, pctHome);
+        double coefHome = weights.calculateCoefficient(MetricType.HOME_ROW, pctHome);
+        if (coefHome >= 0) { totalProduct *= coefHome; totalCount++; }
+
+        // 11. EFFORT
+        double pctEffort = (totalMonograms == 0) ? 0.0 : (rawStretch * 100.0) / totalMonograms;
+        result.setMetricPercent(MetricType.EFFORT, pctEffort);
+        double coefEffort = weights.calculateCoefficient(MetricType.EFFORT, pctEffort);
+        if (coefEffort >= 0) { totalProduct *= coefEffort; totalCount++; }
+
+        // 12. PRSTY (Výpočet koeficientov cez statickú cache prstov)
         boolean hasSomeFingers = false;
-        // 🚀 OPTIMALIZOVANÉ: Výpočet prstových koeficientov cez statickú cache
         for (int i = 0; i < FINGER_COUNT; i++) {
-            Finger f = FINGERS_CACHE[i];
-            double coef = weights.calculateFingerCoefficient(f, localFingerPercents[i]);
+            double coef = weights.calculateFingerCoefficient(FINGERS_CACHE[i], localFingerPercents[i]);
             if (coef >= 0) {
                 totalProduct *= coef;
                 hasSomeFingers = true;
@@ -227,7 +190,7 @@ public final class Evaluator {
         if (hasSomeFingers) totalCount++;
 
         // =========================================================================
-        // 👑 4. FINÁLNE SKÓRE TELESA (Jediné Pow na samom konci)
+        // 👑 FINÁLNE SKÓRE (Jediné Math.pow na úplnom konci výpočtu)
         // =========================================================================
         if (totalCount > 0) {
             result.setScore(Math.pow(totalProduct, 1.0 / totalCount) * 100.0);
