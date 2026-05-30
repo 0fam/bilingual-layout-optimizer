@@ -8,6 +8,7 @@ import mh.layout.io.LayoutLoader;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.stats.NGramStats;
+import mh.layout.topology.Finger;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -55,8 +56,9 @@ public final class LayoutAnalysisEngine {
 
         // 3. Biomechanické hodnotenie každej jednej načítanej matice (Unikátne menovatele pre každú "inú" klávesnicu)
         List<AnalyzedLayout> leaderboard = new ArrayList<>();
-        double englishRatio = 1.0 - slovakRatio;
 
+        // 🏁 ŠTART STOPIEK (v nanosekundách)
+        long startTime = System.nanoTime();
         long counter = 0;
         for (LayoutLoader.LayoutInput input : loadedLayouts) {
             char[] matrix = input.matrix();
@@ -79,6 +81,24 @@ public final class LayoutAnalysisEngine {
         System.out.print("\r                                                "); // vymaz stary zaznam
         System.out.print("\r"); // zresetuj uroven kurzora
 
+        // ⏱️ STOP STOPIEK
+        long endTime = System.nanoTime();
+
+        // Výpočet čistého času v nanosekundách
+        long durationInNanoseconds = endTime - startTime;
+        // Prepočet na sekundy (double kvôli desatinným miestam)
+        double totalSeconds = durationInNanoseconds / 1_000_000_000.0;
+        // 🏎️ VÝKONNOSTNÝ UKAZOVATEĽ: Koľko layoutov prefrčalo engineom za jednu sekundu
+        double layoutsPerSecond = (totalSeconds > 0) ? (counter / totalSeconds) : 0;
+        // Zobrazenie výsledkov do konzoly
+        System.out.println("\n======================================================================");
+        System.out.println("                     🚀 VÝKONNOSTNÝ AUDIT ENGINU                      ");
+        System.out.println("======================================================================");
+        System.out.printf("⏱️ Celkový čas behu:       %,.2f sekúnd (cca %,.1f min)%n", totalSeconds, (totalSeconds / 60.0));
+        System.out.printf("📊 Celkovo overených:      %,d layoutov%n", counter);
+        System.out.printf("🏎️ Rýchlosť spracovania:   💥 %,.0f layoutov / sekundu 💥%n", layoutsPerSecond);
+        System.out.println("======================================================================");
+
         // 4. Zoradenie rebríčka zostupne podľa bilingválneho Elite skóre
         leaderboard.sort((l1, l2) -> Double.compare(l2.combinedScore(), l1.combinedScore()));
 
@@ -90,7 +110,7 @@ public final class LayoutAnalysisEngine {
 
         // 🔍 Hĺbkový röntgen layoutov
         int counter2 = 0;
-        int max = 0;
+        int max = 4;
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
             if (counter2++ > max) {
@@ -134,16 +154,21 @@ public final class LayoutAnalysisEngine {
         try (PrintWriter fileOut = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath), StandardCharsets.UTF_8))) {
 
             // Zápis hlavičky výhradne do súboru
-            fileOut.println("===================================================================================================================================================================================================================");
-            fileOut.println("                                                              VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: (COMBINED) SCORE)");
-            fileOut.println("===================================================================================================================================================================================================================");
+            fileOut.println("=================================================================================================================================================================================================================================================");
+            fileOut.println("                                                                             VÝSLEDNÁ LISTINA LAYOUTOV (Zoradené podľa: (COMBINED) SCORE)");
+            fileOut.println("=================================================================================================================================================================================================================================================");
 
             String colHead = bi ? "| %-11s " : "| %-5s ";
-            // 🚀 ROZŠÍRENIE: Pridaný formát %-41s pre stĺpec vizuálneho layoutu klávesnice
-            String headerFormat = "%-4s | %-18s | %-41s | %-7s | %-8s | %-8s " + colHead.repeat(11) + "%n";
-            String lineSeparator = "-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+            // 🚀 DYNAMICKÝ REFAKTOR: Pridané stĺpce pre prsty na koniec (24 znakov pre bilingvál, 11 pre single)
+            String fingHead = bi ? "| %-24s " : "| %-11s ";
 
-            fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+            String headerFormat = "%-4s | %-18s | %-41s | %-7s | %-8s | %-8s " + colHead.repeat(11) + fingHead.repeat(2) + "%n";
+            String lineSeparator = "-".repeat(bi ? 257 : 195) + "\n"; // Automatická dĺžka oddeľovača
+
+            String lHead = bi ? "L_HAND (SK / EN)" : "L_HAND";
+            String rHead = bi ? "R_HAND (SK / EN)" : "R_HAND";
+
+            fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH", lHead, rHead);
             fileOut.print(lineSeparator);
 
             int idx = 0;
@@ -151,12 +176,11 @@ public final class LayoutAnalysisEngine {
                 // Každých 10 riadkov hodíme pod-hlavičku kvôli scannovaniu v textovom editore
                 if (idx > 0 && idx % 10 == 0) {
                     fileOut.print(lineSeparator);
-                    fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH");
+                    fileOut.printf(headerFormat, "Idx", "Názov layoutu", "VIZUÁLNY LAYOUT KLÁVESNICE", "B_ELITE", "SK_SCORE", "EN_SCORE", "SFB%", "SFS%", "ALT%", "ROLLI", "ROLLO", "SCISS", "REDIR", "LSB%", "LHB%", "HOME%", "STRCH", lHead, rHead);
                     fileOut.print(lineSeparator);
                 }
 
-                // 🚀 REFAKTOR: Vážené a čisté bilingválne metriky bez magického delenia dvoma
-                double[] sfb    = {res.skStats().getMetricPercent(MetricType.SFB), bi ? res.enStats().getMetricPercent(MetricType.SFB) : 0.0};
+                double[] sfb      = {res.skStats().getMetricPercent(MetricType.SFB), bi ? res.enStats().getMetricPercent(MetricType.SFB) : 0.0};
                 double[] sfs      = {res.skStats().getMetricPercent(MetricType.SFS), bi ? res.enStats().getMetricPercent(MetricType.SFS) : 0.0};
                 double[] alt      = {res.skStats().getMetricPercent(MetricType.ALTERNATION), bi ? res.enStats().getMetricPercent(MetricType.ALTERNATION) : 0.0};
                 double[] rollIn   = {res.skStats().getMetricPercent(MetricType.ROLL_IN), bi ? res.enStats().getMetricPercent(MetricType.ROLL_IN) : 0.0};
@@ -168,30 +192,56 @@ public final class LayoutAnalysisEngine {
                 double[] home     = {res.skStats().getMetricPercent(MetricType.HOME_ROW), bi ? res.enStats().getMetricPercent(MetricType.HOME_ROW) : 0.0};
                 double[] stretch  = {res.skStats().getMetricPercent(MetricType.EFFORT), bi ? res.enStats().getMetricPercent(MetricType.EFFORT) : 0.0};
 
+                // 🚀 VÝPOČET ZÁŤAŽE PRSTOV (Formát: LP/LR/LM/LI a RI/RM/RR/RP)
+                String leftSk = String.format("%02.0f/%02.0f/%02.0f/%02.0f",
+                        res.skStats().getFingerPercent(Finger.LP.ordinal()), res.skStats().getFingerPercent(Finger.LR.ordinal()),
+                        res.skStats().getFingerPercent(Finger.LM.ordinal()), res.skStats().getFingerPercent(Finger.LI.ordinal()));
+                String rightSk = String.format("%02.0f/%02.0f/%02.0f/%02.0f",
+                        res.skStats().getFingerPercent(Finger.RI.ordinal()), res.skStats().getFingerPercent(Finger.RM.ordinal()),
+                        res.skStats().getFingerPercent(Finger.RR.ordinal()), res.skStats().getFingerPercent(Finger.RP.ordinal()));
+
+                String leftStr = leftSk;
+                String rightStr = rightSk;
+
+                if (bi) {
+                    String leftEn = String.format("%02.0f/%02.0f/%02.0f/%02.0f",
+                            res.enStats().getFingerPercent(Finger.LP.ordinal()), res.enStats().getFingerPercent(Finger.LR.ordinal()),
+                            res.enStats().getFingerPercent(Finger.LM.ordinal()), res.enStats().getFingerPercent(Finger.LI.ordinal()));
+                    String rightEn = String.format("%02.0f/%02.0f/%02.0f/%02.0f",
+                            res.enStats().getFingerPercent(Finger.RI.ordinal()), res.enStats().getFingerPercent(Finger.RM.ordinal()),
+                            res.enStats().getFingerPercent(Finger.RR.ordinal()), res.enStats().getFingerPercent(Finger.RP.ordinal()));
+
+                    // Spojíme SK a EN záťaž dvoma medzerami pre dokonalé zarovnanie pod hlavičku
+                    leftStr = leftSk + "  " + leftEn;
+                    rightStr = rightSk + "  " + rightEn;
+                }
+
                 String displayName = res.name().length() > 18 ? res.name().substring(0, 15) + "..." : res.name();
                 // 🚀 Prevedieme 30 znakovú maticu na čitateľnú mapu prstov a rúk
                 String visualLayout = formatMatrixVisual(res.matrix());
 
                 String col = bi ? "| %5.2f %5.2f ": "| %5.2f ";
-                String lineFormat = "%-4d | %-18s | %-41s | %7.4f | %8.4f | %8.4f " + col.repeat(11) + "%n";
+                String lineFormat = "%-4d | %-18s | %-41s | %7.4f | %8.4f | %8.4f " + col.repeat(11) + fingHead.repeat(2) + "%n";
+
                 if (!bi) {
                     fileOut.printf(lineFormat,
                             ++idx, displayName, visualLayout, res.combinedScore(), res.skStats().getScore(), 0.0,
-                            sfb[0], sfs[0], alt[0], rollIn[0], rollOut[0], scissors[0], redirect[0], lsb[0], lhb[0], home[0], stretch[0]
+                            sfb[0], sfs[0], alt[0], rollIn[0], rollOut[0], scissors[0], redirect[0], lsb[0], lhb[0], home[0], stretch[0],
+                            leftStr, rightStr
                     );
                 } else {
                     fileOut.printf(lineFormat,
                             ++idx, displayName, visualLayout, res.combinedScore(), res.skStats().getScore(), res.enStats().getScore(),
                             sfb[0], sfb[1], sfs[0], sfs[1], alt[0], alt[1], rollIn[0], rollIn[1], rollOut[0], rollOut[1], scissors[0], scissors[1],
-                            redirect[0], redirect[1], lsb[0], lsb[1], lhb[0], lhb[1], home[0], home[1], stretch[0], stretch[1]
+                            redirect[0], redirect[1], lsb[0], lsb[1], lhb[0], lhb[1], home[0], home[1], stretch[0], stretch[1],
+                            leftStr, rightStr
                     );
                 }
             }
 
-            fileOut.println("===================================================================================================================================================================================================================");
-
+            fileOut.println("=================================================================================================================================================================================================================================================");
             // Jediný oznam, ktorý pošleme do konzoly
-            System.out.println("\n💾 REBRÍČEK ULOŽENÝ: Usporiadaná výsledná listina je na disku: " + outputFilePath);
+            System.out.println("\n💾 REBRÍČEK ULOŽENÝ: Usporiadaná výsledná listina vrátane záťaže prstov je na disku: " + outputFilePath);
 
         } catch (IOException e) {
             System.err.println("⚠️ Chyba pri zápise rebríčka do súboru: " + e.getMessage());
