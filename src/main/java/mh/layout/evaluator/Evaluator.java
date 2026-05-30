@@ -153,10 +153,13 @@ public final class Evaluator {
         double[] localFingerPercents = new double[FINGER_COUNT];
         double rawHomeRow = 0;
         double rawStretch = 0;
+        // Vypočítaš pred cyklom - procesor urobí delenie iba raz!
+        double pctMultiplier = (totalMonograms == 0) ? 0.0 : (100.0 / totalMonograms);
 
         for (int i = 0; i < KEY_COUNT; i++) {
             double rawFreq = ngStats.getMonogramFreq(matrix[i]);
-            double pct = (totalMonograms == 0) ? 0.0 : (rawFreq * 100.0) / totalMonograms;
+            // V hot-loope už len najrýchlejšie možné násobenie
+            double pct = rawFreq * pctMultiplier;
 
             result.setKeyPercent(i, pct);
 
