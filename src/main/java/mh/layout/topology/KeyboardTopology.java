@@ -80,8 +80,10 @@ public final class KeyboardTopology {
         }
 
         // =========================================================================
-        // 🛠️ PRE-KOMPILÁCIA BIGRAMOV & SKIPGRAMOV (Spustí sa iba raz pri boote)
+        // 🛠️ PRE-KOMPILÁCIA BIGRAMOV & SKIPGRAMOV (Spustí sa iba raz pri boote aplikácie)
         // =========================================================================
+        // Prechádzame maticu všetkých fyzických slotov klávesnice (30 x 30 = 900 dvojíc).
+        // DÔLEŽITÉ: i a j sú indexy PLASTOVÝCH DIER (0 až 29), nie konkrétne písmená!
         for (int i = 0; i < KEY_COUNT; i++) {
             int info1 = POS_INFO[i];
             int hand1   = (info1 >> 9) & 0x1;
@@ -96,31 +98,44 @@ public final class KeyboardTopology {
                 int col2    = (info2 >> 3) & 0xF;
                 int finger2 = info2 & 0x7;
 
-                // A. Bigramové predikáty
+                // A. BIOMECHANICKÉ VZŤAHY PRE ŠTANDARDNÉ BIGRAMY (Susedné údery)
                 if (hand1 != hand2) {
+                    // Ak je slot 'i' na opačnej ruke ako slot 'j', stlačenie týchto dvoch
+                    // klávesov za sebou VŽDY vyvolá alternáciu (striedanie rúk).
                     IS_ALT[i][j] = true;
                 } else {
+                    // Sme na rovnakej ruke. Mapujeme ergonomické prehrešky:
+
+                    // 1. Same Finger Bigram (SFB): Ak sloty i a j obsluhuje ten istý prst.
                     if (finger1 == finger2 && i != j) {
                         IS_SFB[i][j] = true;
                     }
 
+                    // 2. SCISSORS (Nožnice): Prsty skáču krížom cez riadok (rozdiel riadkov >= 2)
+                    // a zároveň ide o anatomicky susediace prsty (rozdiel prstov je presne 1).
                     if (Math.abs(row1 - row2) >= 2 && Math.abs(finger1 - finger2) == 1) {
                         IS_SCISSORS[i][j] = true;
                     }
 
+                    // 3. Lateral Stretch Bigram (LSB): Jeden z klávesov je vo vnútornom stĺpci (4 alebo 5),
+                    // ale stláčajú ho dva rôzne prsty (asymetrické napätie v dlani).
                     boolean s1 = (col1 == 4 || col1 == 5);
                     boolean s2 = (col2 == 4 || col2 == 5);
                     if (s1 != s2 && finger1 != finger2) {
                         IS_LSB[i][j] = true;
                     }
 
+                    // 4. Lateral Hand Bigram (LHB): Veľká únava vonkajšej hrany ruky.
+                    // Kombinácia malíček + prstenník v akomkoľvek poradí na ľavej alebo pravej ruke.
                     if ((finger1 == 0 && finger2 == 1) || (finger1 == 1 && finger2 == 0) ||
                             (finger1 == 7 && finger2 == 6) || (finger1 == 6 && finger2 == 7)) {
                         IS_LHB[i][j] = true;
                     }
                 }
 
-                // B. Skipgramové (SFS) predikáty
+                // B. BIOMECHANICKÉ VZŤAHY PRE SKIPGRAMY (Sendviče - SFS)
+                // Sledujeme údery oddelené jedným náhodným znakom (napr. "A-X-A").
+                // Ak sú sloty 'i' a 'j' na rovnakej ruke a rovnakom prste, je to Sendvič (SFS).
                 if (hand1 == hand2 && finger1 == finger2 && i != j) {
                     IS_SFS[i][j] = true;
                 }
@@ -128,8 +143,10 @@ public final class KeyboardTopology {
         }
 
         // =========================================================================
-        // 🛠️ PRE-KOMPILÁCIA TRIGRAMOV (Vyfiltruje balast a pripraví čisté 1D indexy)
+        // 🛠️ PRE-KOMPILÁCIA TRIGRAMOV (Kompresia 27 000 kombinácií na 6 750 platných)
         // =========================================================================
+        // Otvárame teoretickú 3D kocku všetkých pozícií (30 x 30 x 30 = 27 000).
+        // Naším cieľom je nájsť iba tie trojice slotov, ktoré sa dajú napísať CELÉ JEDNOU RUKOU.
         for (int i = 0; i < KEY_COUNT; i++) {
             int info1 = POS_INFO[i];
             int hand1 = (info1 >> 9) & 0x1;
@@ -140,6 +157,8 @@ public final class KeyboardTopology {
                 int hand2 = (info2 >> 9) & 0x1;
                 int f2    = info2 & 0x7;
 
+                // 🛑 FILTER 1: Ak slot 'i' a slot 'j' nie sú na rovnakej ruke, ruka sa strieda.
+                // Celá táto vetva vnútornej slučky je pre jednoručné trigramy (Rolls/Redirects) pasé.
                 if (hand1 != hand2) continue; // Early exit z prvej ruky
 
                 for (int k = 0; k < KEY_COUNT; k++) {
@@ -147,31 +166,40 @@ public final class KeyboardTopology {
                     int hand3 = (info3 >> 9) & 0x1;
                     int f3    = info3 & 0x7;
 
-                    if (hand2 != hand3) continue; // Early exit z druhej ruky
+                    // 🛑 FILTER 2: Tretí slot 'k' musí dopadnúť na tú istú ruku ako prvé dva.
+                    if (hand2 != hand3) continue;
 
-                    byte type = 0; // Vlajka pre typ: 1=RollIn, 2=RollOut, 3=Redirect
+                    byte type = 0; // Dočasný biomechanický štítok (1 = RollIn, 2 = RollOut, 3 = Redirect)
 
-                    // ROLLS
+                    // 🌊 ROLLS (Plynulé vlny prstov v jednom smere)
                     if (f1 < f2 && f2 < f3) {
+                        // Prsty tečú smerom od malíčka k ukazováku.
+                        // Na ľavej ruke je to smer dnu (RollIn), na pravej ruke smer von (RollOut).
                         type = (byte) (hand1 == LEFT_HAND ? 1 : 2);
                     }
                     else if (f1 > f2 && f2 > f3) {
+                        // Prsty tečú smerom od ukazováka k malíčku.
+                        // Na ľavej ruke je to smer von (RollOut), na pravej ruke smer dnu (RollIn).
                         type = (byte) (hand1 == LEFT_HAND ? 2 : 1);
                     }
-                    // REDIRECTS
+                    // 🔄 REDIRECTS (Otočky a zmeny smeru na jednej ruke)
                     else if ((f1 < f2 && f2 > f3) || (f1 > f2 && f2 < f3)) {
+                        // Prsty urobia vlnovku (hore-dole alebo dole-hore).
+                        // Podmienka: Všetky tri prsty musia byť jedinečné (žiadne opakovanie prsta).
                         if (f1 != f2 && f2 != f3 && f1 != f3) {
                             type = 3;
                         }
                     }
 
+                    // 🚀 ZÁCHRANNÝ KOŠ: Ak trojica slotov (i, j, k) tvorí platný ergonomický pohyb,
+                    // "vylisujeme" ich indexy do plochého 1D dopravníkového pásu.
                     // Ak trigram prešiel sitom biomechaniky, zapíšeme ho do 1D flat polí
                     if (type > 0) {
                         TRIPLE_I[VALID_TRIPLES_COUNT] = i;
                         TRIPLE_J[VALID_TRIPLES_COUNT] = j;
                         TRIPLE_K[VALID_TRIPLES_COUNT] = k;
                         TRIPLE_TYPE[VALID_TRIPLES_COUNT] = type;
-                        VALID_TRIPLES_COUNT++;
+                        VALID_TRIPLES_COUNT++; // Posunieme počítadlo (zastaví sa presne na 6 750)
                     }
                 }
             }
