@@ -23,11 +23,15 @@ public final class OptimizationEngine {
 //                "S E T K D   L N A O I" +
 //                "G ; C B H   J R U . Y").replace(" ", "").toUpperCase();
 
-        String baseLayout = (
-                "H N T C F  - X ' Y V" +
-                "K R D S B  . A E I L" +
-                "P J M Z G  Q O U , W").replace(" ", "").toUpperCase();
+//        String baseLayout = (
+//                "H N T C F  - X ' Y V" +
+//                "K R D S B  . A E I L" +
+//                "P J M Z G  Q O U , W").replace(" ", "").toUpperCase();
 
+        String baseLayout = ( // to iste co 2 ale vybrane symboly
+                "Z - M V P   W Q F , X" +
+                "S E T K D   L N A O I" +
+                "G ' C B H   J R U . Y").replace(" ", "").toUpperCase();
         char[] initialMatrix = baseLayout.toCharArray();
 
         // 2. INICIALIZÁCIA LIMITOV

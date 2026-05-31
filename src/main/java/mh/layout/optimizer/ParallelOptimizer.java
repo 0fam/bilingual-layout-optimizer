@@ -372,36 +372,44 @@ public final class ParallelOptimizer {
         int count = 0;
 
         // 1. Rýchly zber indexov, kde sa nachádzajú tvoje 4 symboly (, . - ')
-        for (int i = 0; i < matrix.length; i++) {
-            char c = matrix[i];
-            if (c == ',' || c == '.' || c == '-' || c == '\'') {
-                if (count < 4) idx[count++] = i;
+        for (char c : matrix) {
+            if (c < 'A' || c > 'Z') {
+                if (count++ == 4) {
+                    break;
+                }
             }
         }
-        if (count < 4) return false;
+        if (count < 4) return false; // Poistka integrity matice
 
         // Zoradenie indexov nám brutálne uľahčí geometrickú detekciu
         Arrays.sort(idx);
 
-        // =========================================================================
-        // NOVÝ VZOREC: Centrálny pilier (Ukazovákové stretch pozície proti sebe)
-        // =========================================================================
-        // Možnosť A: Horný riadok + Domovský riadok (indexy 4, 5 a 14, 15)
-        if (idx[0] == 4 && idx[1] == 5 && idx[2] == 14 && idx[3] == 15) {
-            return true;
-        }
-        // Možnosť B: Domovský riadok + Spodný riadok (indexy 14, 15 a 24, 25)
-        if (idx[0] == 14 && idx[1] == 15 && idx[2] == 24 && idx[3] == 25) {
-            return true;
-        }
-
-        // Prevedieme indexy na súradnice [Row, Column] pre ostatné voľné symetrie
+        // Prevedieme indexy na súradnice [Row, Column] a spočítame stretch stĺpce
         int[] r = new int[4];
         int[] c = new int[4];
+        int countCol4 = 0; // Ľavý stretch stĺpec ukazováka
+        int countCol5 = 0; // Pravý stretch stĺpec ukazováka
+
         for (int i = 0; i < 4; i++) {
             r[i] = idx[i] / 10;
             c[i] = idx[i] % 10;
+
+            if (c[i] == 4) countCol4++;
+            if (c[i] == 5) countCol5++;
         }
+
+        // =========================================================================
+        // 👑 VZOREC 5: 3+1 Centrálny Stretch Pilier (Tvoj najnovší upgrade)
+        // =========================================================================
+        if ((countCol4 == 3 && countCol5 == 1) || (countCol4 == 1 && countCol5 == 3)) {
+            return true;
+        }
+
+        // =========================================================================
+        // VZOREC 4: Centrálny pilier (Ukazovákový stretch zips 2x2 proti sebe)
+        // =========================================================================
+        if (idx[0] == 4 && idx[1] == 5 && idx[2] == 14 && idx[3] == 15) return true;
+        if (idx[0] == 14 && idx[1] == 15 && idx[2] == 24 && idx[3] == 25) return true;
 
         // =========================================================================
         // VZOREC 1: 4 symboly v jednom riadku lineárne vedľa seba (kdekoľvek)
@@ -423,7 +431,7 @@ public final class ParallelOptimizer {
         }
 
         // =========================================================================
-        // VZOREC 3: Horizontálne zrkadlo (2 symboly na ľavej ruke, 2 na pravej ruke)
+        // VZOREC 3: Horizontálne zrkadlo rúk (2 na ľavej ruke, 2 na pravej ruke)
         // Symetria podľa stredovej osi: col_left = 9 - col_right
         // =========================================================================
         if (c[0] < 5 && c[1] < 5 && c[2] >= 5 && c[3] >= 5) {
@@ -431,7 +439,7 @@ public final class ParallelOptimizer {
             if (r[0] == r[3] && c[0] == 9 - c[3] && r[1] == r[2] && c[1] == 9 - c[2]) {
                 return true;
             }
-            // Možnosť B: Paralelné dvojičky (0 s 2) and (1 s 3)
+            // Možnosť B: Paralelné dvojičky (0 s 2) a (1 s 3)
             if (r[0] == r[2] && c[0] == 9 - c[2] && r[1] == r[3] && c[1] == 9 - c[3]) {
                 return true;
             }
