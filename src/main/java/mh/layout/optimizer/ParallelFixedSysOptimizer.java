@@ -360,6 +360,9 @@ public final class ParallelFixedSysOptimizer {
     // =========================================================================
     // 👑 PRÍSNY GENERÁTOR ŠABLÓN (Zafixovaný podľa tvojich kognitívnych zákonov)
     // =========================================================================
+    /**
+     * Vygeneruje zoznam všetkých geometricky schválených šablón pozícií pre symboly.
+     */
     public List<int[]> generateValidTemplates() {
         List<int[]> validTemplates = new ArrayList<>();
         for (int i = 0; i < 27; i++) {
@@ -377,6 +380,9 @@ public final class ParallelFixedSysOptimizer {
         return validTemplates;
     }
 
+    /**
+     * Naše kognitívne geometrické sito, ktoré nepustí asymetrický chaos
+     */
     private boolean isGeometryHumanFriendly(int[] idx) {
         // --- 🛑 PRÍSNA STRÁŽNA BRÁNA PRE HOME ROW ---
         // Akýkoľvek symbol na strednom riadku (indexy 10 až 19) odpálime, pokiaľ nestojí na 14 alebo 15
@@ -409,14 +415,14 @@ public final class ParallelFixedSysOptimizer {
         if (idx[0] == 4 && idx[1] == 5 && idx[2] == 14 && idx[3] == 15) return true;
         if (idx[0] == 14 && idx[1] == 15 && idx[2] == 24 && idx[3] == 25) return true;
 
-        // VZOREC 1: 4 symboly v jednom riadku lineárne vedľa seba
-        if (r[0] == r[1] && r[1] == r[2] && r[2] == r[3]) {
+        // VZOREC 1: 4 symboly v jednom riadku lineárne vedľa seba (iba HORNÝ alebo SPODNÝ)
+        if (r[0] == r[1] && r[1] == r[2] && r[2] == r[3] && r[0] != 1) {
             if (c[1] == c[0] + 1 && c[2] == c[1] + 1 && c[3] == c[2] + 1) return true;
         }
 
-        // VZOREC 2: Vertikálna symetria (Dvojičky nad sebou v rovnakých stĺpcoch)
-        if (c[0] == c[1] && c[2] == c[3] && r[0] != r[1] && r[2] != r[3]) return true;
-        if (c[0] == c[2] && c[1] == c[3] && r[0] != r[2] && r[1] != r[3]) return true;
+        // VZOREC 2: Vertikálna symetria (Dvojičky nad sebou, obkračujú Home Row)
+        if (c[0] == c[1] && c[2] == c[3] && r[0] == 0 && r[1] == 2 && r[2] == 0 && r[3] == 2) return true;
+        if (c[0] == c[2] && c[1] == c[3] && r[0] == 0 && r[1] == 0 && r[2] == 2 && r[3] == 2) return true;
 
         // VZOREC 3: Horizontálne zrkadlo rúk (2 na ľavej ruke, 2 na pravej ruke)
         if (c[0] < 5 && c[1] < 5 && c[2] >= 5 && c[3] >= 5) {

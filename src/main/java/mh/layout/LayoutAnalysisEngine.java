@@ -5,6 +5,7 @@ import mh.layout.analyzer.LayoutAnalyzer;
 import mh.layout.evaluator.Evaluator;
 import mh.layout.evaluator.Weights;
 import mh.layout.io.LayoutLoader;
+import mh.layout.optimizer.ParallelRandomOptimizer;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.stats.NGramStats;
@@ -63,6 +64,15 @@ public final class LayoutAnalysisEngine {
         for (LayoutLoader.LayoutInput input : loadedLayouts) {
             char[] matrix = input.matrix();
 
+            counter++;
+
+//            if (!ParallelRandomOptimizer.isHumanFriendly(matrix)) {
+//                if ((counter & 0x3FF) == 0) {
+//                    System.out.print("\r Layout nie je humanFriendly " + new String(matrix));
+//                }
+//                continue;
+//            }
+
             // Využíva naše preťažené evaluate() - samé si vnútri spočíta presný lokálny základ
             LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);
 
@@ -73,7 +83,7 @@ public final class LayoutAnalysisEngine {
 
 //            System.out.printf("✅ Spracované: %-18s | Elite Score: %.4f%n", input.name(), combinedScore);
             // cislo nasobok 2 na X - 1 potrebujes 0000111111 seriu jednotiek na konci
-            if ((counter++ & 0x3FF) == 0) {
+            if ((counter & 0x3FF) == 0) {
                 System.out.print("\r Analyzujem layout " + counter + " " + input.name() + "          ");
             }
         }
@@ -109,7 +119,7 @@ public final class LayoutAnalysisEngine {
 
         // 🔍 Hĺbkový röntgen layoutov
         int counter2 = 0;
-        int max = 4;
+        int max = 20;
         System.out.println("\n⏳ Generujem podrobné biomechanické audity do súboru...");
         for (AnalyzedLayout layout : leaderboard) {
             if (counter2++ > max) {

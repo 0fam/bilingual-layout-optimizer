@@ -45,8 +45,8 @@ public final class OptimizationEngine {
         double skRatio = 0.80;
 
         // 3. ODPÁLENIE MULTITHREADOVÉHO MOTORA (Dáta idú priamo dnu)
-//        ParallelRandomOptimizer optimizer = new ParallelRandomOptimizer();
-        ParallelFixedSysOptimizer optimizer = new ParallelFixedSysOptimizer();
+        ParallelRandomOptimizer optimizer = new ParallelRandomOptimizer();
+//        ParallelFixedSysOptimizer optimizer = new ParallelFixedSysOptimizer();
         optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio);
 
         // 4. MONITOROVACIA SLUČKA (Tachometer rýchlosti)

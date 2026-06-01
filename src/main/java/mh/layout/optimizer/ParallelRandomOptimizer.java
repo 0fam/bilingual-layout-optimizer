@@ -121,6 +121,10 @@ public final class ParallelRandomOptimizer {
         double currentScore = (currentSkStats.getScore() * skRatio) + (currentEnStats.getScore() * enRatio);
         double localBestScore = currentScore;
 
+        // 🏎️ EPOCHOVÁ PAMÄŤ: Stráži najlepší stav dosiahnutý čisto v tomto jednom behu od reheatingu po ochladenie
+        char[] runBestMatrix = Arrays.copyOf(currentMatrix, currentMatrix.length);
+        double runBestScore = currentScore;
+
         // 🌡️ OPTIMALIZOVANÉ PARAMETRE (Štartujeme nižšie, chladneme pomalšie)
         double temperature = 3.0; // 5.0 rychle prehladavanie, 3 stredne, 1.5 jemne prehladavanie okolo riesenia
         final double coolingRate = 0.000005; // 0.00001 bezne chladenie, 0,000005 pomale brusenie najdeneho riesenia
@@ -133,7 +137,7 @@ public final class ParallelRandomOptimizer {
             // 🌡️ INTELIGENTNÝ RE-HEATING (Návrat ku koreňom)
             if (temperature <= 0.05) {
                 // =========================================================================
-                // 💎 DETERMINISTICKÝ FINÁLNY VYBRUS: 2-opt All-Pairs Greedy Hill Climbing
+                // 💎 DETERMINISTICKÝ FINÁLNY VYBRUS: 2-opt All-Pairs Greedy Hill Climbing TOHTO konkrétneho behu
                 // =========================================================================
                 boolean foundImprovement;
                 do {
@@ -141,37 +145,46 @@ public final class ParallelRandomOptimizer {
                     for (int i = 0; i < 29; i++) {
                         for (int j = i + 1; j < 30; j++) {
                             // Skús atomicky prehodiť akékoľvek dva klávesy v lokálnom maxime
-                            char sweepTemp = localBestMatrix[i];
-                            localBestMatrix[i] = localBestMatrix[j];
-                            localBestMatrix[j] = sweepTemp;
+                            char sweepTemp = runBestMatrix[i];
+                            runBestMatrix[i] = runBestMatrix[j];
+                            runBestMatrix[j] = sweepTemp;
 
-                            if (isHumanFriendly(localBestMatrix)) {
-                                LayoutStats sweepSk = Evaluator.evaluate(localBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-                                LayoutStats sweepEn = Evaluator.evaluate(localBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+                            if (isHumanFriendly(runBestMatrix)) {
+                                LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+                                LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
                                 double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
 
                                 // Ak sme našli čisté zlepšenie hoci len o miliontinu bodu, ukladáme a reštartujeme sken
-                                if (sweepScore > localBestScore) {
-                                    localBestScore = sweepScore;
+                                if (sweepScore > runBestScore) {
+                                    runBestScore = sweepScore;
                                     foundImprovement = true;
-                                    checkAndSetGlobalBest(localBestMatrix, localBestScore, sweepSk.getScore(), sweepEn.getScore());
+                                    checkAndSetGlobalBest(runBestMatrix, runBestScore, sweepSk.getScore(), sweepEn.getScore());
                                     break;
                                 }
                             }
 
                             // Ak výmena nepomohla, vráť krok späť
-                            char sweepUndo = localBestMatrix[i];
-                            localBestMatrix[i] = localBestMatrix[j];
-                            localBestMatrix[j] = sweepUndo;
+                            char sweepUndo = runBestMatrix[i];
+                            runBestMatrix[i] = runBestMatrix[j];
+                            runBestMatrix[j] = sweepUndo;
                         }
-                        if (foundImprovement) break; // Reštartuj celý 435-kombinačný prechod odznova z nového bodu
+                        if (foundImprovement) break;
                     }
                 } while (foundImprovement);
-                // =========================================================================
 
-                // Pred zážihom vrátime maticu na lokálne maximum tohto jadra
+                // Ak po vybrúsení tento beh prekonal doterajší historický rekord jadra, prepíšeme ho
+                if (runBestScore > localBestScore) {
+                    localBestScore = runBestScore;
+                    localBestMatrix = Arrays.copyOf(runBestMatrix, runBestMatrix.length);
+                }
+
+                // Pred zážihom resetujeme behové premenné na aktuálne absolútne maximum tohto jadra
                 currentMatrix = Arrays.copyOf(localBestMatrix, localBestMatrix.length);
                 currentScore = localBestScore;
+
+                runBestMatrix = Arrays.copyOf(currentMatrix, currentMatrix.length);
+                runBestScore = currentScore;
+
                 temperature = 3.0; // Prihrejeme len natoľko, aby sme preskočili najbližšiu stenu
                 continue;
             }
@@ -227,6 +240,12 @@ public final class ParallelRandomOptimizer {
             if (nextScore > currentScore) {
                 currentScore = nextScore;
 
+                // Ak sme prepísali rekord TOHTO konkrétneho behu, zapíšeme si ho
+                if (currentScore > runBestScore) {
+                    runBestScore = currentScore;
+                    runBestMatrix = Arrays.copyOf(currentMatrix, currentMatrix.length);
+                }
+
                 // 🚀 Ak sme prepísali lokálny rekord jadra, zapíšeme si ho do pamäte
                 if (currentScore > localBestScore) {
                     localBestScore = currentScore;
@@ -252,6 +271,46 @@ public final class ParallelRandomOptimizer {
             temperature *= (1.0 - coolingRate);
         }
     }
+
+//    // 💎 EXHAUSTIVE BACKTRACKING FINÁLNY VYBRUS (Preskúma úplne všetko, čo stúpa nahor)
+//    private void executeExhaustiveExploration(char[] matrix, double currentScore, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double enRatio) {
+//
+//        // Skenujeme všetkých 435 unikátnych dvojíc na tejto úrovni stromu
+//        for (int i = 0; i < 29; i++) {
+//            for (int j = i + 1; j < 30; j++) {
+//
+//                // Vykonaj swap (krok do hĺbky vetvy)
+//                char temp = matrix[i];
+//                matrix[i] = matrix[j];
+//                matrix[j] = temp;
+//
+//                if (isHumanFriendly(matrix)) {
+//                    LayoutStats sweepSk = Evaluator.evaluate(matrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+//                    LayoutStats sweepEn = Evaluator.evaluate(matrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+//                    double nextScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
+//
+//                    // 🔥 AK JE TO HOCIJAKÉ ZLEPŠENIE, IDEME REKURZÍVNE DO HLĹBKY TEJTO VETVY!
+//                    if (nextScore > currentScore) {
+//
+//                        // Ak táto vetva prepísala celkový rekord tohto behu, uzamkneme ju
+//                        if (nextScore > runBestScore) {
+//                            runBestScore = nextScore;
+//                            runBestMatrix = Arrays.copyOf(matrix, matrix.length);
+//                            checkAndSetGlobalBest(runBestMatrix, runBestScore, sweepSk.getScore(), sweepEn.getScore());
+//                        }
+//
+//                        // Rekurzívne preskúmame, kam až táto konkrétna vetva vedie
+//                        executeExhaustiveExploration(matrix, nextScore, statsSK, statsEN, weights, skRatio, enRatio);
+//                    }
+//                }
+//
+//                // Krok späť (Rollback) – uvoľníme maticu pre otestovanie ďalšieho swapu na tejto úrovni
+//                char undo = matrix[i];
+//                matrix[i] = matrix[j];
+//                matrix[j] = undo;
+//            }
+//        }
+//    }
 
 //    private void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
 //        synchronized (lock) {
