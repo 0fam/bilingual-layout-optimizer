@@ -44,33 +44,8 @@ public final class ParallelRandomOptimizer {
         if (isRunning.get()) return;
         isRunning.set(true);
 
-        // =========================================================================
-        // ⚡ JEDNORAZOVÝ PREDPREČÍTANÝ SÚČET FREKVENCIÍ PRE CELÝ SET ZNAKOV
-        // =========================================================================
-        // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
-        double skMono, skBigram, skSkip, skTri;
-        double enMono, enBigram, enSkip, enTri;
-        skMono = 0; skBigram = 0; skSkip = 0; skTri = 0;
-        enMono = 0; enBigram = 0; enSkip = 0; enTri = 0;
-
-        for (int i = 0; i < 30; i++) {
-            skMono += statsSK.getMonogramFreq(initialMatrix[i]);
-            enMono += statsEN.getMonogramFreq(initialMatrix[i]);
-            for (int j = 0; j < 30; j++) {
-                skBigram += statsSK.getBigramFreq(initialMatrix[i], initialMatrix[j]);
-                skSkip   += statsSK.getSkipgramFreq(initialMatrix[i], initialMatrix[j]);
-
-                enBigram += statsEN.getBigramFreq(initialMatrix[i], initialMatrix[j]);
-                enSkip   += statsEN.getSkipgramFreq(initialMatrix[i], initialMatrix[j]);
-                for (int k = 0; k < 30; k++) {
-                    skTri += statsSK.getTrigramFreq(initialMatrix[i], initialMatrix[j], initialMatrix[k]);
-                    enTri += statsEN.getTrigramFreq(initialMatrix[i], initialMatrix[j], initialMatrix[k]);
-                }
-            }
-        }
-
-        skX = NGramsMultipliers.compute(skMono, skBigram, skSkip, skTri);
-        enX = NGramsMultipliers.compute(enMono, enBigram, enSkip, enTri);
+        skX = NGramsMultipliers.compute(initialMatrix, statsSK);
+        enX = NGramsMultipliers.compute(initialMatrix, statsEN);
         skMonoX = skX.monoX();
         skBiX = skX.biX();
         skSkipX = skX.skipX();
