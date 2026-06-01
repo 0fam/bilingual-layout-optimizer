@@ -138,7 +138,7 @@ public final class ParallelRandomOptimizer {
                             runBestMatrix[i] = runBestMatrix[j];
                             runBestMatrix[j] = sweepTemp;
 
-                            if (isHumanFriendly(runBestMatrix)) {
+                            if (LayoutValidator.isHumanFriendly(runBestMatrix)) {
                                 LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
                                 LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
                                 double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
@@ -199,7 +199,7 @@ public final class ParallelRandomOptimizer {
             }
 
             // 🚀 BLESKOVÉ FILTROVANIE: Ak to nie je kognitívne friendly, okamžite to vráť späť
-            if (!isHumanFriendly(currentMatrix)) {
+            if (!LayoutValidator.isHumanFriendly(currentMatrix)) {
                 char undo = currentMatrix[pos1];
                 currentMatrix[pos1] = currentMatrix[pos2];
                 currentMatrix[pos2] = undo;
@@ -316,25 +316,6 @@ public final class ParallelRandomOptimizer {
                         score, sk, en, this.dynamicThreshold);
             }
         }
-    }
-
-    public static boolean isHumanFriendly(char[] matrix) {
-        int row = 1;
-        int offset = row * 10;
-
-        for (int col = 1; col < 9; col++) {
-            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
-
-            char ch = matrix[offset + col];
-
-            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
-            if (ch < 'A' || ch > 'Z') return false;
-
-            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
-            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
-        }
-
-        return true;
     }
 
 }
