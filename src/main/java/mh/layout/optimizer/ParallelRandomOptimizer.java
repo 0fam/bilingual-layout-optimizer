@@ -13,11 +13,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static mh.layout.topology.KeyboardTopology.KEY_COUNT;
 
 public final class ParallelRandomOptimizer {
 
@@ -280,24 +280,24 @@ public final class ParallelRandomOptimizer {
         return sb.toString();
     }
 
-    public static boolean isHumanFriendly(char[] matrix) {
-        int row = 1;
-        int offset = row * 10;
-
-        for (int col = 0; col < 10; col++) {
-            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
-
-            char ch = matrix[offset + col];
-
-            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
-            if (ch < 'A' || ch > 'Z') return false;
-
-            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
-            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
-        }
-
-        return true;
-    }
+//    public static boolean isHumanFriendly(char[] matrix) {
+//        int row = 1;
+//        int offset = row * 10;
+//
+//        for (int col = 0; col < 10; col++) {
+//            if (col == 4 || col == 5) continue; // Stredné stretch stĺpce nechávame na voľný experiment
+//
+//            char ch = matrix[offset + col];
+//
+//            // ZÁKAZ SYMBOLOV: Na hlavných 8 klávesoch domovského riadku musí byť iba čistá abeceda
+//            if (ch < 'A' || ch > 'Z') return false;
+//
+//            // ⚡ EARLY PRUNING: Vyhadzujeme len absolútne dno korpusu (Q, W, X).
+//            if (ch == 'Q' || ch == 'W' || ch == 'X') return false;
+//        }
+//
+//        return true;
+//    }
 
 //    public static boolean isHumanFriendly(char[] matrix) {
 //        for (int row = 0; row < 3; row++) {
@@ -369,65 +369,60 @@ public final class ParallelRandomOptimizer {
 //        return true;
 //    }
 
-    /**
-     * Vygeneruje zoznam všetkých geometricky schválených šablón pozícií pre symboly.
-     */
-    public List<int[]> generateValidTemplates() {
-        List<int[]> validTemplates = new ArrayList<>();
-        for (int i = 0; i < 27; i++) {
-            for (int j = i + 1; j < 28; j++) {
-                for (int k = j + 1; k < 29; k++) {
-                    for (int l = k + 1; l < 30; l++) {
-                        int[] template = {i, j, k, l};
-                        if (isGeometryHumanFriendly(template)) {
-                            validTemplates.add(template);
-                        }
-                    }
-                }
+    public boolean isHumanFriendly(char[] matrix) {
+        int idx0 = -1, idx1 = -1, idx2 = -1, idx3 = -1;
+        int count = 0;
+
+        // 1. Single-pass zber indexov (automaticky zoradené 0-29)
+        for (int i = 0; i < KEY_COUNT; i++) {
+            char c = matrix[i];
+            if (c < 'A' || c > 'Z') {
+                if (count == 0) idx0 = i;
+                else if (count == 1) idx1 = i;
+                else if (count == 2) idx2 = i;
+                else if (count == 3) { idx3 = i; break; }
+                count++;
             }
         }
-        return validTemplates;
-    }
 
-    /**
-     * Naše kognitívne geometrické sito, ktoré nepustí asymetrický chaos
-     */
-    private boolean isGeometryHumanFriendly(int[] idx) {
-        int[] r = new int[4];
-        int[] c = new int[4];
-        int countCol4 = 0;
-        int countCol5 = 0;
+        // =========================================================================
+        // 🛑 GLOBÁLNA STRÁŽ HOME ROW: Základný test pred oboma módmi
+        // =========================================================================
+        // Vygenerujeme 30-bitovú masku polôh symbolov aktuálneho layoutu
+        long layoutSymbolsMask = (1L << idx0) | (1L << idx1) | (1L << idx2) | (1L << idx3);
 
-        for (int i = 0; i < 4; i++) {
-            r[i] = idx[i] / 10;
-            c[i] = idx[i] % 10;
-            if (c[i] == 4) countCol4++;
-            if (c[i] == 5) countCol5++;
+        // Porovnáme to s kartónom z KeyboardTopology (bity 11,12,13 a 16,17,18)
+        // Ak sa bity pretnú, symbol parazituje na jadrových prstoch -> OKAMŽITÁ POPRAVA
+        if ((layoutSymbolsMask & KeyboardTopology.FORBIDDEN_HOME_ROW_MASK) != 0) {
+            return false;
         }
 
-        // VZOREC 5: 3+1 Centrálny Stretch Pilier
-        if ((countCol4 == 3 && countCol5 == 1) || (countCol4 == 1 && countCol5 == 3)) return true;
+        // 2. Extrakcia rúk z POS_INFO (Maska 0x200 izoluje 9. bit)
+        int hand0 = KeyboardTopology.POS_INFO[idx0] & 0x200;
+        int hand1 = KeyboardTopology.POS_INFO[idx1] & 0x200;
+        int hand2 = KeyboardTopology.POS_INFO[idx2] & 0x200;
+        int hand3 = KeyboardTopology.POS_INFO[idx3] & 0x200;
 
-        // VZOREC 4: Centrálny pilier (Ukazovákový stretch zips 2x2)
-        if (idx[0] == 4 && idx[1] == 5 && idx[2] == 14 && idx[3] == 15) return true;
-        if (idx[0] == 14 && idx[1] == 15 && idx[2] == 24 && idx[3] == 25) return true;
-
-        // VZOREC 1: 4 symboly v jednom riadku (iba HORNÝ alebo SPODNÝ)
-        if (r[0] == r[1] && r[1] == r[2] && r[2] == r[3] && r[0] != 1) {
-            if (c[1] == c[0] + 1 && c[2] == c[1] + 1 && c[3] == c[2] + 1) return true;
+        // =========================================================================
+        // 👑 MÓD 1: JEDNORUČNÝ BLOK (Všetky symboly majú rovnakú ruku)
+        // =========================================================================
+        if (hand0 == hand1 && hand0 == hand2 && hand0 == hand3) {
+            return true; // Home Row prešiel globálnym testom hore -> absolútna sloboda!
         }
 
-        // VZOREC 2: Vertikálna symetria (Dvojičky nad sebou, obkračujú Home Row)
-        if (c[0] == c[1] && c[2] == c[3] && r[0] == 0 && r[1] == 2 && r[2] == 0 && r[3] == 2) return true;
-        if (c[0] == c[2] && c[1] == c[3] && r[0] == 0 && r[1] == 0 && r[2] == 2 && r[3] == 2) return true;
+        // =========================================================================
+        // 📐 MÓD 2: OBOJRUČNÉ ROZLOŽENIE -> Čistá, nekompromisná zrkadlovosť
+        // =========================================================================
+        // Vytiahneme predpočítané finálne indexy zrkadiel (posun o 10 bitov a maska 0x1F)
+        int m0 = (KeyboardTopology.POS_INFO[idx0] >> 10) & 0x1F;
+        int m1 = (KeyboardTopology.POS_INFO[idx1] >> 10) & 0x1F;
+        int m2 = (KeyboardTopology.POS_INFO[idx2] >> 10) & 0x1F;
+        int m3 = (KeyboardTopology.POS_INFO[idx3] >> 10) & 0x1F;
 
-        // VZOREC 3: Horizontálne zrkadlo rúk (2 na ľavej, 2 na pravej)
-        if (c[0] < 5 && c[1] < 5 && c[2] >= 5 && c[3] >= 5) {
-            if (r[0] == r[3] && c[0] == 9 - c[3] && r[1] == r[2] && c[1] == 9 - c[2]) return true;
-            if (r[0] == r[2] && c[0] == 9 - c[2] && r[1] == r[3] && c[1] == 9 - c[3]) return true;
-        }
-
-        return false;
+        return (m0 == idx1 || m0 == idx2 || m0 == idx3) &&
+                (m1 == idx0 || m1 == idx2 || m1 == idx3) &&
+                (m2 == idx0 || m2 == idx1 || m2 == idx3) &&
+                (m3 == idx0 || m3 == idx1 || m3 == idx2);
     }
 
 }

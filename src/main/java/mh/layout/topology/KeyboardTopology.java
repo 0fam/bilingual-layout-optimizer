@@ -5,6 +5,8 @@ public final class KeyboardTopology {
     public static final int LEFT_HAND = 0, RIGHT_HAND = 1;
     public static final int TOP_ROW = 0, HOME_ROW = 1, BOTTOM_ROW = 2;
     public static final int KEY_COUNT = 30;
+    // cisla klaves na ktorych nemozu byt symboly - cize HOME ROW bez malickov napriklad, t.j. 11, 12, 13, 16, 17, 18
+    public static final long FORBIDDEN_HOME_ROW_MASK = (1L << 11) | (1L << 12) | (1L << 13) | (1L << 16) | (1L << 17) | (1L << 18);
 
     // 🎯 HLAVNÉ BITOVÉ POLE PRE ZÁKLADNÚ ANATÓMIU
     public static final int[] POS_INFO = new int[KEY_COUNT];
@@ -82,9 +84,16 @@ public final class KeyboardTopology {
                 0, 1, 2, 3, 3,  4, 4, 5, 6, 7
         };
 
+        // 🪞 TVOJE FINÁLNE INDEXY ZRKADIEL (Čisté hodnoty 0 až 29 pod sebou)
+        int[] mirror = {
+                9,  8,  7,  6,  5,   4,  3,  2,  1,  0,  // Horný riadok
+                19, 18, 17, 16, 15,  14, 13, 12, 11, 10, // Home Row
+                29, 28, 27, 26, 25,  24, 23, 22, 21, 20  // Spodný riadok
+        };
+
         // ⚡ BIT-PACKING: Zabalíme 4 informácie do jedného čísla int
         for (int i = 0; i < KEY_COUNT; i++) {
-            POS_INFO[i] = (hands[i] << 9) | (rows[i] << 7) | (cols[i] << 3) | fingers[i];
+            POS_INFO[i] = (mirror[i] << 10) | (hands[i] << 9) | (rows[i] << 7) | (cols[i] << 3) | fingers[i];
         }
 
         // =========================================================================
