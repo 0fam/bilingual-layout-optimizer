@@ -28,10 +28,8 @@ public final class ParallelRandomOptimizer {
     private double globalBestScore = -1.0;
 
     private final Object lock = new Object();
-    private final Object journalLock = new Object();
 
     private long totalEvaluations = 0;
-    private static final String JOURNAL_FILE = "c:\\home\\project-personal\\layout-analyzer\\layout_journal.txt";
 
     private NGramsMultipliers skX;
     private NGramsMultipliers enX;
@@ -65,7 +63,7 @@ public final class ParallelRandomOptimizer {
 
         int cores = Runtime.getRuntime().availableProcessors() / 2;
         System.out.println("🔥 Štartujem optimizér na " + cores + " jadrách procesora...");
-        System.out.println("📝 Pociatocny threshold na zapis do dennika " + JOURNAL_FILE + " je " + dynamicThreshold);
+        System.out.println("📝 Pociatocny threshold na zapis do dennika " + LayoutJournal.JOURNAL_FILE + " je " + dynamicThreshold);
 
         for (int i = 0; i < cores; i++) {
             final int threadId = i;
@@ -223,8 +221,8 @@ public final class ParallelRandomOptimizer {
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (nextScore >= dynamicThreshold) {
-                System.out.println("📝 Zápis do denníka: " + formatMatrix(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
-                appendToJournal(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
+                System.out.println("📝 Zápis do denníka: " + LayoutJournal.format(currentMatrix) + " SK: " + String.format("%.4f", skScore) + " | EN: " + String.format("%.4f", enScore) + " | Jadro: " + threadId);
+                LayoutJournal.append(currentMatrix, skScore, enScore, nextScore, threadId, localEvaluations);
             }
 
             // ROZHODOVACIA MATEMATIKA
@@ -303,17 +301,6 @@ public final class ParallelRandomOptimizer {
 //        }
 //    }
 
-//    private void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
-//        synchronized (lock) {
-//            if (score > globalBestScore) {
-//                globalBestScore = score;
-//                globalBestMatrix = Arrays.copyOf(matrix, matrix.length);
-//                System.out.printf("🏆 Nový bilingválny rekord! Skóre: %.4f (SK: %.2f | EN: %.2f) [%s]%n",
-//                        score, sk, en, formatMatrix(globalBestMatrix));
-//            }
-//        }
-//    }
-
     // Na začiatku aplikácie nastav: globalBestScore = 0.0 a dynamicThreshold = 0.0
     public void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
         synchronized (lock) {
@@ -329,42 +316,6 @@ public final class ParallelRandomOptimizer {
                         score, sk, en, this.dynamicThreshold);
             }
         }
-    }
-
-    private void appendToJournal(char[] matrix, double sk, double en, double combined, int threadId, long iteration) {
-        synchronized (journalLock) {
-            try (FileWriter fw = new FileWriter(JOURNAL_FILE, true);
-                 BufferedWriter bw = new BufferedWriter(fw);
-                 PrintWriter out = new PrintWriter(bw)) {
-
-                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                // 🚀 FIX: %n presunuté až na úplný koniec riadku, iterácia uprataná plynule do riadku
-                out.printf("%s | SK: %.4f | EN: %.4f | COMBINED: %.4f | %s (Core %d) | Iteration: %d%n",
-                        formatMatrix(matrix), sk, en, combined, timestamp, threadId, iteration);
-
-            } catch (IOException e) {
-                System.err.println("Chyba zápisu do denníka: " + e.getMessage());
-            }
-        }
-    }
-
-    public static String formatMatrix(char[] matrix) {
-        if (matrix == null || matrix.length != 30) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder(37); // Presná dĺžka stringu vrátane medzier
-
-        // Riadok 1 (0-4 | medzera | 5-9) + 2 medzery na oddelenie riadkov
-        sb.append(matrix, 0, 5).append(' ').append(matrix, 5, 5).append("  ");
-
-        // Riadok 2 (10-14 | medzera | 15-19) + 2 medzery na oddelenie riadkov
-        sb.append(matrix, 10, 5).append(' ').append(matrix, 15, 5).append("  ");
-
-        // Riadok 3 (20-24 | medzera | 25-29)
-        sb.append(matrix, 20, 5).append(' ').append(matrix, 25, 5);
-
-        return sb.toString();
     }
 
     public static boolean isHumanFriendly(char[] matrix) {
@@ -385,142 +336,5 @@ public final class ParallelRandomOptimizer {
 
         return true;
     }
-
-//    public static boolean isHumanFriendly(char[] matrix) {
-//        for (int row = 0; row < 3; row++) {
-//            int offset = row * 10;
-//
-//            for (int col = 0; col < 10; col++) {
-//                char ch = matrix[offset + col];
-//
-//                // 1. Ak je to písmeno, nezaujíma nás to
-//                if (ch >= 'A' && ch <= 'Z') continue;
-//
-//                // 2. VOĽNÉ STĹPCE: Tu symbol môže stáť úplne sám
-//                if (col == 0 || col == 4 || col == 5 || col == 9) continue;
-//
-//                // 3. PODMIENENÉ STĹPCE
-//                char left = matrix[offset + col - 1];
-//                if (left < 'A' || left > 'Z') continue;
-//                char right = matrix[offset + col + 1];
-//                if (right < 'A' || right > 'Z') continue;
-//                return false;
-//            }
-//        }
-//        return true; // Všetky symboly sú buď na krajoch/stredoch, alebo v pároch
-//    }
-
-//    public static boolean isHumanFriendly(char[] matrix) {
-//        for (int row = 0; row < 3; row++) {
-//            int offset = row * 10;
-//
-//            for (int col = 0; col < 10; col++) {
-//                char ch = matrix[offset + col];
-//
-//                // =========================================================================
-//                // 🚨 ŠPECIÁLNA STRÁŽ PRE HOME ROW (Riadok 1) - Koncept prioritných klávesov
-//                // =========================================================================
-//                if (row == 1) {
-//                    // Definuje odpad, ktorý na Home Row nechceme vidieť ani na sekundu
-//                    boolean isTrashKey = (ch == 'Q' || ch == 'X' || ch == 'W' || ch == 'J' || ch == 'Z');
-//
-//                    if (col == 4 || col == 5) {
-//                        // STRETCH STĹPCE: Povolené písmená (mimo trashu) ALEBO bodka a čiarka
-//                        if (isTrashKey) return false;
-//                        if (ch < 'A' || ch > 'Z') {
-//                            if (ch != '.' && ch != ',') return false; // Slabé symboly do stredu nepustíme
-//                        }
-//                    } else {
-//                        // HLAVNÉ POZÍCIE PRSTOV: Prísne iba čistá abeceda bez trashu a symbolov
-//                        if (ch < 'A' || ch > 'Z' || isTrashKey) return false;
-//                    }
-//                    continue; // Home row vyriešená, ideme na ďalšiu klávesu
-//                }
-//
-//                // =========================================================================
-//                // 📐 PRAVIDLO PRE HORNÝ A SPODNÝ RIADOK (Riadky 0 a 2)
-//                // =========================================================================
-//                if (ch >= 'A' && ch <= 'Z') continue; // Písmená hore/dole neriešime
-//                if (col == 0 || col == 4 || col == 5 || col == 9) continue; // Voľné stĺpce
-//
-//                // Podmienené stĺpce hore a dole: symbol musí mať vedľa seba parťáka
-//                char left = matrix[offset + col - 1];
-//                if (left < 'A' || left > 'Z') continue;
-//
-//                char right = matrix[offset + col + 1];
-//                if (right < 'A' || right > 'Z') continue;
-//
-//                return false; // Osamotený symbol v riadkoch 0 alebo 2 -> KO
-//            }
-//        }
-//        return true;
-//    }
-
-//    public static boolean isHumanFriendly(char[] matrix) {
-//        int idx0 = -1, idx1 = -1, idx2 = -1, idx3 = -1;
-//        int count = 0;
-//
-//        // 1. Single-pass zber indexov (automaticky zoradené 0-29)
-//        for (int i = 0; i < KEY_COUNT; i++) {
-//            char c = matrix[i];
-//            if (c < 'A' || c > 'Z') {
-//                if (count == 0) idx0 = i;
-//                else if (count == 1) idx1 = i;
-//                else if (count == 2) idx2 = i;
-//                else if (count == 3) { idx3 = i; break; }
-//                count++;
-//            }
-//        }
-//
-//        // =========================================================================
-//        // 🛑 GLOBÁLNA STRÁŽ HOME ROW: Základný test pred všetkými módmi
-//        // =========================================================================
-//        // Vygenerujeme 30-bitovú masku polôh symbolov aktuálneho layoutu
-//        long layoutSymbolsMask = (1L << idx0) | (1L << idx1) | (1L << idx2) | (1L << idx3);
-//
-//        // Porovnáme to s kartónom z KeyboardTopology (bity 11,12,13 a 16,17,18)
-//        // Ak sa bity pretnú, symbol parazituje na jadrových prstoch -> OKAMŽITÁ POPRAVA
-//        if ((layoutSymbolsMask & KeyboardTopology.FORBIDDEN_HOME_ROW_MASK) != 0) {
-//            return false; // OKAMŽITÁ POPRAVA: Symbol parazituje na domovských prstoch
-//        }
-//
-//        // =========================================================================
-//        // ⚡ MÓD 3: STREDOVÉ STRETCHE (Symboly sú schované v zipse ukazovákov)
-//        // =========================================================================
-//        // Maska pre stredové stĺpce 4 a 5 (zapnuté bity pre indexy: 4, 5, 14, 15, 24, 25)
-//        long centerColumnsMask = 0x300C030L;
-//
-//        // Bitový AND s negáciou masky. Ak vyjde 0, znamená to, že ŽIADNY symbol nevyliezol mimo stred.
-//        if ((layoutSymbolsMask & ~centerColumnsMask) == 0) {
-//            return true; // Sú kompletne v stredovom zipse? Majú absolútnu voľnosť, kašleme na symetriu!
-//        }
-//
-//        // 2. Extrakcia rúk z POS_INFO (Maska 0x200 izoluje 9. bit)
-//        int hand0 = KeyboardTopology.POS_INFO[idx0] & 0x200;
-//        int hand1 = KeyboardTopology.POS_INFO[idx1] & 0x200;
-//        int hand2 = KeyboardTopology.POS_INFO[idx2] & 0x200;
-//        int hand3 = KeyboardTopology.POS_INFO[idx3] & 0x200;
-//
-//        // =========================================================================
-//        // 👑 MÓD 1: JEDNORUČNÝ BLOK (Všetky symboly majú rovnakú ruku)
-//        // =========================================================================
-//        if (hand0 == hand1 && hand0 == hand2 && hand0 == hand3) {
-//            return true; // Na jednej ruke mimo zakázanú Home Row? Absolútna sloboda.
-//        }
-//
-//        // =========================================================================
-//        // 📐 MÓD 2: OBOJRUČNÉ ROZLOŽENIE -> Čistá, nekompromisná zrkadlovosť
-//        // =========================================================================
-//        // Vytiahneme predpočítané finálne indexy zrkadiel (posun o 10 bitov a maska 0x1F)
-//        int m0 = (KeyboardTopology.POS_INFO[idx0] >> 10) & 0x1F;
-//        int m1 = (KeyboardTopology.POS_INFO[idx1] >> 10) & 0x1F;
-//        int m2 = (KeyboardTopology.POS_INFO[idx2] >> 10) & 0x1F;
-//        int m3 = (KeyboardTopology.POS_INFO[idx3] >> 10) & 0x1F;
-//
-//        return (m0 == idx1 || m0 == idx2 || m0 == idx3) &&
-//                (m1 == idx0 || m1 == idx2 || m1 == idx3) &&
-//                (m2 == idx0 || m2 == idx1 || m2 == idx3) &&
-//                (m3 == idx0 || m3 == idx1 || m3 == idx2);
-//    }
 
 }

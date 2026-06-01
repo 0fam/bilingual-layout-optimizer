@@ -46,4 +46,5 @@ public final class LayoutJournal {
 
         return sb.toString();
     }
+
 }
