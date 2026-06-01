@@ -261,45 +261,47 @@ public final class ParallelRandomOptimizer {
         }
     }
 
-//    // 💎 EXHAUSTIVE BACKTRACKING FINÁLNY VYBRUS (Preskúma úplne všetko, čo stúpa nahor)
-//    private void executeExhaustiveExploration(char[] matrix, double currentScore, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio, double enRatio) {
-//
-//        // Skenujeme všetkých 435 unikátnych dvojíc na tejto úrovni stromu
-//        for (int i = 0; i < 29; i++) {
-//            for (int j = i + 1; j < 30; j++) {
-//
-//                // Vykonaj swap (krok do hĺbky vetvy)
-//                char temp = matrix[i];
-//                matrix[i] = matrix[j];
-//                matrix[j] = temp;
-//
-//                if (isHumanFriendly(matrix)) {
-//                    LayoutStats sweepSk = Evaluator.evaluate(matrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-//                    LayoutStats sweepEn = Evaluator.evaluate(matrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
-//                    double nextScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
-//
-//                    // 🔥 AK JE TO HOCIJAKÉ ZLEPŠENIE, IDEME REKURZÍVNE DO HLĹBKY TEJTO VETVY!
-//                    if (nextScore > currentScore) {
-//
-//                        // Ak táto vetva prepísala celkový rekord tohto behu, uzamkneme ju
-//                        if (nextScore > runBestScore) {
-//                            runBestScore = nextScore;
-//                            runBestMatrix = Arrays.copyOf(matrix, matrix.length);
-//                            checkAndSetGlobalBest(runBestMatrix, runBestScore, sweepSk.getScore(), sweepEn.getScore());
-//                        }
-//
-//                        // Rekurzívne preskúmame, kam až táto konkrétna vetva vedie
-//                        executeExhaustiveExploration(matrix, nextScore, statsSK, statsEN, weights, skRatio, enRatio);
-//                    }
-//                }
-//
-//                // Krok späť (Rollback) – uvoľníme maticu pre otestovanie ďalšieho swapu na tejto úrovni
-//                char undo = matrix[i];
-//                matrix[i] = matrix[j];
-//                matrix[j] = undo;
-//            }
-//        }
-//    }
+    // =========================================================================
+    // 💎 DETERMINISTICKÝ FINÁLNY VYBRUS: 2-opt All-Pairs Greedy Hill Climbing
+    // =========================================================================
+    private double executeDeterministicPolish(char[] runBestMatrix, double runBestScore,
+                                              NGramStats statsSK, NGramStats statsEN,
+                                              Weights weights, double skRatio, double enRatio) {
+        boolean foundImprovement;
+        do {
+            foundImprovement = false;
+            for (int i = 0; i < 29; i++) {
+                for (int j = i + 1; j < 30; j++) {
+                    // Skús atomicky prehodiť akékoľvek dva klávesy
+                    char sweepTemp = runBestMatrix[i];
+                    runBestMatrix[i] = runBestMatrix[j];
+                    runBestMatrix[j] = sweepTemp;
+
+                    if (LayoutValidator.isHumanFriendly(runBestMatrix)) {
+                        LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+                        LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
+                        double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
+
+                        // Ak sme našli čisté zlepšenie, ukladáme a reštartujeme sken
+                        if (sweepScore > runBestScore) {
+                            runBestScore = sweepScore;
+                            foundImprovement = true;
+                            checkAndSetGlobalBest(runBestMatrix, runBestScore, sweepSk.getScore(), sweepEn.getScore());
+                            break;
+                        }
+                    }
+
+                    // Ak výmena nepomohla, vráť krok späť
+                    char sweepUndo = runBestMatrix[i];
+                    runBestMatrix[i] = runBestMatrix[j];
+                    runBestMatrix[j] = sweepUndo;
+                }
+                if (foundImprovement) break;
+            }
+        } while (foundImprovement);
+
+        return runBestScore; // Vrátime vyleštené finálne skóre
+    }
 
     // Na začiatku aplikácie nastav: globalBestScore = 0.0 a dynamicThreshold = 0.0
     public void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en) {
