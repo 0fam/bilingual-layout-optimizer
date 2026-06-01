@@ -2,6 +2,7 @@ package mh.layout.optimizer;
 
 import mh.layout.analyzer.AnalyzedLayout;
 import mh.layout.evaluator.Evaluator;
+import mh.layout.evaluator.NGramsMultipliers;
 import mh.layout.evaluator.Weights;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.NGramStats;
@@ -16,8 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static mh.layout.topology.KeyboardTopology.KEY_COUNT;
 
 public final class ParallelRandomOptimizer {
 
@@ -34,9 +33,12 @@ public final class ParallelRandomOptimizer {
     private long totalEvaluations = 0;
     private static final String JOURNAL_FILE = "c:\\home\\project-personal\\layout-analyzer\\layout_journal.txt";
 
+    private NGramsMultipliers skX;
+    private NGramsMultipliers enX;
+
     // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
-    private double skMono, skBigram, skSkip, skTri;
-    private double enMono, enBigram, enSkip, enTri;
+    private double skMonoX, skBiX, skSkipX, skTriX;
+    private double enMonoX, enBiX, enSkipX, enTriX;
 
     public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
         if (isRunning.get()) return;
@@ -45,6 +47,9 @@ public final class ParallelRandomOptimizer {
         // =========================================================================
         // ⚡ JEDNORAZOVÝ PREDPREČÍTANÝ SÚČET FREKVENCIÍ PRE CELÝ SET ZNAKOV
         // =========================================================================
+        // 🚀 INVARIANTNÉ MENOVATELE: Vypočítané iba raz na začiatku pre brutálny návrat rýchlosti
+        double skMono, skBigram, skSkip, skTri;
+        double enMono, enBigram, enSkip, enTri;
         skMono = 0; skBigram = 0; skSkip = 0; skTri = 0;
         enMono = 0; enBigram = 0; enSkip = 0; enTri = 0;
 
@@ -64,11 +69,22 @@ public final class ParallelRandomOptimizer {
             }
         }
 
+        skX = NGramsMultipliers.compute(skMono, skBigram, skSkip, skTri);
+        enX = NGramsMultipliers.compute(enMono, enBigram, enSkip, enTri);
+        skMonoX = skX.monoX();
+        skBiX = skX.biX();
+        skSkipX = skX.skipX();
+        skTriX = skX.triX();
+        enMonoX = enX.monoX();
+        enBiX = enX.biX();
+        enSkipX = enX.skipX();
+        enTriX = enX.triX();
+
         double enRatio = 1.0 - skRatio;
         // Prvé inicializačné hodnotenie (Miesto 1)
         this.globalBestMatrix = Arrays.copyOf(initialMatrix, initialMatrix.length);
-        LayoutStats initSk = Evaluator.evaluate(globalBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-        LayoutStats initEn = Evaluator.evaluate(globalBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+        LayoutStats initSk = Evaluator.evaluate(globalBestMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+        LayoutStats initEn = Evaluator.evaluate(globalBestMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
         this.globalBestScore = (initSk.getScore() * skRatio) + (initEn.getScore() * enRatio);
         this.dynamicThreshold = this.globalBestScore - 0.3;
 
@@ -114,8 +130,8 @@ public final class ParallelRandomOptimizer {
         // 🚀 LOKÁLNA PAMÄŤ JADRA: Každé jadro si stráži svoj vlastný lokálny klenot
         char[] localBestMatrix = Arrays.copyOf(startMatrix, startMatrix.length);
 
-        LayoutStats currentSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-        LayoutStats currentEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+        LayoutStats currentSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+        LayoutStats currentEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
 
         double enRatio = 1.0 - skRatio;
         double currentScore = (currentSkStats.getScore() * skRatio) + (currentEnStats.getScore() * enRatio);
@@ -150,8 +166,8 @@ public final class ParallelRandomOptimizer {
                             runBestMatrix[j] = sweepTemp;
 
                             if (isHumanFriendly(runBestMatrix)) {
-                                LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-                                LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+                                LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+                                LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
                                 double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
 
                                 // Ak sme našli čisté zlepšenie hoci len o miliontinu bodu, ukladáme a reštartujeme sken
@@ -218,8 +234,8 @@ public final class ParallelRandomOptimizer {
             }
 
             // 3. Ohodnoť nový layout bilingválne s bleskovými Early Exits (Miesto 3 v horúcej slučke)
-            LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
-            LayoutStats nextEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+            LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+            LayoutStats nextEnStats = Evaluator.evaluate(currentMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
 
             double skScore = nextSkStats.getScore();
             double enScore = nextEnStats.getScore();

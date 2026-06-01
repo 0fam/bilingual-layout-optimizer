@@ -19,8 +19,8 @@ public final class Evaluator {
     private Evaluator() {}
 
     public static LayoutStats evaluate(char[] matrix, NGramStats ngStats, Weights weights,
-                                       double totalMonograms, double totalBigrams,
-                                       double totalSkipgrams, double totalTrigrams) {
+                                       double mgMultiplier, double bgMultiplier,
+                                       double sgMultiplier, double tgMultiplier) {
         double rawSfb = 0;
         double rawSfs = 0;
         double rawAlt = 0;
@@ -30,14 +30,6 @@ public final class Evaluator {
         double rawLsb = 0;
         double rawLhb = 0;
         double rawRedirects = 0;
-
-        // =========================================================================
-        // 🚀 HACK: Predpočítané multiplikátory pre všetky typy n-gramov
-        // =========================================================================
-        double mgMultiplier = (totalMonograms == 0) ? 0.0 : (100.0 / totalMonograms);
-        double bgMultiplier = (totalBigrams == 0)  ? 0.0 : (100.0 / totalBigrams);
-        double sgMultiplier = (totalSkipgrams == 0) ? 0.0 : (100.0 / totalSkipgrams);
-        double tgMultiplier = (totalTrigrams == 0)  ? 0.0 : (100.0 / totalTrigrams);
 
         // =========================================================================
         // 🔴 BIGRAMY & SKIPGRAMY (Ploché lookupy bez bit-shiftov a vetvenia)
@@ -206,21 +198,11 @@ public final class Evaluator {
 
     // Tento overloading pridaj do Evaluator.java
     public static LayoutStats evaluate(char[] matrix, NGramStats ngStats, Weights weights) {
-        double mono = 0, bigram = 0, skip = 0, tri = 0;
 
-        // Interne si spočíta menovatele na počkanie pre standalone analýzy
-        for (int i = 0; i < 30; i++) {
-            mono += ngStats.getMonogramFreq(matrix[i]);
-            for (int j = 0; j < 30; j++) {
-                bigram += ngStats.getBigramFreq(matrix[i], matrix[j]);
-                skip   += ngStats.getSkipgramFreq(matrix[i], matrix[j]);
-                for (int k = 0; k < 30; k++) {
-                    tri += ngStats.getTrigramFreq(matrix[i], matrix[j], matrix[k]);
-                }
-            }
-        }
+        NGramsMultipliers multi = NGramsMultipliers.compute(matrix, ngStats);
+
         // Deleguje prácu na hlavné bleskové jadro
-        return evaluate(matrix, ngStats, weights, mono, bigram, skip, tri);
+        return evaluate(matrix, ngStats, weights, multi.monoX(), multi.biX(), multi.skipX(), multi.triX());
     }
 
 }

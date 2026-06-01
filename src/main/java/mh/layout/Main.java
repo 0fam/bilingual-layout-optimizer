@@ -8,8 +8,8 @@ import java.util.Map;
 
 public final class Main {
     public static void main(String[] args) {
-//        boolean optimize = true;
-        boolean optimize = false;
+        boolean optimize = true;
+//        boolean optimize = false;
 
         // 1. Nastavenie ciest na jednom jedinom mieste v aplikácii
         String pathSk = "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt";
@@ -58,7 +58,7 @@ public final class Main {
 //                            "c:\\home\\project-personal\\layout-analyzer\\totem_rekordy.txt",
                             "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts",
                             "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts.all"
-//                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\dof5.dof"
+//                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\dof5.dof",
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ_sym2",
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ_sym",
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ",
