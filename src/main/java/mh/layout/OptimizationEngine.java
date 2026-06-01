@@ -1,6 +1,7 @@
 package mh.layout;
 
 import mh.layout.evaluator.Weights;
+import mh.layout.optimizer.LayoutJournal;
 import mh.layout.optimizer.ParallelRandomOptimizer;
 import mh.layout.stats.NGramStats;
 
@@ -63,7 +64,16 @@ public final class OptimizationEngine {
             long speedPerSecond = totalEvaluations - lastEvaluations;
             lastEvaluations = totalEvaluations;
 
-            System.out.printf("📊 Rýchlosť: %,d layoutov/s | Celkovo preverených: %,d%n", speedPerSecond, totalEvaluations);
+            // 🚀 FINÁLNY ULTRA-DASHBOARD S KONTROLOU VŠETKÝCH PARAMETROV:
+            System.out.printf("📊 Rýchlosť: %,d l/s | Celkovo: %,d | 📝 Zápisov: %,d (Posledný v behu %,d) | 💎 Výbrusov: %,d (Zlepšení: %,d) | 🏆 BEST: %.4f [%s]%n",
+                    speedPerSecond,
+                    totalEvaluations,
+                    optimizer.getTotalJournalWrites(),
+                    optimizer.getLastJournalWriteRun(), // <-- Sledovanie čísla behu naživo
+                    optimizer.getTotalPolishRuns(),
+                    optimizer.getTotalPolishImprovements(),
+                    optimizer.getBestScore(),
+                    LayoutJournal.format(optimizer.getBestMatrix()));
         }
     }
 }
