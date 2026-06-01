@@ -29,21 +29,29 @@ public final class KeyboardTopology {
      * Čím nižšie číslo, tým prirodzenejší a komfortnejší stlač klávesu.
      * Základný domovský riadok (silné prsty) = 1.00 (dokonalý komfort).
      */
+//    public static final double[] POS_STRETCH_WEIGHT = {
+//            // HORNÝ RIADKOK: Prirodzené natiahnutie prstov smerom von.
+//            // Malíček je kratší (1.6), ukazovák a prostredník natiahneš najľahšie (1.3).
+//            // Indexy 4 a 5 sú vnútorné diagonálne streče (1.80) - stredne ťažké.
+//            1.60, 1.40, 1.30, 1.30, 1.80,   1.80, 1.30, 1.30, 1.40, 1.60,
+//
+//            // DOMOVSKÝ RIADOK: Prsty na ňom reálne ležia.
+//            // Silné prsty = 1.00. Malíček má menší offset (1.15).
+//            // Indexy 14 a 15 sú bočné streče ukazovákov do stredu klávesnice (1.50).
+//            1.15, 1.00, 1.00, 1.00, 1.50,   1.50, 1.00, 1.00, 1.00, 1.15,
+//
+//            // SPODNÝ RIADOK: Krčenie prstov pod seba. Ergonomicky najnepríjemnejší riadok.
+//            // Prstenník (1.70) a malíček (1.90) trpia najviac, lebo zdieľajú šľachy.
+//            // Indexy 24 a 25 sú najbrutálnejšie vnútorné spodné diagonály (2.10).
+//            1.90, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.90
+//    };
+
     public static final double[] POS_STRETCH_WEIGHT = {
-            // HORNÝ RIADKOK: Prirodzené natiahnutie prstov smerom von.
-            // Malíček je kratší (1.6), ukazovák a prostredník natiahneš najľahšie (1.3).
-            // Indexy 4 a 5 sú vnútorné diagonálne streče (1.80) - stredne ťažké.
-            1.60, 1.40, 1.30, 1.30, 1.80,   1.80, 1.30, 1.30, 1.40, 1.60,
-
-            // DOMOVSKÝ RIADOK: Prsty na ňom reálne ležia.
-            // Silné prsty = 1.00. Malíček má menší offset (1.15).
-            // Indexy 14 a 15 sú bočné streče ukazovákov do stredu klávesnice (1.50).
-            1.15, 1.00, 1.00, 1.00, 1.50,   1.50, 1.00, 1.00, 1.00, 1.15,
-
-            // SPODNÝ RIADOK: Krčenie prstov pod seba. Ergonomicky najnepríjemnejší riadok.
-            // Prstenník (1.70) a malíček (1.90) trpia najviac, lebo zdieľajú šľachy.
-            // Indexy 24 a 25 sú najbrutálnejšie vnútorné spodné diagonály (2.10).
-            1.90, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.90
+            // Ľavá ruka                             // Pravá ruka
+            // P   R     M     I       Stretch     I     M     R     P
+            1.60, 1.40, 1.30, 1.30, 1.90,   1.90, 1.30, 1.30, 1.40, 1.60, // HORNÝ
+            1.15, 1.00, 1.00, 1.00, 1.50,   1.50, 1.00, 1.00, 1.00, 1.15, // DOMOVSKÝ
+            1.75, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.75  // SPODNÝ
     };
 
     private KeyboardTopology() {}

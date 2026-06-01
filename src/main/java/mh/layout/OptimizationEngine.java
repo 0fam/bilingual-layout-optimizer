@@ -1,7 +1,8 @@
 package mh.layout;
 
 import mh.layout.evaluator.Weights;
-import mh.layout.optimizer.ParallelOptimizer;
+import mh.layout.optimizer.ParallelFixedSysOptimizer;
+import mh.layout.optimizer.ParallelRandomOptimizer;
 import mh.layout.stats.NGramStats;
 
 public final class OptimizationEngine {
@@ -43,7 +44,8 @@ public final class OptimizationEngine {
         double skRatio = 0.80;
 
         // 3. ODPÁLENIE MULTITHREADOVÉHO MOTORA (Dáta idú priamo dnu)
-        ParallelOptimizer optimizer = new ParallelOptimizer();
+//        ParallelRandomOptimizer optimizer = new ParallelRandomOptimizer();
+        ParallelFixedSysOptimizer optimizer = new ParallelFixedSysOptimizer();
         optimizer.startOptimization(initialMatrix, statsSK, statsEN, weights, skRatio);
 
         // 4. MONITOROVACIA SLUČKA (Tachometer rýchlosti)

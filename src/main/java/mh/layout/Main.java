@@ -47,7 +47,8 @@ public final class Main {
         } else {
             // Analyzátor dostane komplet všetko aj so slovníkmi pre detailný audit
             new LayoutAnalysisEngine().runStandalone(statsSK, statsEN, dictSK, dictEN, List.of(
-                            "c:\\home\\project-personal\\layout-analyzer\\07-journal_SFB_SCISS_EFFORT123-140_FINGER8_GEO80_dyn.txt",
+//                            "c:\\home\\project-personal\\layout-analyzer\\08-journal_pokus.txt",
+//                            "c:\\home\\project-personal\\layout-analyzer\\07-journal_SFB_SCISS_EFFORT123-140_FINGER8_GEO80_dyn.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\06-journal_SFB_SCISS_EFFORT123-140_FINGER8_GEO80_dyn.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\05-journal_80_70_dynamic_minusALT.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\04-journal_87_81.txt",
@@ -55,7 +56,7 @@ public final class Main {
 //                            "c:\\home\\project-personal\\layout-analyzer\\02-journal_83_55.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\01-journal_stare-slabe-metriky.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\totem_rekordy.txt",
-//                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts",
+                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts",
                             "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts.all"
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\dof5.dof"
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ_sym2",
