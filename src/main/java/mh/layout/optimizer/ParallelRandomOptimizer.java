@@ -125,41 +125,9 @@ public final class ParallelRandomOptimizer {
 
             // 🌡️ INTELIGENTNÝ RE-HEATING (Návrat ku koreňom)
             if (temperature <= 0.05) {
-                // =========================================================================
-                // 💎 DETERMINISTICKÝ FINÁLNY VYBRUS: 2-opt All-Pairs Greedy Hill Climbing TOHTO konkrétneho behu
-                // =========================================================================
-                boolean foundImprovement;
-                do {
-                    foundImprovement = false;
-                    for (int i = 0; i < 29; i++) {
-                        for (int j = i + 1; j < 30; j++) {
-                            // Skús atomicky prehodiť akékoľvek dva klávesy v lokálnom maxime
-                            char sweepTemp = runBestMatrix[i];
-                            runBestMatrix[i] = runBestMatrix[j];
-                            runBestMatrix[j] = sweepTemp;
 
-                            if (LayoutValidator.isHumanFriendly(runBestMatrix)) {
-                                LayoutStats sweepSk = Evaluator.evaluate(runBestMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
-                                LayoutStats sweepEn = Evaluator.evaluate(runBestMatrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
-                                double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
-
-                                // Ak sme našli čisté zlepšenie hoci len o miliontinu bodu, ukladáme a reštartujeme sken
-                                if (sweepScore > runBestScore) {
-                                    runBestScore = sweepScore;
-                                    foundImprovement = true;
-                                    checkAndSetGlobalBest(runBestMatrix, runBestScore, sweepSk.getScore(), sweepEn.getScore());
-                                    break;
-                                }
-                            }
-
-                            // Ak výmena nepomohla, vráť krok späť
-                            char sweepUndo = runBestMatrix[i];
-                            runBestMatrix[i] = runBestMatrix[j];
-                            runBestMatrix[j] = sweepUndo;
-                        }
-                        if (foundImprovement) break;
-                    }
-                } while (foundImprovement);
+                // 🚀 VOLANIE EXTRAHOVANEJ PROCEDÚRY:
+                runBestScore = executeDeterministicPolish(runBestMatrix, runBestScore, statsSK, statsEN, weights, skRatio, enRatio);
 
                 // Ak po vybrúsení tento beh prekonal doterajší historický rekord jadra, prepíšeme ho
                 if (runBestScore > localBestScore) {
