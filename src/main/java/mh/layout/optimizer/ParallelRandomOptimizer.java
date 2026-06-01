@@ -132,6 +132,43 @@ public final class ParallelRandomOptimizer {
 
             // 🌡️ INTELIGENTNÝ RE-HEATING (Návrat ku koreňom)
             if (temperature <= 0.05) {
+                // =========================================================================
+                // 💎 DETERMINISTICKÝ FINÁLNY VYBRUS: 2-opt All-Pairs Greedy Hill Climbing
+                // =========================================================================
+                boolean foundImprovement;
+                do {
+                    foundImprovement = false;
+                    for (int i = 0; i < 29; i++) {
+                        for (int j = i + 1; j < 30; j++) {
+                            // Skús atomicky prehodiť akékoľvek dva klávesy v lokálnom maxime
+                            char sweepTemp = localBestMatrix[i];
+                            localBestMatrix[i] = localBestMatrix[j];
+                            localBestMatrix[j] = sweepTemp;
+
+                            if (isHumanFriendly(localBestMatrix)) {
+                                LayoutStats sweepSk = Evaluator.evaluate(localBestMatrix, statsSK, weights, skMono, skBigram, skSkip, skTri);
+                                LayoutStats sweepEn = Evaluator.evaluate(localBestMatrix, statsEN, weights, enMono, enBigram, enSkip, enTri);
+                                double sweepScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * enRatio);
+
+                                // Ak sme našli čisté zlepšenie hoci len o miliontinu bodu, ukladáme a reštartujeme sken
+                                if (sweepScore > localBestScore) {
+                                    localBestScore = sweepScore;
+                                    foundImprovement = true;
+                                    checkAndSetGlobalBest(localBestMatrix, localBestScore, sweepSk.getScore(), sweepEn.getScore());
+                                    break;
+                                }
+                            }
+
+                            // Ak výmena nepomohla, vráť krok späť
+                            char sweepUndo = localBestMatrix[i];
+                            localBestMatrix[i] = localBestMatrix[j];
+                            localBestMatrix[j] = sweepUndo;
+                        }
+                        if (foundImprovement) break; // Reštartuj celý 435-kombinačný prechod odznova z nového bodu
+                    }
+                } while (foundImprovement);
+                // =========================================================================
+
                 // Pred zážihom vrátime maticu na lokálne maximum tohto jadra
                 currentMatrix = Arrays.copyOf(localBestMatrix, localBestMatrix.length);
                 currentScore = localBestScore;
