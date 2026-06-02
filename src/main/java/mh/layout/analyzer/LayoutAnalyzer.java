@@ -1,5 +1,6 @@
 package mh.layout.analyzer;
 
+import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
 import mh.layout.topology.Finger;
 import mh.layout.topology.KeyboardTopology;
@@ -89,6 +90,14 @@ public final class LayoutAnalyzer {
                 layout.enStats().getFingerPercent(Finger.LM.ordinal()), layout.enStats().getFingerPercent(Finger.LI.ordinal()),
                 layout.enStats().getFingerPercent(Finger.RI.ordinal()), layout.enStats().getFingerPercent(Finger.RM.ordinal()),
                 layout.enStats().getFingerPercent(Finger.RR.ordinal()), layout.enStats().getFingerPercent(Finger.RP.ordinal())));
+
+        // =========================================================================
+        // 🚀 NOVÉ: VLOŽENIE TEPLOTNEJ MAPY PRE OBA JAZYKY
+        // =========================================================================
+        printHeatmap(report, layout.matrix(), layout.skStats(), "SLOVENČINA");
+        if (biLang) {
+            printHeatmap(report, layout.matrix(), layout.enStats(), "ANGLIČTINA");
+        }
 
         // 2. SPRACOVANIE DIGITÁLNEHO RÖNTGENU SLOVNÍKOV
         boolean[] presentOnKeyboard = new boolean[256];
@@ -226,4 +235,26 @@ public final class LayoutAnalyzer {
             report.append("  %2d. %-18s (Vážený dopad: %,.0f)\n", i + 1, entry.getKey(), entry.getValue());
         }
     }
+
+    private static void printHeatmap(AnalysisReport report, char[] matrix, LayoutStats stats, String label) {
+        report.append("\n⌨️ VIZUÁLNA TEPLOTNÁ MAPA ZÁŤAŽE (%s):\n", label);
+        report.append("-----------------------------------------------------------------------------------------------------------------\n");
+        for (int r = 0; r < 3; r++) {
+            report.append("  ");
+            for (int c = 0; c < 10; c++) {
+                int idx = r * 10 + c;
+                char key = matrix[idx];
+                double val = stats.getKeyPercent(idx);
+
+                // Vykreslí blok v tvare [A  8.45%]
+                report.append("[%c %5.2f%%] ", key, val);
+
+                // Vizuálny split medzi ľavou a pravou rukou
+                if (c == 4) report.append("   ");
+            }
+            report.append("\n");
+        }
+        report.append("-----------------------------------------------------------------------------------------------------------------\n");
+    }
+
 }

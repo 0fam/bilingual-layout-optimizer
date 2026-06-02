@@ -68,6 +68,8 @@ public final class LayoutAnalysisEngine {
             counter++;
 
             if (!LayoutValidator.isHumanFriendly(matrix)) {
+//            if (!LayoutValidator.isSuperHumanFriendly(matrix)) {
+//            if (!LayoutValidator.isHumanFriendlyUnicorn(matrix)) {
                 if ((counter & 0x3FF) == 0) {
                     System.out.print("\r Layout nie je humanFriendly " + new String(matrix));
                 }

@@ -57,9 +57,9 @@ public final class Main {
 //                            "c:\\home\\project-personal\\layout-analyzer\\03-journal_87_77.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\02-journal_83_55.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\01-journal_stare-slabe-metriky.txt",
-//                            "c:\\home\\project-personal\\layout-analyzer\\totem_rekordy.txt",
-                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts",
-                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts.all"
+//                            "c:\\home\\project-personal\\layout-analyzer\\00-totem_rekordy.txt",
+                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts"
+//                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts.all"
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\dof5.dof",
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ_sym2",
 //                            "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\layouts\\06_L6093_J_dotQ_sym",

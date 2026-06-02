@@ -164,7 +164,7 @@ public final class LayoutValidator {
         int idx0 = -1, idx1 = -1, idx2 = -1, idx3 = -1;
         int count = 0;
 
-        // 1. 🏎️ Bleskový zber indexov 4 symbolov (Single-pass)
+        // 1. 🏎️ Single-pass zber indexov 4 symbolov
         for (int i = 0; i < 30; i++) {
             char c = matrix[i];
             if (c < 'A' || c > 'Z') {
@@ -177,10 +177,12 @@ public final class LayoutValidator {
         }
 
         // =========================================================================
-        // 🛑 1. ERGONOMICKÁ STRÁŽ: Ochrana hlavných prstov domovského riadku
+        // 🛑 1. ERGONOMICKÁ STRÁŽ & ZJEDNOTENÁ MASKA
         // =========================================================================
-        long layoutSymbolsMask = (1L << idx0) | (1L << idx1) | (1L << idx2) | (1L << idx3);
-        if ((layoutSymbolsMask & FORBIDDEN_HOME_ROW_MASK) != 0) {
+        int symbolsMask = (1 << idx0) | (1 << idx1) | (1 << idx2) | (1 << idx3);
+
+        // Globálny test domovského riadku (int symbolsMask sa bezpečne porovná s long maskou)
+        if ((symbolsMask & FORBIDDEN_HOME_ROW_MASK) != 0) {
             return false;
         }
 
@@ -194,8 +196,7 @@ public final class LayoutValidator {
         // Stĺpce (posun 3, maska 4 bity = 0xF)
         int c0 = (p0 >> 3) & 0xF, c1 = (p1 >> 3) & 0xF, c2 = (p2 >> 3) & 0xF, c3 = (p3 >> 3) & 0xF;
 
-        int symbolPresenceMask = (1 << idx0) | (1 << idx1) | (1 << idx2) | (1 << idx3);
-
+        // aktivuj iba v pripade, ze chces 4bloky a pravidlo 2 je vypnute
         // =========================================================================
         // 👑 PRAVIDLO 1: Horizontálny monolit (všetky 4 symboly v jednom riadku)
         // =========================================================================
@@ -206,41 +207,41 @@ public final class LayoutValidator {
         // =========================================================================
         // 📐 PRAVIDLO 2: Sila trojice (3 symboly v tesnej línii H alebo V)
         // =========================================================================
-        // Horizontálna kontrola líniovej trojice
-        for (int row = 0; row < 3; row++) {
-            int offset = row * 10;
-            for (int col = 0; col <= 7; col++) {
-                int m = offset + col;
-                if (((symbolPresenceMask >> m) & 1) == 1 &&
-                        ((symbolPresenceMask >> (m + 1)) & 1) == 1 &&
-                        ((symbolPresenceMask >> (m + 2)) & 1) == 1) {
-                    return true;
-                }
-            }
-        }
-        // Vertikálna kontrola líniovej trojice
-        for (int col = 0; col < 10; col++) {
-            if (((symbolPresenceMask >> col) & 1) == 1 &&
-                    ((symbolPresenceMask >> (col + 10)) & 1) == 1 &&
-                    ((symbolPresenceMask >> (col + 20)) & 1) == 1) {
-                return true;
-            }
-        }
+        // Horizontálna kontrola (okno 3 bity)
+//        for (int row = 0; row < 3; row++) {
+//            int offset = row * 10;
+//            for (int col = 0; col <= 7; col++) {
+//                int m = offset + col;
+//                if (((symbolsMask >> m) & 1) == 1 &&
+//                        ((symbolsMask >> (m + 1)) & 1) == 1 &&
+//                        ((symbolsMask >> (m + 2)) & 1) == 1) {
+//                    return true;
+//                }
+//            }
+//        }
+//        // Vertikálna kontrola líniovej trojice
+//        for (int col = 0; col < 10; col++) {
+//            if (((symbolsMask >> col) & 1) == 1 &&
+//                    ((symbolsMask >> (col + 10)) & 1) == 1 &&
+//                    ((symbolsMask >> (col + 20)) & 1) == 1) {
+//                return true;
+//            }
+//        }
 
         // =========================================================================
         // 🌀 PRAVIDLO 3: Zhluky a skupiny 2 + 2 (Každý symbol musí mať suseda)
         // =========================================================================
-        if (hasNeighbor(r0, c0, idx0, symbolPresenceMask) &&
-                hasNeighbor(r1, c1, idx1, symbolPresenceMask) &&
-                hasNeighbor(r2, c2, idx2, symbolPresenceMask) &&
-                hasNeighbor(r3, c3, idx3, symbolPresenceMask)) {
+        if (hasNeighbor(r0, c0, idx0, symbolsMask) &&
+                hasNeighbor(r1, c1, idx1, symbolsMask) &&
+                hasNeighbor(r2, c2, idx2, symbolsMask) &&
+                hasNeighbor(r3, c3, idx3, symbolsMask)) {
             return true;
         }
 
         // =========================================================================
         // ⚖️ PRAVIDLO 4: Izolovaná čistá symetria (Zrkadlo, Vertikála, Split)
         // =========================================================================
-        // Porovnáme všetky 3 kombinácie dvojíc cez tvoj nový bitový skener
+        // Porovnáme všetky 3 kombinácie dvojíc
         if ((isBitSymmetric(idx0, p0, r0, c0, idx1, p1, r1, c1) && isBitSymmetric(idx2, p2, r2, c2, idx3, p3, r3, c3)) ||
                 (isBitSymmetric(idx0, p0, r0, c0, idx2, p2, r2, c2) && isBitSymmetric(idx1, p1, r1, c1, idx3, p3, r3, c3)) ||
                 (isBitSymmetric(idx0, p0, r0, c0, idx3, p3, r3, c3) && isBitSymmetric(idx1, p1, r1, c1, idx2, p2, r2, c2))) {
@@ -262,16 +263,178 @@ public final class LayoutValidator {
     // 🪞 Tvoj posilnený symetrický skener využívajúci predpočítané zrkadlo z bitov
     private static boolean isBitSymmetric(int idxA, int pA, int rA, int cA, int idxB, int pB, int rB, int cB) {
         // A: Vertikálne presne nad sebou (stĺpce lícujú)
-        if (cA == cB) return true;
+        if (cA == cB) return true; // Vertikálne nad sebou
 
         // B: 🚀 ABSOLÚTNY RYCHLOSTNÝ TRÁG: Využijeme tvoje predpočítané zrkadlo z bitov!
         // Vytiahneme mirror z pA (posun 10, maska 0x1F) a pozrieme sa, či sa rovná indexu B.
-        if (((pA >> 10) & 0x1F) == idxB) return true;
+        if (((pA >> 10) & 0x1F) == idxB) return true; // Zrkadlo cez tvoj mirror kartón
 
         // C: Paralelná split symetria (rovnaký riadok, posun presne o pol klávesnice)
-        if (rA == rB && Math.abs(cA - cB) == 5) return true;
-
+        if (rA == rB && Math.abs(cA - cB) == 5) return true; // Paralelný split posun
         return false;
     }
 
+    public static boolean isSuperHumanFriendly(char[] matrix) {
+        int idx0 = -1, idx1 = -1, idx2 = -1, idx3 = -1;
+        int count = 0;
+
+        // 1. 🏎️ Single-pass zber indexov 4 symbolov
+        for (int i = 0; i < 30; i++) {
+            char c = matrix[i];
+            if (c < 'A' || c > 'Z') {
+                if (count == 0) idx0 = i;
+                else if (count == 1) idx1 = i;
+                else if (count == 2) idx2 = i;
+                else if (count == 3) { idx3 = i; break; }
+                count++;
+            }
+        }
+
+        // 🛑 ERGONOMICKÁ STRÁŽ
+        int symbolsMask = (1 << idx0) | (1 << idx1) | (1 << idx2) | (1 << idx3);
+        if ((symbolsMask & FORBIDDEN_HOME_ROW_MASK) != 0) {
+            return false;
+        }
+
+        // Unpack z POS_INFO
+        int p0 = POS_INFO[idx0], p1 = POS_INFO[idx1], p2 = POS_INFO[idx2], p3 = POS_INFO[idx3];
+        int r0 = (p0 >> 7) & 0x3, r1 = (p1 >> 7) & 0x3, r2 = (p2 >> 7) & 0x3, r3 = (p3 >> 7) & 0x3;
+        int c0 = (p0 >> 3) & 0xF, c1 = (p1 >> 3) & 0xF, c2 = (p2 >> 3) & 0xF, c3 = (p3 >> 3) & 0xF;
+
+        // =========================================================================
+        // 🌀 1. ČISTÉ ZHLUKY 2+2 ALEBO 4 (Koniec 3+1 "pustých ostrovov")
+        // =========================================================================
+        // Ak úplne každý symbol susedí aspoň s jedným ďalším symbolom,
+        // automaticky to povolí len: súvislú 4-ku za sebou, štvorec 2x2, alebo zhluky 2+2.
+        // Ak je jeden symbol sám (ako čiarka u minulého víťaza), hasNeighbor preň vráti false.
+        if (hasNeighbor(r0, c0, idx0, symbolsMask) &&
+                hasNeighbor(r1, c1, idx1, symbolsMask) &&
+                hasNeighbor(r2, c2, idx2, symbolsMask) &&
+                hasNeighbor(r3, c3, idx3, symbolsMask)) {
+            return true;
+        }
+
+        // =========================================================================
+        // ⚖️ 2. ČISTÁ PÁROVÁ SYMETRIA (Obe dvojice MUSIA mať navlas rovnaký typ)
+        // =========================================================================
+        // Kombinácia dvojíc: (0,1) a (2,3)
+        int t01 = getSymType(idx0, p0, r0, c0, idx1, p1, r1, c1);
+        int t23 = getSymType(idx2, p2, r2, c2, idx3, p3, r3, c3);
+        if (t01 != 0 && t01 == t23) return true;
+
+        // Kombinácia dvojíc: (0,2) a (1,3)
+        int t02 = getSymType(idx0, p0, r0, c0, idx2, p2, r2, c2);
+        int t13 = getSymType(idx1, p1, r1, c1, idx3, p3, r3, c3);
+        if (t02 != 0 && t02 == t13) return true;
+
+        // Kombinácia dvojíc: (0,3) and (1,2)
+        int t03 = getSymType(idx0, p0, r0, c0, idx3, p3, r3, c3);
+        int t12 = getSymType(idx1, p1, r1, c1, idx2, p2, r2, c2);
+        if (t03 != 0 && t03 == t12) return true;
+
+        return false; // Absolútna poprava pre akýkoľvek iný vizuálny chaos
+    }
+
+    private static int getSymType(int idxA, int pA, int rA, int cA, int idxB, int pB, int rB, int cB) {
+        if (cA == cB) return 1; // 1 = Vertikálna symetria (nad sebou)
+        if (((pA >> 10) & 0x1F) == idxB) return 2; // 2 = Zrkadlová prstová symetria
+        if (rA == rB && Math.abs(cA - cB) == 5) return 3; // 3 = Paralelná split symetria
+
+        // 🌌 NOVINKA: Stredová bodová symetria (Rotácia o 180° okolo stredu klávesnice)
+        if ((rA + rB == 2) && (cA + cB == 9)) return 4; // 4 = Dokonalý stredový bodový balans
+
+        return 0; // 0 = Žiadna symetria
+    }
+
+    public static boolean isHumanFriendlyUnicorn(char[] matrix) {
+        int idx0 = -1, idx1 = -1, idx2 = -1, idx3 = -1;
+        int count = 0;
+
+        // 1. 🏎️ Single-pass zber indexov 4 symbolov
+        for (int i = 0; i < 30; i++) {
+            char c = matrix[i];
+            if (c < 'A' || c > 'Z') {
+                if (count == 0) idx0 = i;
+                else if (count == 1) idx1 = i;
+                else if (count == 2) idx2 = i;
+                else if (count == 3) { idx3 = i; break; }
+                count++;
+            }
+        }
+
+        // 🛑 ERGONOMICKÁ STRÁŽ
+        int symbolsMask = (1 << idx0) | (1 << idx1) | (1 << idx2) | (1 << idx3);
+        if ((symbolsMask & FORBIDDEN_HOME_ROW_MASK) != 0) {
+            return false;
+        }
+
+        // Unpack z POS_INFO kartónu
+        int p0 = POS_INFO[idx0], p1 = POS_INFO[idx1], p2 = POS_INFO[idx2], p3 = POS_INFO[idx3];
+        int r0 = (p0 >> 7) & 0x3, r1 = (p1 >> 7) & 0x3, r2 = (p2 >> 7) & 0x3, r3 = (p3 >> 7) & 0x3;
+        int c0 = (p0 >> 3) & 0xF, c1 = (p1 >> 3) & 0xF, c2 = (p2 >> 3) & 0xF, c3 = (p3 >> 3) & 0xF;
+
+        // =========================================================================
+        // 🌀 MÓD 1: SÚVISLÝ TETRIS BLOK (Hadíky, štvorce 2x2, L-ka, T-čka v jednom kuse)
+        // =========================================================================
+        int visitedMask = 1 << idx0;
+        for (int step = 0; step < 3; step++) {
+            int newBits = 0;
+            if (((visitedMask >> idx0) & 1) == 1) newBits |= getNeighborMask(idx0, symbolsMask);
+            if (((visitedMask >> idx1) & 1) == 1) newBits |= getNeighborMask(idx1, symbolsMask);
+            if (((visitedMask >> idx2) & 1) == 1) newBits |= getNeighborMask(idx2, symbolsMask);
+            if (((visitedMask >> idx3) & 1) == 1) newBits |= getNeighborMask(idx3, symbolsMask);
+            visitedMask |= newBits;
+        }
+
+        // Ak tvoria jeden prepojený blok, layout okamžite prechádza (Netreba riešiť symetriu)
+        if (Integer.bitCount(visitedMask) == 4) {
+            return true;
+        }
+
+        // =========================================================================
+        // 🚨 TOTO TU SUROVO VLEP: STOP OSAMOTENÝM SKOKANOM (Koniec riadkových podvodov)
+        // =========================================================================
+        // Ak čo i len jeden zo 4 symbolov vráti masku susedov rovnú 0, znamená to,
+        // že je kompletne izolovaný abecedou. V tom momente layout okamžite popravíme.
+        if (getNeighborMask(idx0, symbolsMask) == 0 ||
+                getNeighborMask(idx1, symbolsMask) == 0 ||
+                getNeighborMask(idx2, symbolsMask) == 0 ||
+                getNeighborMask(idx3, symbolsMask) == 0) {
+            return false;
+        }
+
+        // =========================================================================
+        // ⚖️ MÓD 2: UNIFORMNE SYMETRICKÝ JEDNOROŽEC (Izolované alebo 2+2, ale s rovnakým typom symetrie)
+        // =========================================================================
+        // Kombinácia dvojíc: (0,1) a (2,3)
+        int t01 = getSymType(idx0, p0, r0, c0, idx1, p1, r1, c1);
+        int t23 = getSymType(idx2, p2, r2, c2, idx3, p3, r3, c3);
+        if (t01 != 0 && t01 == t23) return true;
+
+        // Kombinácia dvojíc: (0,2) a (1,3)
+        int t02 = getSymType(idx0, p0, r0, c0, idx2, p2, r2, c2);
+        int t13 = getSymType(idx1, p1, r1, c1, idx3, p3, r3, c3);
+        if (t02 != 0 && t02 == t13) return true;
+
+        // Kombinácia dvojíc: (0,3) and (1,2)
+        int t03 = getSymType(idx0, p0, r0, c0, idx3, p3, r3, c3);
+        int t12 = getSymType(idx1, p1, r1, c1, idx2, p2, r2, c2);
+        if (t03 != 0 && t03 == t12) return true;
+
+        return false; // Absolútna poprava pre akýkoľvek iný asymetrický rozsyp
+    }
+
+    private static int getNeighborMask(int idx, int mask) {
+        int p = POS_INFO[idx];
+        int r = (p >> 7) & 0x3;
+        int c = (p >> 3) & 0xF;
+        int neighbors = 0;
+
+        if (r > 0 && ((mask >> (idx - 10)) & 1) == 1) neighbors |= (1 << (idx - 10)); // Hore
+        if (r < 2 && ((mask >> (idx + 10)) & 1) == 1) neighbors |= (1 << (idx + 10)); // Dole
+        if (c > 0 && ((mask >> (idx - 1))  & 1) == 1) neighbors |= (1 << (idx - 1));  // Vľavo
+        if (c < 9 && ((mask >> (idx + 1))  & 1) == 1) neighbors |= (1 << (idx + 1));  // Vpravo
+
+        return neighbors;
+    }
 }
