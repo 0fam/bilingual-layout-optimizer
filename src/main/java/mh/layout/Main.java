@@ -8,8 +8,8 @@ import java.util.Map;
 
 public final class Main {
     public static void main(String[] args) {
-        boolean optimize = true;
-//        boolean optimize = false;
+//        boolean optimize = true;
+        boolean optimize = false;
 
         // 1. Nastavenie ciest na jednom jedinom mieste v aplikácii
         String pathSk = "c:\\home\\project-personal\\layout-analyzer\\src\\main\\resources\\korpus.txt";
@@ -47,6 +47,8 @@ public final class Main {
         } else {
             // Analyzátor dostane komplet všetko aj so slovníkmi pre detailný audit
             new LayoutAnalysisEngine().runStandalone(statsSK, statsEN, dictSK, dictEN, List.of(
+//                            "c:\\home\\project-personal\\layout-analyzer\\10-journal_pokusy_s_dobrusovanim.txt",
+//                            "c:\\home\\project-personal\\layout-analyzer\\09-journal_upravene_topology.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\08-journal_pokus.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\07-journal_SFB_SCISS_EFFORT123-140_FINGER8_GEO80_dyn.txt",
 //                            "c:\\home\\project-personal\\layout-analyzer\\06-journal_SFB_SCISS_EFFORT123-140_FINGER8_GEO80_dyn.txt",

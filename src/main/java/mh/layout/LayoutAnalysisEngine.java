@@ -5,6 +5,7 @@ import mh.layout.analyzer.LayoutAnalyzer;
 import mh.layout.evaluator.Evaluator;
 import mh.layout.evaluator.Weights;
 import mh.layout.io.LayoutLoader;
+import mh.layout.optimizer.LayoutValidator;
 import mh.layout.optimizer.ParallelRandomOptimizer;
 import mh.layout.stats.LayoutStats;
 import mh.layout.stats.MetricType;
@@ -66,12 +67,12 @@ public final class LayoutAnalysisEngine {
 
             counter++;
 
-//            if (!ParallelRandomOptimizer.isHumanFriendly(matrix)) {
-//                if ((counter & 0x3FF) == 0) {
-//                    System.out.print("\r Layout nie je humanFriendly " + new String(matrix));
-//                }
-//                continue;
-//            }
+            if (!LayoutValidator.isHumanFriendly(matrix)) {
+                if ((counter & 0x3FF) == 0) {
+                    System.out.print("\r Layout nie je humanFriendly " + new String(matrix));
+                }
+                continue;
+            }
 
             // Využíva naše preťažené evaluate() - samé si vnútri spočíta presný lokálny základ
             LayoutStats skRes = Evaluator.evaluate(matrix, statsSK, weights);

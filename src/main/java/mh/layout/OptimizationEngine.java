@@ -24,15 +24,20 @@ public final class OptimizationEngine {
 //                "S E T K D   L N A O I" +
 //                "G ; C B H   J R U . Y").replace(" ", "").toUpperCase();
 
-//        String baseLayout = ( // to iste co 2 ale vybrane symboly
-//                "Z - M V P   W Q F , X" +
-//                "S E T K D   L N A O I" +
-//                "G ' C B H   J R U . Y").replace(" ", "").toUpperCase();
+        String baseLayout = ( // to iste co 2 ale vybrane symboly
+                "Z - M V P   W Q F , X" +
+                "S E T K D   L N A O I" +
+                "G ' C B H   J R U . Y").replace(" ", "").toUpperCase();
 
-        String baseLayout = (
-                "H N T C F  - X ' Y V" +
-                "K R D S B  . A E I L" +
-                "P J M Z G  Q O U , W").replace(" ", "").toUpperCase();
+//        String baseLayout = (
+//                "H N T C F  - X ' Y V" +
+//                "K R D S B  . A E I L" +
+//                "P J M Z G  Q O U , W").replace(" ", "").toUpperCase();
+
+//        String baseLayout = (
+//                "Z N D K V  Q O U J G" +
+//                "S R T P B  . A E I L" +
+//                "W , M H F  ' X - Y C").replace(" ", "").toUpperCase();
 
         char[] initialMatrix = baseLayout.toCharArray();
 
@@ -65,15 +70,16 @@ public final class OptimizationEngine {
             lastEvaluations = totalEvaluations;
 
             // 🚀 FINÁLNY ULTRA-DASHBOARD S KONTROLOU VŠETKÝCH PARAMETROV:
-            System.out.printf("📊 Rýchlosť: %,d l/s | Celkovo: %,d | 📝 Zápisov: %,d (Posledný v behu %,d) | 💎 Výbrusov: %,d (Zlepšení: %,d) | 🏆 BEST: %.4f [%s]%n",
+            System.out.printf("📊 Rýchlosť: %,d l/s | Celkovo: %,d | 📝 Zápisov: %,d | 💎 Výbrusov: %,d (Zlepšení: %,d, Max hĺbka: %d) | 🏆 BEST: %.4f [%s] (V behu %,d)%n",
                     speedPerSecond,
                     totalEvaluations,
                     optimizer.getTotalJournalWrites(),
-                    optimizer.getLastJournalWriteRun(), // <-- Sledovanie čísla behu naživo
                     optimizer.getTotalPolishRuns(),
                     optimizer.getTotalPolishImprovements(),
+                    optimizer.getMaxPolishDepth(), // <-- Sledovanie kapacity stacku naživo
                     optimizer.getBestScore(),
-                    LayoutJournal.format(optimizer.getBestMatrix()));
+                    LayoutJournal.format(optimizer.getBestMatrix()),
+                    optimizer.getBestScoreRun());
         }
     }
 }

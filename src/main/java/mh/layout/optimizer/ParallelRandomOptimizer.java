@@ -8,15 +8,10 @@ import mh.layout.stats.LayoutStats;
 import mh.layout.stats.NGramStats;
 import mh.layout.topology.KeyboardTopology;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class ParallelRandomOptimizer {
@@ -25,7 +20,8 @@ public final class ParallelRandomOptimizer {
     private final AtomicLong totalJournalWrites = new AtomicLong(0);
     private final AtomicLong totalPolishRuns = new AtomicLong(0);
     private final AtomicLong totalPolishImprovements = new AtomicLong(0);
-    private final AtomicLong lastJournalWriteRun = new AtomicLong(0);
+    private final AtomicLong bestScoreRun = new AtomicLong(0);
+    private final AtomicInteger maxPolishDepth = new AtomicInteger(0);
 
     public volatile double dynamicThreshold = 0.0;
 
@@ -106,8 +102,12 @@ public final class ParallelRandomOptimizer {
 
     public long getTotalPolishImprovements() { return totalPolishImprovements.get(); }
 
-    public long getLastJournalWriteRun() {
-        return lastJournalWriteRun.get();
+    public long getBestScoreRun() {
+        return bestScoreRun.get();
+    }
+
+    public int getMaxPolishDepth() {
+        return maxPolishDepth.get();
     }
 
     // =========================================================================
@@ -141,10 +141,21 @@ public final class ParallelRandomOptimizer {
         while (isRunning.get()) { // && temperature > 0.1) {
 
             // 🌡️ INTELIGENTNÝ RE-HEATING (Návrat ku koreňom)
-            if (temperature <= 0.05) {
+//            if (temperature <= 0.05) {
+            if (temperature <= 0.15) {
 
-                // 🚀 VOLANIE EXTRAHOVANEJ PROCEDÚRY:
-                runBestScore = executeDeterministicPolish(runBestMatrix, runBestScore, statsSK, statsEN, weights, skRatio, enRatio, threadId, localEvaluations);
+//                // 🚀 VOLANIE EXTRAHOVANEJ PROCEDÚRY:
+//                runBestScore = executeDeterministicPolish(runBestMatrix, runBestScore, statsSK, statsEN, weights, skRatio, enRatio, threadId, localEvaluations);
+
+                // 🚀 ŠTART TOTÁLNEJ EXPLÓZIE VETVIECKÝCH STROMOV
+                // Pripravíme schránky pre rekurzívny zber šampiónov z celého stromu
+                double[] bestScoreInRun = new double[]{ runBestScore };
+                char[] bestMatrixInRun = Arrays.copyOf(runBestMatrix, runBestMatrix.length);
+                localEvaluations += executeExhaustivePolish(runBestMatrix, runBestScore, bestMatrixInRun, bestScoreInRun,
+                        statsSK, statsEN, weights, skRatio, 0);
+                // Keď sa rekurzia úplne rozvinie a vráti späť, schránky obsahujú absolútne maximum
+                runBestScore = bestScoreInRun[0];
+                runBestMatrix = bestMatrixInRun;
 
                 // Ak po vybrúsení tento beh prekonal doterajší historický rekord jadra, prepíšeme ho
                 if (runBestScore > localBestScore) {
@@ -156,8 +167,10 @@ public final class ParallelRandomOptimizer {
                 currentMatrix = Arrays.copyOf(localBestMatrix, localBestMatrix.length);
                 currentScore = localBestScore;
 
+                // 🌟 TU JE TÁ MÁGIA: runBestScore nesmie byť zviazaný s localBestScore!
+                // Nastavíme ho na -1.0. Prvé stúpanie v novom behu si ho okamžite privlastní.
+                runBestScore = -1.0;
                 runBestMatrix = Arrays.copyOf(currentMatrix, currentMatrix.length);
-                runBestScore = currentScore;
 
                 temperature = 3.0; // Prihrejeme len natoľko, aby sme preskočili najbližšiu stenu
                 continue;
@@ -199,10 +212,10 @@ public final class ParallelRandomOptimizer {
             double enScore = nextEnStats.getScore();
             double nextScore = AnalyzedLayout.combineScore(nextSkStats, nextEnStats, skRatio);
 
-            if ((localEvaluations & 0x0FFFF) == 0) {
+//            if ((localEvaluations & 0x0FFFF) == 0) {
                 // Živý výpis do konzoly
 //                System.out.printf("[Jadro %d] Počítam a žijem... Aktuálne skóre SK: %.4f EN: %.4f (Teplota: %.2f)%n", threadId, skScore, enScore, temperature);
-            }
+//            }
 
             // 📝 STRICT ZÁPIS DO DENNÍKA: Bez ohľadu na zlepšenie, ak spĺňa elitné bilingválne kritérium
             if (nextScore >= dynamicThreshold) {
@@ -243,6 +256,12 @@ public final class ParallelRandomOptimizer {
 
             // 5. Ochladzovanie systému
             temperature *= (1.0 - coolingRate);
+        }
+    }
+
+    private void adToTotalEvaluations(long howMuch) {
+        synchronized (lock) {
+            totalEvaluations += howMuch;
         }
     }
 
@@ -297,6 +316,66 @@ public final class ParallelRandomOptimizer {
         return runBestScore; // Vrátime vyleštené finálne skóre
     }
 
+    // =========================================================================
+    // 🌲 EXHAUSTIVE BACKTRACKING VYBRUS: Preskúma úplne všetky stúpajúce vetvy
+    // =========================================================================
+    private long executeExhaustivePolish(char[] matrix, double currentScore,
+                                         char[] bestMatrixInRun, double[] bestScoreInRun,
+                                         NGramStats statsSK, NGramStats statsEN,
+                                         Weights weights, double skRatio, int depth) {
+        // 📈 Aktualizácia historického maxima hĺbky pre hlavný dashboard
+        int currentMax;
+        while (depth > (currentMax = maxPolishDepth.get())) {
+            if (maxPolishDepth.compareAndSet(currentMax, depth)) {
+                break;
+            }
+        }
+        // Evidujeme, že sme vstúpili do hĺbky novej vetvy výbrusu
+        totalPolishRuns.incrementAndGet();
+        long localCounter = 1;
+
+        // Skenujeme všetkých 435 unikátnych dvojíc na tejto úrovni stromu
+        for (int i = 0; i < 29; i++) {
+            for (int j = i + 1; j < 30; j++) {
+
+                // 1. VYKONAJ SWAP (Krok vpred do hĺbky)
+                char temp = matrix[i];
+                matrix[i] = matrix[j];
+                matrix[j] = temp;
+
+                if (LayoutValidator.isHumanFriendly(matrix)) {
+                    LayoutStats sweepSk = Evaluator.evaluate(matrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);
+                    LayoutStats sweepEn = Evaluator.evaluate(matrix, statsEN, weights, enMonoX, enBiX, enSkipX, enTriX);
+                    double nextScore = (sweepSk.getScore() * skRatio) + (sweepEn.getScore() * (1 - skRatio));
+
+                    // 🔥 STRIKTNE STÚPANIE: Ak táto vetva prináša akékoľvek zlepšenie, ideme dnu!
+                    if (nextScore > currentScore) {
+                        totalPolishImprovements.incrementAndGet();
+
+                        // Ak sme v tejto vetve prekonali doterajšie maximum TOHTO konkrétneho rekurzívneho behu
+                        if (nextScore > bestScoreInRun[0]) {
+                            bestScoreInRun[0] = nextScore;
+                            System.arraycopy(matrix, 0, bestMatrixInRun, 0, matrix.length);
+                        }
+
+                        // Skontrolujeme, či táto vetva náhodou neprepísala absolútny GLOBÁLNY rekord aplikácie
+                        checkAndSetGlobalBest(matrix, nextScore, sweepSk.getScore(), sweepEn.getScore(), "VÝBRUS");
+
+                        // 🌀 REKURZÍVNY SKOK: Preskúmame, kam až táto úspešná vetva vedie ďalej
+                        localCounter += executeExhaustivePolish(matrix, nextScore, bestMatrixInRun, bestScoreInRun,
+                                statsSK, statsEN, weights, skRatio, depth + 1);
+                    }
+                }
+
+                // 2. KROK SPÄŤ (Rollback) – uvoľníme maticu v pôvodnom stave pre testovanie ďalšej dvojice
+                char undo = matrix[i];
+                matrix[i] = matrix[j];
+                matrix[j] = undo;
+            }
+        }
+        return localCounter;
+    }
+
     // Na začiatku aplikácie nastav: globalBestScore = 0.0 a dynamicThreshold = 0.0
     public void checkAndSetGlobalBest(char[] matrix, double score, double sk, double en, String source) {
         synchronized (lock) {
@@ -308,9 +387,9 @@ public final class ParallelRandomOptimizer {
                 // Povolíme zápis layoutom, ktoré za absolútnym kráľom zaostávajú maximálne o 0.3 bodu.
                 this.dynamicThreshold = score - 0.3;
                 // 🚀 TU: Zapamätáme si, v ktorom celkovom behu tento úspech padol
-                lastJournalWriteRun.set(totalPolishRuns.get());
+                bestScoreRun.set(totalEvaluations);
                 // 🚀 VYLEPŠENÝ VÝPIS S OZNAČENÍM PÔVODU:
-                System.out.printf("%n🏆 NOVÝ GLOBÁLNY REKORD [%s]! Skóre: %.4f (SK: %.2f | EN: %.2f) -> Latka posunutá na: %.4f%n",
+                System.out.printf("🏆 NOVÝ GLOBÁLNY REKORD [%s]! Skóre: %.4f (SK: %.2f | EN: %.2f) -> Latka posunutá na: %.4f%n",
                         source, score, sk, en, this.dynamicThreshold);
             }
         }
