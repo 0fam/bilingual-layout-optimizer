@@ -89,183 +89,203 @@ public class LayoutStats {
         for (FastWord fw : fastCorpus) {
             if (fw.len == 0 || fw.len > 100) continue;
 
-            // 🔥 DYNAMICKÉ SITO: Očistíme slovo tak, že do poľa keys naukladáme len to, čo matrix pozná
-            int validLen = 0;
-            StringBuilder cleanWordSb = !silent ? new StringBuilder() : null;
+            // 🚀 OPERÁCIA: Slučka upravená tak, aby neplatný znak fungoval ako stena a rozdelil slovo na sub-segmenty bez lepenia
+            int charIdx = 0;
+            while (charIdx < fw.len) {
 
-            for (int i = 0; i < fw.len; i++) {
-                char ch = fw.chars[i];
+                // Preskočíme prípadné úvodné neplatné znaky uviaznuté v slove
+                while (charIdx < fw.len) {
+                    char ch = fw.chars[charIdx];
+                    KeyInfo info = ch < fastLookup.length ? fastLookup[ch] : null;
+                    if (info != null) {
+                        break;
+                    }
+                    charIdx++;
+                }
 
-                // Žiadne .get(ch), len priamy skok do pamäte!
-                KeyInfo info = ch < fastLookup.length ? fastLookup[ch] : null;
+                if (charIdx >= fw.len) break;
 
-                if (info != null) {
+                // 🔥 DYNAMICKÉ SITO: Očistíme segment slova tak, že do poľa keys naukladáme len to, čo matrix pozná, až kým nenarázime na bariéru
+                int validLen = 0;
+                StringBuilder cleanWordSb = !silent ? new StringBuilder() : null;
+
+                while (charIdx < fw.len) {
+                    char ch = fw.chars[charIdx];
+                    KeyInfo info = ch < fastLookup.length ? fastLookup[ch] : null;
+
+                    if (info == null) {
+                        // Narazili sme na neplatný znak -> rytmus končí, ideme spracovať to, čo doteraz máme
+                        charIdx++;
+                        break;
+                    }
+
                     keys[validLen++] = info;
                     if (!silent) {
                         cleanWordSb.append(ch); // Pre top 10 mapu ukladáme čisté slovo bez zátvoriek
                     }
-                }
-            }
-
-            if (validLen == 0) continue; // Ak po orezaní šumu nič nezostalo, ideme ďalej
-
-            boolean wordHadSfb = false;
-            boolean wordHadLongRun = false;
-            boolean hasInnerStretch = false;
-
-            // --- 1. ÚROVEŇ: MONOGRAMY ---
-            // 💥 ZMENA: Používame novú vyčistenú dĺžku validLen
-            for (int i = 0; i < validLen; i++) {
-                KeyInfo k = keys[i];
-
-                ls.totalMonograms += fw.freq;
-                ls.rows[k.row] += fw.freq;
-                ls.fingers[k.finger.ordinal()] += fw.freq;
-
-                if (k.hand == 'L') ls.leftHandMonograms += fw.freq;
-                else ls.rightHandMonograms += fw.freq;
-
-                // 🔥 ZMENA: Dynamický asymetrický výpočet kŕčovitosti stretchu podľa riadku
-                if (k.col == 4) {
-                    double weight = 0.1; // Home stretch (predvolený - takmer bez trestu)
-                    if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
-                    else if (k.row == 2) weight = 1.0; // Bottom stretch = nepríjemné
-
-                    ls.innerStretchL += fw.freq * weight;
-                    hasInnerStretch = true;
-                } else if (k.col == 5) {
-                    double weight = 0.1; // Home stretch
-                    if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
-                    else if (k.row == 2) weight = 1.0; // Bottom stretch
-
-                    ls.innerStretchR += fw.freq * weight;
-                    hasInnerStretch = true;
-                }
-            }
-
-            // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
-            // 💥 ZMENA: Slučka upravená podľa validLen
-            for (int i = 0; i < validLen - 1; i++) {
-                KeyInfo k1 = keys[i];
-                KeyInfo k2 = keys[i + 1];
-                ls.totalBigrams += fw.freq;
-
-                if (k1.hand != k2.hand) {
-                    ls.handAlternation += fw.freq;
+                    charIdx++;
                 }
 
-                if (k1.hand == k2.hand) {
-                    // 🔥 UNIFIKÁCIA PRSTOV: Zlúčime stretch stĺpce pod reálne ukazováky
-                    int f1Real = k1.finger.ordinal();
-                    int f2Real = k2.finger.ordinal();
-                    if (f1Real == 4) f1Real = 3; // Ľavý stretch patrí ľavému ukazováku
-                    if (f2Real == 4) f2Real = 3;
-                    if (f1Real == 5) f1Real = 6; // Pravý stretch patrí pravému ukazováku
-                    if (f2Real == 5) f2Real = 6;
+                if (validLen == 0) continue; // Ak po orezaní šumu nič nezostalo, ideme ďalej
 
-                    // SFB (Same Finger Bigram) - teraz už deteguje aj bočné kmitanie ukazováka!
-                    if (f1Real == f2Real && k1 != k2) {
-                        ls.sfb += fw.freq;
-                        wordHadSfb = true;
+                boolean wordHadSfb = false;
+                boolean wordHadLongRun = false;
+                boolean hasInnerStretch = false;
+
+                // --- 1. ÚROVEŇ: MONOGRAMY ---
+                // 💥 ZMENA: Používame novú vyčistenú dĺžku validLen
+                for (int i = 0; i < validLen; i++) {
+                    KeyInfo k = keys[i];
+
+                    ls.totalMonograms += fw.freq;
+                    ls.rows[k.row] += fw.freq;
+                    ls.fingers[k.finger.ordinal()] += fw.freq;
+
+                    if (k.hand == 'L') ls.leftHandMonograms += fw.freq;
+                    else ls.rightHandMonograms += fw.freq;
+
+                    // 🔥 ZMENA: Dynamický asymetrický výpočet kŕčovitosti stretchu podľa riadku
+                    if (k.col == 4) {
+                        double weight = 0.1; // Home stretch (predvolený - takmer bez trestu)
+                        if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
+                        else if (k.row == 2) weight = 1.0; // Bottom stretch = nepríjemné
+
+                        ls.innerStretchL += fw.freq * weight;
+                        hasInnerStretch = true;
+                    } else if (k.col == 5) {
+                        double weight = 0.1; // Home stretch
+                        if (k.row == 0) weight = 2.0;      // Top stretch = SMRŤ
+                        else if (k.row == 2) weight = 1.0; // Bottom stretch
+
+                        ls.innerStretchR += fw.freq * weight;
+                        hasInnerStretch = true;
+                    }
+                }
+
+                // --- 2. ÚROVEŇ: BIGRAMY & SKIPGRAMY ---
+                // 💥 ZMENA: Slučka upravená podľa validLen
+                for (int i = 0; i < validLen - 1; i++) {
+                    KeyInfo k1 = keys[i];
+                    KeyInfo k2 = keys[i + 1];
+                    ls.totalBigrams += fw.freq;
+
+                    if (k1.hand != k2.hand) {
+                        ls.handAlternation += fw.freq;
                     }
 
-                    // Scissors (Nožnice) - 🚀 FIX: Teraz už správne používame unifikované prsty (f1Real, f2Real)
-                    if (Math.abs(f1Real - f2Real) == 1) {
-                        if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
-                            ls.scissors += fw.freq;
+                    if (k1.hand == k2.hand) {
+                        // 🔥 UNIFIKÁCIA PRSTOV: Zlúčime stretch stĺpce pod reálne ukazováky
+                        int f1Real = k1.finger.ordinal();
+                        int f2Real = k2.finger.ordinal();
+                        if (f1Real == 4) f1Real = 3; // Ľavý stretch patrí ľavému ukazováku
+                        if (f2Real == 4) f2Real = 3;
+                        if (f1Real == 5) f1Real = 6; // Pravý stretch patrí pravému ukazováku
+                        if (f2Real == 5) f2Real = 6;
+
+                        // SFB (Same Finger Bigram) - teraz už deteguje aj bočné kmitanie ukazováka!
+                        if (f1Real == f2Real && k1 != k2) {
+                            ls.sfb += fw.freq;
+                            wordHadSfb = true;
+                        }
+
+                        // Scissors (Nožnice) - 🚀 FIX: Teraz už správne používame unifikované prsty (f1Real, f2Real)
+                        if (Math.abs(f1Real - f2Real) == 1) {
+                            if ((k1.row == 0 && k2.row == 2) || (k1.row == 2 && k2.row == 0)) {
+                                ls.scissors += fw.freq;
+                            }
+                        }
+
+                        // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
+                        boolean k1Stretch = (k1.col == 4 || k1.col == 5);
+                        boolean k2Stretch = (k2.col == 4 || k2.col == 5);
+                        // 🚀 FIX: Používame unifikované prsty (f1Real != f2Real) namiesto k1.finger != k2.finger kvôli zosynchronizovaniu so svetovým štandardom LSB
+                        if (k1Stretch != k2Stretch && f1Real != f2Real) {
+                            ls.lsb += fw.freq;
+                        }
+
+                        // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
+                        boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
+                        boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
+                        if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
+                            ls.lhb += fw.freq;
                         }
                     }
 
-                    // LSB: Jeden prst je v stredovom stĺpci a druhý prst na tej istej ruke nie je
-                    boolean k1Stretch = (k1.col == 4 || k1.col == 5);
-                    boolean k2Stretch = (k2.col == 4 || k2.col == 5);
-                    // 🚀 FIX: Používame unifikované prsty (f1Real != f2Real) namiesto k1.finger != k2.finger kvôli zosynchronizovaniu so svetovým štandardom LSB
-                    if (k1Stretch != k2Stretch && f1Real != f2Real) {
-                        ls.lsb += fw.freq;
-                    }
+                    // 🔥 SFS (Skipgramy) s premapovanými prstami
+                    // 💥 ZMENA: Podmienka upravená podľa validLen
+                    if (i < validLen - 2) {
+                        KeyInfo k3 = keys[i + 2];
+                        ls.totalSkipgrams += fw.freq;
 
-                    // LHB: Trápenie šľachy medzi malíčkom a prstenníkom (stĺpce 0, 1 a 8, 9)
-                    boolean k1PinkyRing = (k1.col == 0 || k1.col == 1 || k1.col == 8 || k1.col == 9);
-                    boolean k2PinkyRing = (k2.col == 0 || k2.col == 1 || k2.col == 8 || k2.col == 9);
-                    if (k1PinkyRing && k2PinkyRing && k1.finger != k2.finger) {
-                        ls.lhb += fw.freq;
+                        int f1Real = k1.finger.ordinal();
+                        int f3Real = k3.finger.ordinal();
+                        if (f1Real == 4) f1Real = 3;
+                        if (f3Real == 4) f3Real = 3;
+                        if (f1Real == 5) f1Real = 6;
+                        if (f3Real == 5) f3Real = 6;
+
+                        if (k1.hand == k3.hand && f1Real == f3Real && k1 != k3) {
+                            ls.sfs += fw.freq;
+                        }
                     }
                 }
 
-                // 🔥 SFS (Skipgramy) s premapovanými prstami
-                // 💥 ZMENA: Podmienka upravená podľa validLen
-                if (i < validLen - 2) {
+                // --- 3. ÚROVEŇ: TRIGRAMY ---
+                // 💥 ZMENA: Slučka upravená podľa validLen
+                for (int i = 0; i < validLen - 2; i++) {
+                    KeyInfo k1 = keys[i];
+                    KeyInfo k2 = keys[i + 1];
                     KeyInfo k3 = keys[i + 2];
-                    ls.totalSkipgrams += fw.freq;
+                    ls.totalTrigrams += fw.freq;
 
-                    int f1Real = k1.finger.ordinal();
-                    int f3Real = k3.finger.ordinal();
-                    if (f1Real == 4) f1Real = 3;
-                    if (f3Real == 4) f3Real = 3;
-                    if (f1Real == 5) f1Real = 6;
-                    if (f3Real == 5) f3Real = 6;
+                    if (k1.hand == k2.hand && k2.hand == k3.hand) {
+                        int r1 = k1.finger.rank;
+                        int r2 = k2.finger.rank;
+                        int r3 = k3.finger.rank;
 
-                    if (k1.hand == k3.hand && f1Real == f3Real && k1 != k3) {
-                        ls.sfs += fw.freq;
-                    }
-                }
-            }
-
-            // --- 3. ÚROVEŇ: TRIGRAMY ---
-            // 💥 ZMENA: Slučka upravená podľa validLen
-            for (int i = 0; i < validLen - 2; i++) {
-                KeyInfo k1 = keys[i];
-                KeyInfo k2 = keys[i + 1];
-                KeyInfo k3 = keys[i + 2];
-                ls.totalTrigrams += fw.freq;
-
-                if (k1.hand == k2.hand && k2.hand == k3.hand) {
-                    int r1 = k1.finger.rank;
-                    int r2 = k2.finger.rank;
-                    int r3 = k3.finger.rank;
-
-                    if (r1 < r2 && r2 < r3) {
-                        ls.inwardRolls += fw.freq;
-                    } else if (r1 > r2 && r2 > r3) {
-                        ls.outwardRolls += fw.freq;
-                    } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
-                        // 🚀 FIX: Pridaná globálna poistka (r1 != r3). Trilly (kmitanie dvoch prstov) sa vyradia a ostanú len čisté Redirects.
-                        if (r1 != r3) {
-                            ls.redirects += fw.freq;
+                        if (r1 < r2 && r2 < r3) {
+                            ls.inwardRolls += fw.freq;
+                        } else if (r1 > r2 && r2 > r3) {
+                            ls.outwardRolls += fw.freq;
+                        } else if ((r2 > r1 && r2 > r3) || (r2 < r1 && r2 < r3)) {
+                            // 🚀 FIX: Pridaná globálna poistka (r1 != r3). Trilly (kmitanie dvoch prstov) sa vyradia a ostanú len čisté Redirects.
+                            if (r1 != r3) {
+                                ls.redirects += fw.freq;
+                            }
                         }
                     }
                 }
-            }
 
-            // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
-            int currentRun = 1;
-            char currentHand = keys[0].hand;
-            // 💥 ZMENA: Slučka upravená podľa validLen
-            for (int i = 1; i < validLen; i++) {
-                if (keys[i].hand == currentHand) {
-                    currentRun++;
-                } else {
-                    if (currentRun >= 5) {
-                        ls.longOneHandedRuns += fw.freq;
-                        wordHadLongRun = true;
+                // --- 4. ÚROVEŇ: JEDNORUČNÉ RUNS ---
+                int currentRun = 1;
+                char currentHand = keys[0].hand;
+                // 💥 ZMENA: Slučka upravená podľa validLen
+                for (int i = 1; i < validLen; i++) {
+                    if (keys[i].hand == currentHand) {
+                        currentRun++;
+                    } else {
+                        if (currentRun >= 5) {
+                            ls.longOneHandedRuns += fw.freq;
+                            wordHadLongRun = true;
+                        }
+                        currentRun = 1;
+                        currentHand = keys[i].hand;
                     }
-                    currentRun = 1;
-                    currentHand = keys[i].hand;
                 }
-            }
-            if (currentRun >= 5) {
-                ls.longOneHandedRuns += fw.freq;
-                wordHadLongRun = true;
-            }
+                if (currentRun >= 5) {
+                    ls.longOneHandedRuns += fw.freq;
+                    wordHadLongRun = true;
+                }
 
-            // --- MAPY PRE TOP 10 SLOV ---
-            // 💥 ZMENA: Ak nie sme silent, logujeme čisté slovo (napr. zo "(slovo)" zaloguje "slovo")
-            if (!silent) {
-                String wordStr = cleanWordSb.toString();
-                long mapFreq = fw.freq;
-                if (wordHadSfb) ls.sfbWordsMap.put(wordStr, mapFreq);
-                if (wordHadLongRun) ls.longRunWordsMap.put(wordStr, mapFreq);
-                if (hasInnerStretch) ls.innerStretchWordsMap.put(wordStr, mapFreq);
+                // --- MAPY PRE TOP 10 SLOV ---
+                // 💥 ZMENA: Ak nie sme silent, logujeme čisté slovo (napr. zo "(slovo)" zaloguje "slovo")
+                if (!silent) {
+                    String wordStr = cleanWordSb.toString();
+                    long mapFreq = fw.freq;
+                    if (wordHadSfb) ls.sfbWordsMap.put(wordStr, mapFreq);
+                    if (wordHadLongRun) ls.longRunWordsMap.put(wordStr, mapFreq);
+                    if (hasInnerStretch) ls.innerStretchWordsMap.put(wordStr, mapFreq);
+                }
             }
         }
 
@@ -515,7 +535,7 @@ public class LayoutStats {
         double runsScore = getEliteScore(getRunsPct(), 0.15, 1.20);
 
 // --- ODMENY (hodnota, SAFE_LIMIT, SMRŤ) - Obrátené limity zabezpečia, že ideál bude 100.0 ---
-        double altScore     = getEliteScore(getAlternationPct(), 60.0, 40.0);
+        double altScore     = getEliteScore(getAlternationPct(), 50.0, 35.0);
         double rollInScore  = getEliteScore(getRollInPct(), 15.0, 0.0);
         double rollOutScore = getEliteScore(getRollOutPct(), 10.0, 0.0);
         double homeRowScore = getEliteScore(getHomeRowPct(), 65.0, 45.0);
