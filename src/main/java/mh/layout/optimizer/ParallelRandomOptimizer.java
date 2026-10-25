@@ -39,6 +39,13 @@ public final class ParallelRandomOptimizer {
     private double skMonoX, skBiX, skSkipX, skTriX;
     private double enMonoX, enBiX, enSkipX, enTriX;
 
+    // Statické pole 26 fluidných pozícií (stretche 14, 15, 24, 25 sú vynechané)
+    private static final int[] FLUID_INDICES = {
+            0, 1, 2, 3, 4,   5, 6, 7, 8, 9,
+            10,11,12,13,     16,17,18,19,
+            20,21,22,23,     26,27,28,29
+    };
+
     public void startOptimization(char[] initialMatrix, NGramStats statsSK, NGramStats statsEN, Weights weights, double skRatio) {
         if (isRunning.get()) return;
         isRunning.set(true);
@@ -147,15 +154,15 @@ public final class ParallelRandomOptimizer {
 //                // 🚀 VOLANIE EXTRAHOVANEJ PROCEDÚRY:
 //                runBestScore = executeDeterministicPolish(runBestMatrix, runBestScore, statsSK, statsEN, weights, skRatio, enRatio, threadId, localEvaluations);
 
-                // 🚀 ŠTART TOTÁLNEJ EXPLÓZIE VETVIECKÝCH STROMOV
-                // Pripravíme schránky pre rekurzívny zber šampiónov z celého stromu
-                double[] bestScoreInRun = new double[]{ runBestScore };
-                char[] bestMatrixInRun = Arrays.copyOf(runBestMatrix, runBestMatrix.length);
-                localEvaluations += executeExhaustivePolish(runBestMatrix, runBestScore, bestMatrixInRun, bestScoreInRun,
-                        statsSK, statsEN, weights, skRatio, 0);
-                // Keď sa rekurzia úplne rozvinie a vráti späť, schránky obsahujú absolútne maximum
-                runBestScore = bestScoreInRun[0];
-                runBestMatrix = bestMatrixInRun;
+//                // 🚀 ŠTART TOTÁLNEJ EXPLÓZIE VETVIECKÝCH STROMOV
+//                // Pripravíme schránky pre rekurzívny zber šampiónov z celého stromu
+//                double[] bestScoreInRun = new double[]{ runBestScore };
+//                char[] bestMatrixInRun = Arrays.copyOf(runBestMatrix, runBestMatrix.length);
+//                localEvaluations += executeExhaustivePolish(runBestMatrix, runBestScore, bestMatrixInRun, bestScoreInRun,
+//                        statsSK, statsEN, weights, skRatio, 0);
+//                // Keď sa rekurzia úplne rozvinie a vráti späť, schránky obsahujú absolútne maximum
+//                runBestScore = bestScoreInRun[0];
+//                runBestMatrix = bestMatrixInRun;
 
                 // Ak po vybrúsení tento beh prekonal doterajší historický rekord jadra, prepíšeme ho
                 if (runBestScore > localBestScore) {
@@ -176,10 +183,21 @@ public final class ParallelRandomOptimizer {
                 continue;
             }
 
-            // 1. Náhodný výber dvoch pozícií na prehodenie (Swapping)
-            int pos1 = rand.nextInt(KeyboardTopology.KEY_COUNT);
-            int pos2 = rand.nextInt(KeyboardTopology.KEY_COUNT);
-            if (pos1 == pos2) continue;
+//            // 1. Náhodný výber dvoch pozícií na prehodenie (Swapping)
+//            int pos1 = rand.nextInt(KeyboardTopology.KEY_COUNT);
+//            int pos2 = rand.nextInt(KeyboardTopology.KEY_COUNT);
+//            if (pos1 == pos2) continue;
+
+            // 1b. izomorfné mapovanie bez opakovania (Sampling without replacement)
+            int r1 = rand.nextInt(26); // Výber z 26 možností (0 až 25)
+            int r2 = rand.nextInt(25); // Výber z 25 možností (0 to 24)
+            // 🔥 MAGICKÝ TRIK: Odstráni while slučku a garantuje r1 != r2
+            if (r2 >= r1) {
+                r2++;
+            }
+            // Mapovanie na reálnu topológiu klávesnice
+            int pos1 = FLUID_INDICES[r1];
+            int pos2 = FLUID_INDICES[r2];
 
             // 2. Vykonaj swap (krok vpred)
             char temp = currentMatrix[pos1];
@@ -196,13 +214,13 @@ public final class ParallelRandomOptimizer {
                 }
             }
 
-            // 🚀 BLESKOVÉ FILTROVANIE: Ak to nie je kognitívne friendly, okamžite to vráť späť
-            if (!LayoutValidator.isHumanFriendly(currentMatrix)) {
-                char undo = currentMatrix[pos1];
-                currentMatrix[pos1] = currentMatrix[pos2];
-                currentMatrix[pos2] = undo;
-                continue; // Ideme na ďalšiu iteráciu, n-gramový Evaluator vôbec nespúšťame
-            }
+//            // 🚀 BLESKOVÉ FILTROVANIE: Ak to nie je kognitívne friendly, okamžite to vráť späť
+//            if (!LayoutValidator.isHumanFriendly(currentMatrix)) {
+//                char undo = currentMatrix[pos1];
+//                currentMatrix[pos1] = currentMatrix[pos2];
+//                currentMatrix[pos2] = undo;
+//                continue; // Ideme na ďalšiu iteráciu, n-gramový Evaluator vôbec nespúšťame
+//            }
 
             // 3. Ohodnoť nový layout bilingválne s bleskovými Early Exits (Miesto 3 v horúcej slučke)
             LayoutStats nextSkStats = Evaluator.evaluate(currentMatrix, statsSK, weights, skMonoX, skBiX, skSkipX, skTriX);

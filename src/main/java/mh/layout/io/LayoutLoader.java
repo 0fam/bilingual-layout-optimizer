@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class LayoutLoader {
@@ -38,6 +39,9 @@ public final class LayoutLoader {
                                 if (dofMatrix != null) {
                                     results.add(new LayoutInput(f.getName(), dofMatrix.toCharArray()));
                                 }
+                            } else if (f.getName().endsWith(".cpsat")) {
+                                // 🚀 ODKLON DO IZOLOVANEJ METÓDY PRE .CPSAT SÚBORY V PRIEČINKU
+                                parseCpsatJournal(f, results);
                             } else {
                                 String content = Files.readString(f.toPath(), StandardCharsets.UTF_8).replaceAll("\\s+", "");
                                 content = content.trim();
@@ -65,6 +69,9 @@ public final class LayoutLoader {
                 if (dofMatrix != null) {
                     results.add(new LayoutInput(fileName, dofMatrix.toCharArray()));
                 }
+            } else if (fileName.endsWith(".cpsat")) {
+                // 🚀 ODKLON DO IZOLOVANEJ METÓDY PRE SAMOSTATNÝ SÚBOR .CPSAT
+                parseCpsatJournal(target, results);
             } else {
                 List<String> lines = Files.readAllLines(target.toPath(), StandardCharsets.UTF_8);
 
@@ -130,6 +137,61 @@ public final class LayoutLoader {
         }
 
         return results;
+    }
+
+    /**
+     * 🚀 IZOLOVANÝ ŠTRUKTURÁLNY PARSER PRE .CPSAT SÚBORY (LOOKAHEAD GEOMETRIA)
+     * Je absolútne imúnny voči zatúlaným pomlčkám. Reaguje iba na presný 3-riadkový blok uzavretý v pomlčkách.
+     */
+    private static void parseCpsatJournal(File file, List<LayoutInput> results) throws IOException {
+        String fileName = file.getName();
+        String prefix = fileName.substring(0, Math.min(fileName.length(), 2)).toUpperCase() + "_";
+        List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+
+        int counterRieseni = 0;
+
+        for (int i = 0; i < lines.size(); i++) {
+            String trimmed = lines.get(i).trim();
+
+            // Ak riadok začína pomlčkami, overíme, či ide o skutočný štart mriežky klávesnice
+            if (trimmed.startsWith("-")) {
+                int j = i + 1;
+                List<String> dataRows = new ArrayList<>();
+
+                // Čítame nasledujúce riadky, kým nenarážame na ďalšie pomlčky alebo koniec súboru
+                while (j < lines.size()) {
+                    String nextLine = lines.get(j).trim();
+                    if (nextLine.startsWith("-")) {
+                        break; // Našli sme potenciálne uzatváracie pomlčky
+                    }
+
+                    // Vyčistíme všetky typy whitespace (klasické, unicode aj nezlomiteľné medzery)
+                    String cistyRiadokZnakov = nextLine.replaceAll("[\\s\\u00A0\\p{Z}]+", "");
+                    if (!cistyRiadokZnakov.isEmpty()) {
+                        dataRows.add(cistyRiadokZnakov);
+                    }
+                    j++;
+                }
+
+                // 🔥 TVRDÉ GEOMETRICKÉ SCHVÁLENIE: Blok akceptujeme iba vtedy, ak sme našli presne 3 dátové riadky a súbor pokračuje pomlčkami
+                if (dataRows.size() == 3 && j < lines.size() && lines.get(j).trim().startsWith("-")) {
+                    StringBuilder akumulatorZnakov = new StringBuilder();
+                    for (String row : dataRows) {
+                        akumulatorZnakov.append(row);
+                    }
+
+                    // Posledný check na celkový počet znakov layoutu
+                    if (akumulatorZnakov.length() == 30) {
+                        counterRieseni++;
+                        String generatedName = prefix + "L" + i + "_" + counterRieseni;
+                        results.add(new LayoutInput(generatedName, akumulatorZnakov.toString().toUpperCase().toCharArray()));
+
+                        // 🚀 SKOK: Keďže sme úspešne skonzumovali celý blok, posunieme hlavný index loopu na index uzatváracích pomlčiek
+                        i = j;
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -63,7 +63,12 @@ public final class LayoutAnalyzer {
         report.append("\n🧠 BIOMECHANICKÉ UKAZOVATELE (Frekvencie výskytu v %%):\n");
         report.append(String.format("%-25s | %-18s | %-18s\n", "Metrika", "Slovenčina (SK)", "Angličtina (EN)"));
         report.append("--------------------------------------------------------------------\n");
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFB (Rovnaký prst)", layout.skStats().getMetricPercent(MetricType.SFB), biLang ? layout.enStats().getMetricPercent(MetricType.SFB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", layout.skStats().getMetricPercent(MetricType.EFFORT), biLang ? layout.enStats().getMetricPercent(MetricType.EFFORT) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ASFBD (Rovnaký prst susedne riadky Down)", layout.skStats().getMetricPercent(MetricType.ASFBD), biLang ? layout.enStats().getMetricPercent(MetricType.ASFBD) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ASFBU (Rovnaký prst susedne riadky Up)", layout.skStats().getMetricPercent(MetricType.ASFBU), biLang ? layout.enStats().getMetricPercent(MetricType.ASFBU) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "RSSFB (Rovnaký prst preskoceny riadok)", layout.skStats().getMetricPercent(MetricType.RSSFB), biLang ? layout.enStats().getMetricPercent(MetricType.RSSFB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SSFB (Rovnaký prst stretch na riadku)", layout.skStats().getMetricPercent(MetricType.SSFB), biLang ? layout.enStats().getMetricPercent(MetricType.SSFB) : 0.0));
+        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFT (Rovnaký prst 3x)", layout.skStats().getMetricPercent(MetricType.SFT), biLang ? layout.enStats().getMetricPercent(MetricType.SFT) : 0.0));
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "SFS (Sendviče)", layout.skStats().getMetricPercent(MetricType.SFS), biLang ? layout.enStats().getMetricPercent(MetricType.SFS) : 0.0));
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "ALT (Striedanie rúk)", layout.skStats().getMetricPercent(MetricType.ALTERNATION), biLang ? layout.enStats().getMetricPercent(MetricType.ALTERNATION) : 0.0));
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Roll-In (Valenie dnu)", layout.skStats().getMetricPercent(MetricType.ROLL_IN), biLang ? layout.enStats().getMetricPercent(MetricType.ROLL_IN) : 0.0));
@@ -72,7 +77,6 @@ public final class LayoutAnalyzer {
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Redirects (Otočky)", layout.skStats().getMetricPercent(MetricType.REDIRECTS), biLang ? layout.enStats().getMetricPercent(MetricType.REDIRECTS) : 0.0));
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LSB (Bočné uličky)", layout.skStats().getMetricPercent(MetricType.LSB), biLang ? layout.enStats().getMetricPercent(MetricType.LSB) : 0.0));
         report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "LHB (Záťaž malíčkov)", layout.skStats().getMetricPercent(MetricType.LHB), biLang ? layout.enStats().getMetricPercent(MetricType.LHB) : 0.0));
-        report.append(String.format("%-25s | %-18.4f | %-18.4f\n", "Avg Stretch Index", layout.skStats().getMetricPercent(MetricType.EFFORT), biLang ? layout.enStats().getMetricPercent(MetricType.EFFORT) : 0.0));
         report.append("--------------------------------------------------------------------\n");
 
         // --- ZAŤAŽENIE JEDNOTLIVÝCH PRSTOV ---

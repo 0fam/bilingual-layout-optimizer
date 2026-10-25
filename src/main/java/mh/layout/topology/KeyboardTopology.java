@@ -13,7 +13,10 @@ public final class KeyboardTopology {
 
     // 🚀 2D LOOKUP MATICE PRE BIGRAMY (Odpája kompletnú logiku z horúcej slučky)
     public static final boolean[][] IS_ALT = new boolean[KEY_COUNT][KEY_COUNT];
-    public static final boolean[][] IS_SFB = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_ASFB_DOWN = new boolean[KEY_COUNT][KEY_COUNT]; // Adjacent Same Finger Bigram
+    public static final boolean[][] IS_ASFB_UP = new boolean[KEY_COUNT][KEY_COUNT];
+    public static final boolean[][] IS_RSSFB = new boolean[KEY_COUNT][KEY_COUNT]; // Row Skip Same Finger Bigram
+    public static final boolean[][] IS_SSFB = new boolean[KEY_COUNT][KEY_COUNT]; // Stretch Same Finger Bigram
     public static final boolean[][] IS_SCISSORS = new boolean[KEY_COUNT][KEY_COUNT];
     public static final boolean[][] IS_LSB = new boolean[KEY_COUNT][KEY_COUNT];
     public static final boolean[][] IS_LHB = new boolean[KEY_COUNT][KEY_COUNT];
@@ -25,6 +28,7 @@ public final class KeyboardTopology {
     public static final int[] TRIPLE_J = new int[6750];
     public static final int[] TRIPLE_K = new int[6750];
     public static final byte[] TRIPLE_TYPE = new byte[6750]; // 1 = ROLL_IN, 2 = ROLL_OUT, 3 = REDIRECT
+    public static final boolean[][][] IS_SFT = new boolean[KEY_COUNT][KEY_COUNT][KEY_COUNT]; // Same Finger Trigram
 
     /**
      * Statická penalizácia pozícií, váha nepohodlia/natiahnutia (Effort / Stretch Weight)
@@ -49,13 +53,33 @@ public final class KeyboardTopology {
 //    };
 
     public static final double[] POS_STRETCH_WEIGHT = {
-            // Ľavá ruka                             // Pravá ruka
-            // P   R     M     I       Stretch     I     M     R     P
-            1.60, 1.40, 1.30, 1.30, 1.90,   1.90, 1.30, 1.30, 1.40, 1.60, // HORNÝ
-            1.15, 1.00, 1.00, 1.00, 1.50,   1.50, 1.00, 1.00, 1.00, 1.15, // DOMOVSKÝ
-            1.75, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.75  // SPODNÝ
+//                   Ľavá ruka                       Pravá ruka
+//           P     R     M     I    Stretch Stretch   I     M     R     P
+                    4.0, 2.2, 1.8, 1.9,  5,    5,  1.9, 1.8, 2.2, 4.0,
+                    1.2, 1.1, 1.0, 1.0, 10,   10,  1.0, 1.0, 1.1, 1.2,
+                    4.5, 2.5, 1.6, 1.5, 20,   20,  1.5, 1.6, 2.5, 4.5
+
+//            1.60, 1.50, 1.20, 1.40,  4.00,    4.00,  1.40, 1.20, 1.50, 1.60, // HORNÝ
+//            1.15, 1.05, 1.00, 1.00,  8.00,    8.00,  1.00, 1.00, 1.05, 1.15, // DOMOVSKÝ
+//            1.80, 1.70, 1.30, 1.25, 12.00,   12.00,  1.25, 1.30, 1.70, 1.80  // SPODNÝ
+
+//            1.70, 1.45, 1.20, 1.40,  2.10,    2.10,  1.40, 1.20, 1.45, 1.70, // HORNÝ
+//            1.15, 1.05, 1.00, 1.00,  2.40,    2.40,  1.00, 1.00, 1.05, 1.15, // DOMOVSKÝ
+//            1.80, 1.70, 1.40, 1.35,  2.70,    2.70,  1.35, 1.40, 1.70, 1.80  // SPODNÝ
+
+//            1.75, 1.45, 1.20, 1.50,  2.10,    2.10,  1.50, 1.20, 1.45, 1.75, // HORNÝ
+//            1.15, 1.05, 1.00, 1.00,  2.40,    2.40,  1.00, 1.00, 1.05, 1.15, // DOMOVSKÝ
+//            1.85, 1.70, 1.40, 1.30,  2.70,    2.70,  1.30, 1.40, 1.70, 1.85  // SPODNÝ
     };
 
+//    public static final double[] POS_STRETCH_WEIGHT = {
+//            // Ľavá ruka                             // Pravá ruka
+//            // P   R     M     I       Stretch     I     M     R     P
+//            1.60, 1.40, 1.30, 1.30, 1.90,   1.90, 1.30, 1.30, 1.40, 1.60, // HORNÝ
+//            1.15, 1.00, 1.00, 1.00, 1.50,   1.50, 1.00, 1.00, 1.00, 1.15, // DOMOVSKÝ
+//            1.75, 1.70, 1.40, 1.40, 2.10,   2.10, 1.40, 1.40, 1.70, 1.75  // SPODNÝ
+//    };
+//
     private KeyboardTopology() {}
 
     static {
@@ -125,7 +149,21 @@ public final class KeyboardTopology {
 
                     // 1. Same Finger Bigram (SFB): Ak sloty i a j obsluhuje ten istý prst.
                     if (finger1 == finger2 && i != j) {
-                        IS_SFB[i][j] = true;
+
+                        if (Math.abs(row1 - row2) >= 2) {
+                            IS_RSSFB[i][j] = true;
+                        } else {
+                            if (row1 < row2) {
+                                IS_ASFB_DOWN[i][j] = true;
+                            } else {
+                                IS_ASFB_UP[i][j] = true;
+                            }
+                        }
+
+                        // stretch sa zapocitava ZNOVA, aby bola znasobena jeho skodlivost
+                        if (col1 != col2) {
+                            IS_SSFB[i][j] = true;
+                        }
                     }
 
                     // 2. SCISSORS (Nožnice): Prsty skáču krížom cez riadok (rozdiel riadkov >= 2)
@@ -186,7 +224,7 @@ public final class KeyboardTopology {
                     // 🛑 FILTER 2: Tretí slot 'k' musí dopadnúť na tú istú ruku ako prvé dva.
                     if (hand2 != hand3) continue;
 
-                    byte type = 0; // Dočasný biomechanický štítok (1 = RollIn, 2 = RollOut, 3 = Redirect)
+                    byte type = 0; // Dočasný biomechanický štítok (1 = RollIn, 2 = RollOut, 3 = Redirect, 4 = Same Finger Trigram)
 
                     // 🌊 ROLLS (Plynulé vlny prstov v jednom smere)
                     if (f1 < f2 && f2 < f3) {
@@ -206,6 +244,9 @@ public final class KeyboardTopology {
                         if (f1 != f2 && f2 != f3 && f1 != f3) {
                             type = 3;
                         }
+                    } else if (f1 == f2 && f1 == f3) {
+                        type = 4;
+                        IS_SFT[i][j][k] = true;
                     }
 
                     // 🚀 ZÁCHRANNÝ KOŠ: Ak trojica slotov (i, j, k) tvorí platný ergonomický pohyb,

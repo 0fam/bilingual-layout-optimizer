@@ -4,6 +4,10 @@ import static mh.layout.topology.KeyboardTopology.*;
 
 public final class LayoutValidator {
 
+    public static boolean isAlwaysFriendly(char[] matrix) {
+        return true;
+    }
+
 //    public static boolean isHumanFriendly(char[] matrix) {
 //        int row = 1;
 //        int offset = row * 10;
@@ -168,6 +172,8 @@ public final class LayoutValidator {
         for (int i = 0; i < 30; i++) {
             char c = matrix[i];
             if (c < 'A' || c > 'Z') {
+//                if (!isValid(c)) return false;
+
                 if (count == 0) idx0 = i;
                 else if (count == 1) idx1 = i;
                 else if (count == 2) idx2 = i;
@@ -282,6 +288,8 @@ public final class LayoutValidator {
         for (int i = 0; i < 30; i++) {
             char c = matrix[i];
             if (c < 'A' || c > 'Z') {
+                if (!isValid(c)) return false;
+
                 if (count == 0) idx0 = i;
                 else if (count == 1) idx1 = i;
                 else if (count == 2) idx2 = i;
@@ -354,6 +362,8 @@ public final class LayoutValidator {
         for (int i = 0; i < 30; i++) {
             char c = matrix[i];
             if (c < 'A' || c > 'Z') {
+                if (!isValid(c)) return false;
+
                 if (count == 0) idx0 = i;
                 else if (count == 1) idx1 = i;
                 else if (count == 2) idx2 = i;
@@ -437,4 +447,11 @@ public final class LayoutValidator {
 
         return neighbors;
     }
+
+    private static boolean isValid(char c) {
+        // Skontrolujeme, či je to jeden zo 4 povolených symbolov.
+        // Ak nie je, layout okamžite zabijeme a vyskočíme z cyklu.
+        return c == '.' || c == ',' || c == '-' || c == '\'';
+    }
+
 }

@@ -2,7 +2,11 @@ package mh.layout.stats;
 
 public enum MetricType {
     // 🔴 NEGATÍVNE METRIKY (Čím viac %, tým nižší koeficient / pád k smrti)
-    SFB,           // Kmitanie toho istého prsta po sebe
+    ASFBD,         // Adjacent SFB Down - Kmitanie toho istého prsta po sebe na susednych riadkoch smerom nadol
+    ASFBU,         // Adjacent SFB Up - Kmitanie toho istého prsta po sebe na susednych riadkoch smerom nahor
+    RSSFB,         // Row Skip SFB - Kmitanie toho istého prsta po sebe cez prazdny riadok
+    SSFB,          // Stretch SFB - Kmitanie toho istého prsta po sebe na stretchi
+    SFT,           // SFT - Kmitanie toho istého prsta po sebe na susednych riadkoch 3x
     SFS,           // Sendviče (skipgramy na rovnakom prste)
     SCISSORS,      // Biomechanická penalizácia pozícií z Topology
     REDIRECTS,     // Zmeny smeru v trigramoch (pinbally)

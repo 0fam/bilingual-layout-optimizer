@@ -24,10 +24,10 @@ public final class OptimizationEngine {
 //                "S E T K D   L N A O I" +
 //                "G ; C B H   J R U . Y").replace(" ", "").toUpperCase();
 
-        String baseLayout = ( // to iste co 2 ale vybrane symboly
-                "Z - M V P   W Q F , X" +
-                "S E T K D   L N A O I" +
-                "G ' C B H   J R U . Y").replace(" ", "").toUpperCase();
+//        String baseLayout = ( // to iste co 2 ale vybrane symboly
+//                "Z - M V P   W Q F , X" +
+//                "S E T K D   L N A O I" +
+//                "G ' C B H   J R U . Y").replace(" ", "").toUpperCase();
 
 //        String baseLayout = (
 //                "H N T C F  - X ' Y V" +
@@ -38,6 +38,16 @@ public final class OptimizationEngine {
 //                "Z N D K V  Q O U J G" +
 //                "S R T P B  . A E I L" +
 //                "W , M H F  ' X - Y C").replace(" ", "").toUpperCase();
+
+//        String baseLayout = ( // specialna matica pre rotaciu 26 klavesov, 2 stredne a 2 spodne stretchove klavesy nerotuju
+//                "KFIJ. WLMZP" +
+//                "HAOE- XNDSV" +
+//                "BGYU' QRTC,").replace(" ", "").toUpperCase();
+
+        String baseLayout = ( // specialna matica pre rotaciu 26 klavesov, 2 stredne a 2 spodne stretchove klavesy nerotuju
+                "B M U R J    C P I F ," +
+                "K D E N -    X T O A S" +
+                "H V W L '    Q Z Y G .").replace(" ", "").toUpperCase();
 
         char[] initialMatrix = baseLayout.toCharArray();
 

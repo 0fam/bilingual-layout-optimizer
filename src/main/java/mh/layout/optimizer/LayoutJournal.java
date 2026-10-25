@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter;
 
 public final class LayoutJournal {
 
-    public static final String JOURNAL_FILE = "c:\\home\\project-personal\\layout-analyzer\\layout_journal.txt";
+    public static final String JOURNAL_FILE = "c:\\home\\project-personal\\bilingual-layout-optimizer\\layout_journal.txt";
     private static final Object journalLock = new Object();
 
     public static void append(char[] matrix, double sk, double en, double combined, int threadId, long iteration) {
